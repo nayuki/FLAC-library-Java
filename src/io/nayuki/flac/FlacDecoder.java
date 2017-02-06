@@ -38,7 +38,7 @@ public class FlacDecoder {
 		if (in.readInt(32) != 0x664C6143)  // Magic string "fLaC"
 			throw new DataFormatException();
 		while (handleMetadataBlock());
-		while (handleFrame());
+		while (decodeFrame());
 	}
 	
 	
@@ -76,7 +76,7 @@ public class FlacDecoder {
 	}
 	
 	
-	private boolean handleFrame() throws IOException, DataFormatException {
+	private boolean decodeFrame() throws IOException, DataFormatException {
 		int temp = in.readByte();
 		if (temp == -1)
 			return false;
