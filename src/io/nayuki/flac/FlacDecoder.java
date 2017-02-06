@@ -39,7 +39,7 @@ public final class FlacDecoder {
 		subframes = new long[2][FRAME_MAX_SAMPLES];
 		
 		// Parse header blocks
-		if (in.readInt(32) != 0x664C6143)  // Magic string "fLaC"
+		if (in.readUint(32) != 0x664C6143)  // Magic string "fLaC"
 			throw new DataFormatException("Invalid magic string");
 		while (handleMetadataBlock());
 		
@@ -57,9 +57,9 @@ public final class FlacDecoder {
 	/*---- Methods to handle metadata blocks ----*/
 	
 	private boolean handleMetadataBlock() throws IOException, DataFormatException {
-		boolean last = in.readInt(1) != 0;
-		int type = in.readInt(7);
-		int length = in.readInt(24);
+		boolean last = in.readUint(1) != 0;
+		int type = in.readUint(7);
+		int length = in.readUint(24);
 		if (type == 0)
 			parseStreamInfoData();
 		else {
@@ -74,20 +74,20 @@ public final class FlacDecoder {
 		if (steamInfoSeen)
 			throw new DataFormatException("Duplicate stream info block");
 		steamInfoSeen = true;
-		int minBlockSamples = in.readInt(16);
-		int maxBlockSamples = in.readInt(16);
-		int minFrameBytes = in.readInt(24);
-		int maxFrameBytes = in.readInt(24);
+		int minBlockSamples = in.readUint(16);
+		int maxBlockSamples = in.readUint(16);
+		int minFrameBytes = in.readUint(24);
+		int maxFrameBytes = in.readUint(24);
 		if (maxBlockSamples < minBlockSamples)
 			throw new DataFormatException("Maximum block size less than minimum block size");
 		if (minFrameBytes != 0 && maxFrameBytes != 0 && maxFrameBytes < minFrameBytes)
 			throw new DataFormatException("Maximum frame size less than minimum frame size");
-		sampleRate = in.readInt(20);
+		sampleRate = in.readUint(20);
 		if (sampleRate == 0 || sampleRate > 655350)
 			throw new DataFormatException("Invalid sample rate");
-		numChannels = in.readInt(3) + 1;
-		sampleDepth = in.readInt(5) + 1;
-		long numSamples = (long)in.readInt(18) << 18 | in.readInt(18);
+		numChannels = in.readUint(3) + 1;
+		sampleDepth = in.readUint(5) + 1;
+		long numSamples = (long)in.readUint(18) << 18 | in.readUint(18);
 		samples = new int[numChannels][(int)numSamples];
 		byte[] hash = new byte[16];
 		in.readFully(hash);
@@ -97,7 +97,7 @@ public final class FlacDecoder {
 	// Reads between 1 and 7 bytes of input, and returns a uint36 value.
 	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
 	private long readUtf8Integer() throws IOException, DataFormatException {
-		int temp = in.readInt(8);
+		int temp = in.readUint(8);
 		int n = Integer.numberOfLeadingZeros(~(temp << 24));  // Number of leading 1s in the byte
 		if (n < 0 || n > 8)
 			throw new AssertionError();
@@ -108,7 +108,7 @@ public final class FlacDecoder {
 		else {
 			long result = temp & ((1 << (7 - n)) - 1);
 			for (int i = 0; i < n - 1; i++) {
-				temp = in.readInt(8);
+				temp = in.readUint(8);
 				if ((temp & 0xC0) != 0x80)
 					throw new DataFormatException("Invalid UTF-8 coded number");
 				result = (result << 6) | (temp & 0x3F);
@@ -134,20 +134,20 @@ public final class FlacDecoder {
 		int temp = in.readByte();
 		if (temp == -1)
 			return -1;
-		int sync = temp << 6 | in.readInt(6);  // Uint14
+		int sync = temp << 6 | in.readUint(6);  // Uint14
 		if (sync != 0x3FFE)
 			throw new DataFormatException("Sync code expected");
 		
 		// Save and/or check various fields
-		if (in.readInt(1) != 0)
+		if (in.readUint(1) != 0)
 			throw new DataFormatException("Reserved bit");
-		int blockStrategy = in.readInt(1);
-		int blockSamplesCode = in.readInt(4);
-		int sampleRateCode = in.readInt(4);
-		int channelAssignment = in.readInt(4);
-		if (decodeSampleDepth(in.readInt(3)) != sampleDepth)
+		int blockStrategy = in.readUint(1);
+		int blockSamplesCode = in.readUint(4);
+		int sampleRateCode = in.readUint(4);
+		int channelAssignment = in.readUint(4);
+		if (decodeSampleDepth(in.readUint(3)) != sampleDepth)
 			throw new DataFormatException("Sample depth mismatch");
-		if (in.readInt(1) != 0)
+		if (in.readUint(1) != 0)
 			throw new DataFormatException("Reserved bit");
 		
 		// Read and check the frame/sample position field
@@ -168,12 +168,12 @@ public final class FlacDecoder {
 		if (decodeSampleRate(sampleRateCode) != sampleRate)  // May read bytes
 			throw new DataFormatException("Sample rate mismatch");
 		@SuppressWarnings("unused")
-		int crc8 = in.readInt(8);  // End of frame header
+		int crc8 = in.readUint(8);  // End of frame header
 		
 		decodeSubframes(blockSamples, channelAssignment, sampleOffset);
 		in.alignToByte();
 		@SuppressWarnings("unused")
-		int crc16 = in.readInt(16);  // End of frame
+		int crc16 = in.readUint(16);  // End of frame
 		return blockSamples;
 	}
 	
@@ -189,9 +189,9 @@ public final class FlacDecoder {
 		else if (2 <= code && code <= 5)
 			return 576 << (code - 2);
 		else if (code == 6)
-			return in.readInt(8) + 1;
+			return in.readUint(8) + 1;
 		else if (code == 7)
-			return in.readInt(16) + 1;
+			return in.readUint(16) + 1;
 		else if (8 <= code && code <= 15)
 			return 256 << (code - 8);
 		else
@@ -208,11 +208,11 @@ public final class FlacDecoder {
 		else if (code < SAMPLE_RATES.length)
 			return SAMPLE_RATES[code];
 		else if (code == 12)
-			return in.readInt(8);
+			return in.readUint(8);
 		else if (code == 13)
-			return in.readInt(16);
+			return in.readUint(16);
 		else if (code == 14)
-			return in.readInt(16) * 10;
+			return in.readUint(16) * 10;
 		else if (code == 15)
 			throw new DataFormatException("Invalid sample rate");
 		else
@@ -286,12 +286,12 @@ public final class FlacDecoder {
 	
 	
 	private void decodeSubframe(int numSamples, int sampleDepth, long[] block) throws IOException, DataFormatException {
-		if (in.readInt(1) != 0)
+		if (in.readUint(1) != 0)
 			throw new DataFormatException("Invalid padding bit");
-		int type = in.readInt(6);
-		int shift = in.readInt(1);  // Also known as "wasted bits-per-sample"
+		int type = in.readUint(6);
+		int shift = in.readUint(1);  // Also known as "wasted bits-per-sample"
 		if (shift == 1) {
-			while (in.readInt(1) == 0)  // Unary coding
+			while (in.readUint(1) == 0)  // Unary coding
 				shift++;
 		}
 		
@@ -345,7 +345,7 @@ public final class FlacDecoder {
 		for (int i = 0; i < order; i++)
 			block[i] = in.readSignedInt(sampleDepth);
 		
-		int precision = in.readInt(4) + 1;
+		int precision = in.readUint(4) + 1;
 		if (precision == 16)
 			throw new DataFormatException("Invalid LPC precision");
 		int shift = in.readSignedInt(5);
@@ -375,18 +375,18 @@ public final class FlacDecoder {
 	
 	
 	private void readResiduals(int count, int warmup, long[] result) throws IOException, DataFormatException {
-		int method = in.readInt(2);
+		int method = in.readUint(2);
 		if (method == 0 || method == 1) {
-			int numPartitions = 1 << in.readInt(4);
+			int numPartitions = 1 << in.readUint(4);
 			int paramBits = method == 0 ? 4 : 5;
 			int escape = method == 0 ? 0xF : 0x1F;
 			for (int partitionIndex = 0, resultIndex = warmup; partitionIndex < numPartitions; partitionIndex++) {
 				int subcount = count / numPartitions;
 				if (partitionIndex == 0)
 					subcount -= warmup;
-				int param = in.readInt(paramBits);
+				int param = in.readUint(paramBits);
 				if (param == escape) {
-					int numBits = in.readInt(5);
+					int numBits = in.readUint(5);
 					for (int i = 0; i < subcount; i++, resultIndex++)
 						result[resultIndex] = in.readSignedInt(numBits);
 				} else {
@@ -401,9 +401,9 @@ public final class FlacDecoder {
 	
 	private int readRiceSignedInt(int param) throws IOException {
 		int result = 0;
-		while (in.readInt(1) == 0)
+		while (in.readUint(1) == 0)
 			result++;
-		result = (result << param) | in.readInt(param);
+		result = (result << param) | in.readUint(param);
 		return (result >>> 1) ^ (-(result & 1));
 	}
 	

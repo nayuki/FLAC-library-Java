@@ -35,7 +35,7 @@ final class BitInputStream implements AutoCloseable {
 	
 	/*---- Methods ----*/
 	
-	public int readInt(int n) throws IOException {
+	public int readUint(int n) throws IOException {
 		if (n < 0 || n > 32)
 			throw new IllegalArgumentException();
 		while (bitBufferLen < n) {
@@ -55,7 +55,7 @@ final class BitInputStream implements AutoCloseable {
 	
 	public int readSignedInt(int n) throws IOException {
 		int shift = 32 - n;
-		return (readInt(n) << shift) >> shift;
+		return (readUint(n) << shift) >> shift;
 	}
 	
 	
