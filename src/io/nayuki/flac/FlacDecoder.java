@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.zip.DataFormatException;
 
 
-public class FlacDecoder {
+public final class FlacDecoder {
 	
 	/*---- Fields ----*/
 	
@@ -34,7 +34,7 @@ public class FlacDecoder {
 		
 		// Parse header blocks
 		if (in.readInt(32) != 0x664C6143)  // Magic string "fLaC"
-			throw new DataFormatException();
+			throw new DataFormatException("Invalid magic string");
 		while (handleMetadataBlock());
 		
 		// Decode frames until end of stream
@@ -89,7 +89,8 @@ public class FlacDecoder {
 		int temp = in.readByte();
 		if (temp == -1)
 			return -1;
-		if ((temp << 6 | in.readInt(6)) != 0x3FFE)  // Uint14
+		int sync = temp << 6 | in.readInt(6);  // Uint14
+		if (sync != 0x3FFE)
 			throw new DataFormatException("Sync code expected");
 		
 		// Save and/or check various fields
@@ -131,6 +132,9 @@ public class FlacDecoder {
 	
 	
 	private void decodeSubframes(int blockSamples, int channelAssignment, int sampleOffset) throws IOException, DataFormatException {
+		if (blockSamples < 1 || blockSamples > 65536 || (channelAssignment >>> 4) != 0)
+			throw new IllegalArgumentException();
+		
 		if (channelAssignment < 8) {  // Independent channels
 			if (channelAssignment + 1 != numChannels)
 				throw new DataFormatException("Channel count mismatch");
@@ -322,6 +326,8 @@ public class FlacDecoder {
 					throw new DataFormatException("Invalid UTF-8 coded number");
 				result = (result << 6) | (temp & 0x3F);
 			}
+			if ((result >>> 36) != 0)
+				throw new AssertionError();
 			return result;
 		}
 	}
@@ -332,7 +338,7 @@ public class FlacDecoder {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
 		else if (code == 0)
-			throw new DataFormatException("Reserved");
+			throw new DataFormatException("Reserved block size");
 		else if (code == 1)
 			return 192;
 		else if (2 <= code && code <= 5)

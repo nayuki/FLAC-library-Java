@@ -58,6 +58,7 @@ final class BitInputStream implements AutoCloseable {
 	
 	
 	public void readFully(byte[] b) throws IOException {
+		alignToByte();
 		int i = 0;
 		for (; bitBufferLen >= 8 && i < b.length; i++) {
 			b[i] = (byte)(bitBuffer >>> (bitBufferLen - 8));
@@ -73,6 +74,7 @@ final class BitInputStream implements AutoCloseable {
 	
 	
 	public int readByte() throws IOException {
+		alignToByte();
 		if (bitBufferLen >= 8) {
 			int result = (int)(bitBuffer >>> (bitBufferLen - 8)) & 0xFF;
 			bitBufferLen -= 8;
