@@ -139,16 +139,19 @@ public final class FlacDecoder {
 			if (channelAssignment + 1 != numChannels)
 				throw new DataFormatException("Channel count mismatch");
 			for (int j = 0; j < numChannels; j++) {
-				int[] block = decodeSubframe(blockSamples, sampleDepth);
-				for (int i = 0; i < block.length; i++)
+				int[] block = new int[blockSamples];
+				decodeSubframe(blockSamples, sampleDepth, block);
+				for (int i = 0; i < blockSamples; i++)
 					samples[j][sampleOffset + i] = block[i];
 			}
 			
 		} else if (channelAssignment == 8) {  // Left-side stereo
 			if (numChannels != 2)
 				throw new DataFormatException("Channel count mismatch");
-			int[] left = decodeSubframe(blockSamples, sampleDepth);
-			int[] side = decodeSubframe(blockSamples, sampleDepth + 1);
+			int[] left = new int[blockSamples];
+			int[] side = new int[blockSamples];
+			decodeSubframe(blockSamples, sampleDepth, left);
+			decodeSubframe(blockSamples, sampleDepth + 1, side);
 			for (int i = 0; i < blockSamples; i++) {
 				samples[0][sampleOffset + i] = left[i];
 				samples[1][sampleOffset + i] = left[i] - side[i];
@@ -157,8 +160,10 @@ public final class FlacDecoder {
 		} else if (channelAssignment == 9) {  // Side-right stereo
 			if (numChannels != 2)
 				throw new DataFormatException("Channel count mismatch");
-			int[] side  = decodeSubframe(blockSamples, sampleDepth + 1);
-			int[] right = decodeSubframe(blockSamples, sampleDepth);
+			int[] side  = new int[blockSamples];
+			int[] right = new int[blockSamples];
+			decodeSubframe(blockSamples, sampleDepth + 1, side);
+			decodeSubframe(blockSamples, sampleDepth, right);
 			for (int i = 0; i < blockSamples; i++) {
 				samples[0][sampleOffset + i] = right[i] + side[i];
 				samples[1][sampleOffset + i] = right[i];
@@ -167,8 +172,10 @@ public final class FlacDecoder {
 		} else if (channelAssignment == 10) {  // Mid-side stereo
 			if (numChannels != 2)
 				throw new DataFormatException("Channel count mismatch");
-			int[] mid  = decodeSubframe(blockSamples, sampleDepth);
-			int[] side = decodeSubframe(blockSamples, sampleDepth + 1);
+			int[] mid  = new int[blockSamples];
+			int[] side = new int[blockSamples];
+			decodeSubframe(blockSamples, sampleDepth, mid);
+			decodeSubframe(blockSamples, sampleDepth + 1, side);
 			for (int i = 0; i < blockSamples; i++) {
 				int s = side[i];
 				int m = (mid[i] << 1) | (s & 1);
@@ -181,7 +188,7 @@ public final class FlacDecoder {
 	}
 	
 	
-	private int[] decodeSubframe(int numSamples, int sampleDepth) throws IOException, DataFormatException {
+	private void decodeSubframe(int numSamples, int sampleDepth, int[] block) throws IOException, DataFormatException {
 		if (in.readInt(1) != 0)
 			throw new DataFormatException("Invalid padding bit");
 		int type = in.readInt(6);
@@ -191,11 +198,10 @@ public final class FlacDecoder {
 				shift++;
 		}
 		
-		int[] block = new int[numSamples];
 		if (type == 0) {
-			Arrays.fill(block, in.readInt(sampleDepth));
+			Arrays.fill(block, in.readInt(sampleDepth), 0, numSamples);
 		} else if (type == 1) {
-			for (int i = 0; i < block.length; i++)
+			for (int i = 0; i < numSamples; i++)
 				block[i] = in.readSignedInt(sampleDepth);
 		} else if (type < 8)
 			throw new DataFormatException("Reserved subframe type");
@@ -208,9 +214,8 @@ public final class FlacDecoder {
 		else
 			throw new AssertionError();
 		
-		for (int i = 0; i < block.length; i++)
+		for (int i = 0; i < numSamples; i++)
 			block[i] <<= shift;
-		return block;
 	}
 	
 	
