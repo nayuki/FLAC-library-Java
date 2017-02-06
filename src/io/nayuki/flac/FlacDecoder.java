@@ -123,6 +123,14 @@ public class FlacDecoder {
 			throw new DataFormatException("Sample rate mismatch");
 		int crc8 = in.readInt(8);  // End of frame header
 		
+		decodeSubframes(blockSamples, channelAssignment, sampleOffset);
+		in.alignToByte();
+		int crc16 = in.readInt(16);  // End of frame
+		return blockSamples;
+	}
+	
+	
+	private void decodeSubframes(int blockSamples, int channelAssignment, int sampleOffset) throws IOException, DataFormatException {
 		if (channelAssignment < 8) {  // Independent channels
 			if (channelAssignment + 1 != numChannels)
 				throw new DataFormatException("Channel count mismatch");
@@ -166,10 +174,6 @@ public class FlacDecoder {
 			
 		} else
 			throw new DataFormatException("Reserved channel assignment");
-		
-		in.alignToByte();
-		int crc16 = in.readInt(16);  // End of frame
-		return blockSamples;
 	}
 	
 	
