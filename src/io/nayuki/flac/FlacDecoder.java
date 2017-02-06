@@ -95,25 +95,10 @@ public class FlacDecoder {
 		int sampleRateCode = in.readInt(4);
 		
 		int channelAssignment = in.readInt(4);
-		int sampleDepthCode = in.readInt(3);
+		if (decodeSampleDepth(in.readInt(3)) != sampleDepth)
+			throw new DataFormatException("Sample depth mismatch");
 		if (in.readInt(1) != 0)
 			throw new DataFormatException("Reserved bit");
-		
-		int sampleDepth;
-		switch (sampleDepthCode) {
-			case 0:  sampleDepth = this.sampleDepth;  break;
-			case 1:  sampleDepth =  8;  break;
-			case 2:  sampleDepth = 12;  break;
-			case 4:  sampleDepth = 16;  break;
-			case 5:  sampleDepth = 20;  break;
-			case 6:  sampleDepth = 24;  break;
-			case 3:
-			case 7:
-				throw new DataFormatException("Reserved bit depth");
-			default:  throw new AssertionError();
-		}
-		if (sampleDepth != this.sampleDepth)
-			throw new DataFormatException("Sample depth mismatch");
 		
 		long position = readUtf8Integer();
 		if (blockStrategy == 0) {
@@ -383,6 +368,21 @@ public class FlacDecoder {
 			return result;
 		}
 	}
+	
+	
+	// Argument is uint3, return value is in the range [1, 32], performs no I/O.
+	private int decodeSampleDepth(int code) throws DataFormatException {
+		if ((code >>> 3) != 0)
+			throw new IllegalArgumentException();
+		else if (code == 0)
+			return sampleDepth;
+		else if (SAMPLE_DEPTHS[code] < 0)
+			throw new DataFormatException("Reserved bit depth");
+		else
+			return SAMPLE_DEPTHS[code];
+	}
+	
+	private static final int[] SAMPLE_DEPTHS = {-1, 8, 12, -1, 16, 20, 24, -1};
 	
 	
 	private static short clamp(int val) {
