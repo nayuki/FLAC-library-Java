@@ -110,7 +110,7 @@ public class FlacDecoder {
 		if (sampleDepth != this.sampleDepth)
 			throw new DataFormatException("Sample depth mismatch");
 		
-		long position = decodeExtendedUtf8Number();
+		long position = readUtf8Integer();
 		
 		int blockSamples;
 		switch (blockSamplesCode) {
@@ -349,7 +349,7 @@ public class FlacDecoder {
 	
 	// Read between 1 and 7 bytes of input, and returns a uint36 value.
 	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
-	private long decodeExtendedUtf8Number() throws IOException, DataFormatException {
+	private long readUtf8Integer() throws IOException, DataFormatException {
 		int temp = in.readInt(8);
 		int n = Integer.numberOfLeadingZeros(~(temp << 24));  // Number of leading 1s in the byte
 		if (n < 0 || n > 8)
