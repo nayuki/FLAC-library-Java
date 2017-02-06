@@ -36,7 +36,6 @@ public class FlacDecoder {
 		boolean last = in.readInt(1) != 0;
 		int type = in.readInt(7);
 		int length = in.readInt(24);
-		System.err.printf("Metadata block (type=%d, length=%d)%n", type, length);
 		if (type == 0)
 			parseStreamInfoData();
 		else {
@@ -48,10 +47,10 @@ public class FlacDecoder {
 	
 	
 	private void parseStreamInfoData() throws IOException, DataFormatException {
-		System.err.printf("  Minimum block size: %d samples%n", in.readInt(16));
-		System.err.printf("  Maximum block size: %d samples%n", in.readInt(16));
-		System.err.printf("  Minimum frame size: %d bytes%n", in.readInt(24));
-		System.err.printf("  Maximum frame size: %d bytes%n", in.readInt(24));
+		int minBlockSamples = in.readInt(16);
+		int maxBlockSamples = in.readInt(16);
+		int minFrameBytes = in.readInt(24);
+		int maxFrameBytes = in.readInt(24);
 		sampleRate = in.readInt(20);
 		if (sampleRate == 0 || sampleRate > 655350)
 			throw new DataFormatException("Invalid sample rate");
@@ -59,15 +58,8 @@ public class FlacDecoder {
 		sampleDepth = in.readInt(5) + 1;
 		long numSamples = (long)in.readInt(18) << 18 | in.readInt(18);
 		samples = new short[numChannels][(int)numSamples];
-		System.err.printf("  Sample rate: %d Hz%n", sampleRate);
-		System.err.printf("  Sample depth: %d bits%n", sampleDepth);
-		System.err.printf("  Number of samples: %d%n", numSamples);
 		byte[] hash = new byte[16];
 		in.readFully(hash);
-		System.err.print("  Audio data MD5 hash: ");
-		for (byte b : hash)
-			System.err.printf("%02x", b);
-		System.err.println();
 	}
 	
 	
@@ -106,8 +98,6 @@ public class FlacDecoder {
 			throw new DataFormatException("Sample depth mismatch");
 		
 		long position = decodeExtendedUtf8Number();
-		System.err.println("Position: " + position);
-		System.err.println("  Channel assignment: " + channelAssignment);
 		
 		int blockSamples;
 		switch (blockSamplesCode) {
@@ -230,10 +220,8 @@ public class FlacDecoder {
 		
 		int[] block = new int[numSamples];
 		if (type == 0) {
-			System.err.println("  Constant");
 			Arrays.fill(block, in.readInt(sampleDepth));
 		} else if (type == 1) {
-			System.err.println("  Verbatim");
 			for (int i = 0; i < block.length; i++)
 				block[i] = in.readSignedInt(sampleDepth);
 		} else if (type < 8)
@@ -257,7 +245,6 @@ public class FlacDecoder {
 			throws IOException, DataFormatException {
 		if (order < 0 || order > 4)
 			throw new IllegalArgumentException();
-		System.err.println("  Fixed prediction " + order);
 		
 		for (int i = 0; i < order; i++)
 			block[i] = in.readSignedInt(sampleDepth);
@@ -277,7 +264,6 @@ public class FlacDecoder {
 	
 	private void decodeLinearPredictiveCoding(int order, int[] block, int sampleDepth)
 			throws IOException, DataFormatException {
-		System.err.println("  Linear predictive coding " + order);
 		if (order < 1 || order > 32)
 			throw new IllegalArgumentException();
 		
@@ -315,7 +301,6 @@ public class FlacDecoder {
 		int[] result = new int[count - warmup];
 		int method = in.readInt(2);
 		if (method == 0 || method == 1) {
-			System.err.print("    Partition params:");
 			int numPartitions = 1 << in.readInt(4);
 			int paramBits = method == 0 ? 4 : 5;
 			int escape = method == 0 ? 0xF : 0x1F;
@@ -324,10 +309,8 @@ public class FlacDecoder {
 				if (partitionIndex == 0)
 					subcount -= warmup;
 				int param = in.readInt(paramBits);
-				System.err.print(" " + param);
 				if (param == escape) {
 					int numBits = in.readInt(5);
-					System.err.print("=" + numBits);
 					for (int i = 0; i < subcount; i++, resultIndex++)
 						result[resultIndex] = in.readSignedInt(numBits);
 				} else {
@@ -335,7 +318,6 @@ public class FlacDecoder {
 						result[resultIndex] = decodeRice(param);
 				}
 			}
-			System.err.println();
 		} else
 			throw new DataFormatException("Reserved residual coding method");
 		return result;
