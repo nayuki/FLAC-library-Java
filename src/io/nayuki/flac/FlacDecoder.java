@@ -167,10 +167,12 @@ public final class FlacDecoder {
 		int blockSamples = decodeBlockSamples(blockSamplesCode);  // May read bytes
 		if (decodeSampleRate(sampleRateCode) != sampleRate)  // May read bytes
 			throw new DataFormatException("Sample rate mismatch");
+		@SuppressWarnings("unused")
 		int crc8 = in.readInt(8);  // End of frame header
 		
 		decodeSubframes(blockSamples, channelAssignment, sampleOffset);
 		in.alignToByte();
+		@SuppressWarnings("unused")
 		int crc16 = in.readInt(16);  // End of frame
 		return blockSamples;
 	}
