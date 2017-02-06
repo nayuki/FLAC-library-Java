@@ -27,10 +27,15 @@ public class FlacDecoder {
 	
 	/*---- Constructors ----*/
 	
+	// Constructs a FLAC decoder from the given input stream, and immediately
+	// performs full decoding of the data until the end of stream is reached.
 	public FlacDecoder(BitInputStream in) throws IOException, DataFormatException {
+		// Initialize some fields
 		this.in = in;
 		sampleOffset = 0;
-		if (in.readInt(32) != 0x664C6143)  // Magic number
+		
+		// Parse data chunks
+		if (in.readInt(32) != 0x664C6143)  // Magic string "fLaC"
 			throw new DataFormatException();
 		while (handleMetadataBlock());
 		while (handleFrame());
@@ -174,7 +179,7 @@ public class FlacDecoder {
 					samples[j][sampleOffset + i] = clamp(block[i]);
 			}
 			
-		} else if (channelAssignment == 8) {
+		} else if (channelAssignment == 8) {  // Left-side stereo
 			if (numChannels != 2)
 				throw new DataFormatException("Channel count mismatch");
 			int[] left = handleSubframe(blockSamples, 0, sampleDepth);
@@ -184,7 +189,7 @@ public class FlacDecoder {
 				samples[1][sampleOffset + i] = clamp(left[i] - side[i]);
 			}
 			
-		} else if (channelAssignment == 9) {
+		} else if (channelAssignment == 9) {  // Side-right stereo
 			if (numChannels != 2)
 				throw new DataFormatException("Channel count mismatch");
 			int[] side  = handleSubframe(blockSamples, 0, sampleDepth + 1);
@@ -194,7 +199,7 @@ public class FlacDecoder {
 				samples[1][sampleOffset + i] = clamp(right[i]);
 			}
 			
-		} else if (channelAssignment == 10) {
+		} else if (channelAssignment == 10) {  // Mid-side stereo
 			if (numChannels != 2)
 				throw new DataFormatException("Channel count mismatch");
 			int[] mid  = handleSubframe(blockSamples, 0, sampleDepth);
@@ -222,7 +227,7 @@ public class FlacDecoder {
 		int type = in.readInt(6);
 		int wastedBitsPerSample = in.readInt(1);
 		if (wastedBitsPerSample == 1) {
-			while (in.readInt(1) == 0)
+			while (in.readInt(1) == 0)  // Unary coding
 				wastedBitsPerSample++;
 		}
 		
@@ -295,6 +300,7 @@ public class FlacDecoder {
 	}
 	
 	
+	// Updates the values of block[coefs.length : block.length] according to linear predictive coding.
 	private void restoreLpc(int[] block, int[] coefs, int shift) {
 		for (int i = coefs.length; i < block.length; i++) {
 			long val = 0;
@@ -341,6 +347,8 @@ public class FlacDecoder {
 	}
 	
 	
+	// Read between 1 and 7 bytes of input, and returns a uint36 value.
+	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
 	private long decodeExtendedUtf8Number() throws IOException, DataFormatException {
 		int temp = in.readInt(8);
 		int n = Integer.numberOfLeadingZeros(~(temp << 24));  // Number of leading 1s in the byte
