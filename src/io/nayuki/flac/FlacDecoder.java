@@ -8,6 +8,7 @@ package io.nayuki.flac;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.zip.DataFormatException;
 
 
@@ -32,6 +33,7 @@ public final class FlacDecoder {
 	// performs full decoding of the data until the end of stream is reached.
 	public FlacDecoder(BitInputStream in) throws IOException, DataFormatException {
 		// Initialize some fields
+		Objects.requireNonNull(in);
 		this.in = in;
 		steamInfoSeen = false;
 		subframes = new long[2][65536];

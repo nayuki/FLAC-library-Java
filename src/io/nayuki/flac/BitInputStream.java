@@ -9,6 +9,7 @@ package io.nayuki.flac;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Objects;
 
 
 final class BitInputStream implements AutoCloseable {
@@ -24,6 +25,7 @@ final class BitInputStream implements AutoCloseable {
 	/*---- Constructors ----*/
 	
 	public BitInputStream(InputStream in) {
+		Objects.requireNonNull(in);
 		this.in = in;
 		bitBuffer = 0;
 		bitBufferLen = 0;
@@ -58,6 +60,7 @@ final class BitInputStream implements AutoCloseable {
 	
 	
 	public void readFully(byte[] b) throws IOException {
+		Objects.requireNonNull(b);
 		alignToByte();
 		int i = 0;
 		for (; bitBufferLen >= 8 && i < b.length; i++) {
