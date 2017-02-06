@@ -134,51 +134,46 @@ public final class FlacDecoder {
 	private void decodeSubframes(int blockSamples, int channelAssignment, int sampleOffset) throws IOException, DataFormatException {
 		if (blockSamples < 1 || blockSamples > 65536 || (channelAssignment >>> 4) != 0)
 			throw new IllegalArgumentException();
+		int[] temp0 = new int[blockSamples];
+		int[] temp1 = new int[blockSamples];
 		
 		if (channelAssignment < 8) {  // Independent channels
 			if (channelAssignment + 1 != numChannels)
 				throw new DataFormatException("Channel count mismatch");
 			for (int j = 0; j < numChannels; j++) {
-				int[] block = new int[blockSamples];
-				decodeSubframe(blockSamples, sampleDepth, block);
+				decodeSubframe(blockSamples, sampleDepth, temp0);
 				for (int i = 0; i < blockSamples; i++)
-					samples[j][sampleOffset + i] = block[i];
+					samples[j][sampleOffset + i] = temp0[i];
 			}
 			
 		} else if (channelAssignment == 8) {  // Left-side stereo
 			if (numChannels != 2)
 				throw new DataFormatException("Channel count mismatch");
-			int[] left = new int[blockSamples];
-			int[] side = new int[blockSamples];
-			decodeSubframe(blockSamples, sampleDepth, left);
-			decodeSubframe(blockSamples, sampleDepth + 1, side);
+			decodeSubframe(blockSamples, sampleDepth, temp0);
+			decodeSubframe(blockSamples, sampleDepth + 1, temp1);
 			for (int i = 0; i < blockSamples; i++) {
-				samples[0][sampleOffset + i] = left[i];
-				samples[1][sampleOffset + i] = left[i] - side[i];
+				samples[0][sampleOffset + i] = temp0[i];
+				samples[1][sampleOffset + i] = temp0[i] - temp1[i];
 			}
 			
 		} else if (channelAssignment == 9) {  // Side-right stereo
 			if (numChannels != 2)
 				throw new DataFormatException("Channel count mismatch");
-			int[] side  = new int[blockSamples];
-			int[] right = new int[blockSamples];
-			decodeSubframe(blockSamples, sampleDepth + 1, side);
-			decodeSubframe(blockSamples, sampleDepth, right);
+			decodeSubframe(blockSamples, sampleDepth + 1, temp0);
+			decodeSubframe(blockSamples, sampleDepth, temp1);
 			for (int i = 0; i < blockSamples; i++) {
-				samples[0][sampleOffset + i] = right[i] + side[i];
-				samples[1][sampleOffset + i] = right[i];
+				samples[0][sampleOffset + i] = temp1[i] + temp0[i];
+				samples[1][sampleOffset + i] = temp1[i];
 			}
 			
 		} else if (channelAssignment == 10) {  // Mid-side stereo
 			if (numChannels != 2)
 				throw new DataFormatException("Channel count mismatch");
-			int[] mid  = new int[blockSamples];
-			int[] side = new int[blockSamples];
-			decodeSubframe(blockSamples, sampleDepth, mid);
-			decodeSubframe(blockSamples, sampleDepth + 1, side);
+			decodeSubframe(blockSamples, sampleDepth, temp0);
+			decodeSubframe(blockSamples, sampleDepth + 1, temp1);
 			for (int i = 0; i < blockSamples; i++) {
-				int s = side[i];
-				int m = (mid[i] << 1) | (s & 1);
+				int s = temp1[i];
+				int m = (temp0[i] << 1) | (s & 1);
 				samples[0][sampleOffset + i] = (m + s) >> 1;
 				samples[1][sampleOffset + i] = (m - s) >> 1;
 			}
