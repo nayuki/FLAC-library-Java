@@ -21,7 +21,6 @@ public class FlacDecoder {
 	public short[][] samples;
 	
 	private BitInputStream in;
-	private int sampleOffset;
 	
 	
 	
@@ -32,7 +31,6 @@ public class FlacDecoder {
 	public FlacDecoder(BitInputStream in) throws IOException, DataFormatException {
 		// Initialize some fields
 		this.in = in;
-		sampleOffset = 0;
 		
 		// Parse data chunks
 		if (in.readInt(32) != 0x664C6143)  // Magic string "fLaC"
@@ -40,7 +38,12 @@ public class FlacDecoder {
 		while (handleMetadataBlock());
 		
 		// Decode frames until end of stream
-		for (int i = 0; decodeFrame(i); i++);
+		for (int i = 0, sampleOffset = 0; ; i++) {
+			int numSamples = decodeFrame(i, sampleOffset);
+			if (numSamples == -1)
+				break;
+			sampleOffset += numSamples;
+		}
 	}
 	
 	
@@ -78,10 +81,10 @@ public class FlacDecoder {
 	}
 	
 	
-	private boolean decodeFrame(int frameIndex) throws IOException, DataFormatException {
+	private int decodeFrame(int frameIndex, int sampleOffset) throws IOException, DataFormatException {
 		int temp = in.readByte();
 		if (temp == -1)
-			return false;
+			return -1;
 		if ((temp << 6 | in.readInt(6)) != 0x3FFE)  // Uint14
 			throw new DataFormatException("Sync code expected");
 		if (in.readInt(1) != 0)
@@ -218,10 +221,9 @@ public class FlacDecoder {
 		} else
 			throw new DataFormatException("Reserved channel assignment");
 		
-		sampleOffset += blockSamples;
 		in.alignToByte();
 		int crc16 = in.readInt(16);
-		return true;
+		return blockSamples;
 	}
 	
 	
