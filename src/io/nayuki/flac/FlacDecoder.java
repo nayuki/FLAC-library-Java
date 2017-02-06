@@ -225,10 +225,10 @@ public final class FlacDecoder {
 		readResiduals(numSamples, order, block);
 		switch (order) {
 			case 0:  break;
-			case 1:  restoreLpc(block, new int[]{1}, 0);  break;
-			case 2:  restoreLpc(block, new int[]{2, -1}, 0);  break;
-			case 3:  restoreLpc(block, new int[]{3, -3, 1}, 0);  break;
-			case 4:  restoreLpc(block, new int[]{4, -6, 4, -1}, 0);  break;
+			case 1:  restoreLpc(numSamples, block, new int[]{1}, 0);  break;
+			case 2:  restoreLpc(numSamples, block, new int[]{2, -1}, 0);  break;
+			case 3:  restoreLpc(numSamples, block, new int[]{3, -3, 1}, 0);  break;
+			case 4:  restoreLpc(numSamples, block, new int[]{4, -6, 4, -1}, 0);  break;
 			default:  throw new AssertionError();
 		}
 	}
@@ -254,13 +254,15 @@ public final class FlacDecoder {
 			coefs[i] = in.readSignedInt(precision);
 		
 		readResiduals(numSamples, order, block);
-		restoreLpc(block, coefs, shift);
+		restoreLpc(numSamples, block, coefs, shift);
 	}
 	
 	
 	// Updates the values of block[coefs.length : block.length] according to linear predictive coding.
-	private void restoreLpc(int[] block, int[] coefs, int shift) {
-		for (int i = coefs.length; i < block.length; i++) {
+	private void restoreLpc(int numSamples, int[] block, int[] coefs, int shift) {
+		if (numSamples < 0 || numSamples > block.length)
+			throw new IllegalArgumentException();
+		for (int i = coefs.length; i < numSamples; i++) {
 			long val = 0;
 			for (int j = 0; j < coefs.length; j++)
 				val += (long)block[i - 1 - j] * coefs[j];
