@@ -38,7 +38,9 @@ public class FlacDecoder {
 		if (in.readInt(32) != 0x664C6143)  // Magic string "fLaC"
 			throw new DataFormatException();
 		while (handleMetadataBlock());
-		while (decodeFrame());
+		
+		// Decode frames until end of stream
+		for (int i = 0; decodeFrame(i); i++);
 	}
 	
 	
@@ -76,7 +78,7 @@ public class FlacDecoder {
 	}
 	
 	
-	private boolean decodeFrame() throws IOException, DataFormatException {
+	private boolean decodeFrame(int frameIndex) throws IOException, DataFormatException {
 		int temp = in.readByte();
 		if (temp == -1)
 			return false;
@@ -111,6 +113,8 @@ public class FlacDecoder {
 			throw new DataFormatException("Sample depth mismatch");
 		
 		long position = readUtf8Integer();
+		if (blockStrategy == 0 && position != frameIndex)
+			throw new DataFormatException("Frame index mismatch");
 		
 		int blockSamples;
 		switch (blockSamplesCode) {
