@@ -21,7 +21,7 @@ public final class FlacDecoder {
 	public int[][] samples;
 	
 	private BitInputStream in;
-	private int[][] subframes;  // Temporary arrays, reused on every call of decodeSubframes()
+	private long[][] subframes;  // Temporary arrays, reused on every call of decodeSubframes()
 	
 	
 	
@@ -32,7 +32,7 @@ public final class FlacDecoder {
 	public FlacDecoder(BitInputStream in) throws IOException, DataFormatException {
 		// Initialize some fields
 		this.in = in;
-		subframes = new int[2][65536];
+		subframes = new long[2][65536];
 		
 		// Parse header blocks
 		if (in.readInt(32) != 0x664C6143)  // Magic string "fLaC"
@@ -136,8 +136,8 @@ public final class FlacDecoder {
 	private void decodeSubframes(int blockSamples, int channelAssignment, int sampleOffset) throws IOException, DataFormatException {
 		if (blockSamples < 1 || blockSamples > 65536 || (channelAssignment >>> 4) != 0)
 			throw new IllegalArgumentException();
-		int[] temp0 = subframes[0];
-		int[] temp1 = subframes[1];
+		long[] temp0 = subframes[0];
+		long[] temp1 = subframes[1];
 		
 		if (channelAssignment < 8) {  // Independent channels
 			if (channelAssignment + 1 != numChannels)
@@ -145,7 +145,7 @@ public final class FlacDecoder {
 			for (int j = 0; j < numChannels; j++) {
 				decodeSubframe(blockSamples, sampleDepth, temp0);
 				for (int i = 0; i < blockSamples; i++)
-					samples[j][sampleOffset + i] = temp0[i];
+					samples[j][sampleOffset + i] = (int)temp0[i];
 			}
 			
 		} else if (channelAssignment == 8) {  // Left-side stereo
@@ -154,8 +154,8 @@ public final class FlacDecoder {
 			decodeSubframe(blockSamples, sampleDepth + 0, temp0);
 			decodeSubframe(blockSamples, sampleDepth + 1, temp1);
 			for (int i = 0; i < blockSamples; i++) {
-				samples[0][sampleOffset + i] = temp0[i];
-				samples[1][sampleOffset + i] = temp0[i] - temp1[i];
+				samples[0][sampleOffset + i] = (int)temp0[i];
+				samples[1][sampleOffset + i] = (int)(temp0[i] - temp1[i]);
 			}
 			
 		} else if (channelAssignment == 9) {  // Side-right stereo
@@ -164,8 +164,8 @@ public final class FlacDecoder {
 			decodeSubframe(blockSamples, sampleDepth + 1, temp0);
 			decodeSubframe(blockSamples, sampleDepth + 0, temp1);
 			for (int i = 0; i < blockSamples; i++) {
-				samples[0][sampleOffset + i] = temp1[i] + temp0[i];
-				samples[1][sampleOffset + i] = temp1[i];
+				samples[0][sampleOffset + i] = (int)(temp1[i] + temp0[i]);
+				samples[1][sampleOffset + i] = (int)temp1[i];
 			}
 			
 		} else if (channelAssignment == 10) {  // Mid-side stereo
@@ -174,10 +174,10 @@ public final class FlacDecoder {
 			decodeSubframe(blockSamples, sampleDepth + 0, temp0);
 			decodeSubframe(blockSamples, sampleDepth + 1, temp1);
 			for (int i = 0; i < blockSamples; i++) {
-				int s = temp1[i];
-				int m = (temp0[i] << 1) | (s & 1);
-				samples[0][sampleOffset + i] = (m + s) >> 1;
-				samples[1][sampleOffset + i] = (m - s) >> 1;
+				long s = temp1[i];
+				long m = (temp0[i] << 1) | (s & 1);
+				samples[0][sampleOffset + i] = (int)((m + s) >> 1);
+				samples[1][sampleOffset + i] = (int)((m - s) >> 1);
 			}
 			
 		} else
@@ -185,7 +185,7 @@ public final class FlacDecoder {
 	}
 	
 	
-	private void decodeSubframe(int numSamples, int sampleDepth, int[] block) throws IOException, DataFormatException {
+	private void decodeSubframe(int numSamples, int sampleDepth, long[] block) throws IOException, DataFormatException {
 		if (in.readInt(1) != 0)
 			throw new DataFormatException("Invalid padding bit");
 		int type = in.readInt(6);
@@ -216,7 +216,7 @@ public final class FlacDecoder {
 	}
 	
 	
-	private void decodeFixedPrediction(int numSamples, int order, int sampleDepth, int[] block)
+	private void decodeFixedPrediction(int numSamples, int order, int sampleDepth, long[] block)
 			throws IOException, DataFormatException {
 		if (order < 0 || order > 4)
 			throw new IllegalArgumentException();
@@ -236,7 +236,7 @@ public final class FlacDecoder {
 	}
 	
 	
-	private void decodeLinearPredictiveCoding(int numSamples, int order, int sampleDepth, int[] block)
+	private void decodeLinearPredictiveCoding(int numSamples, int order, int sampleDepth, long[] block)
 			throws IOException, DataFormatException {
 		if (order < 1 || order > 32)
 			throw new IllegalArgumentException();
@@ -261,19 +261,19 @@ public final class FlacDecoder {
 	
 	
 	// Updates the values of block[coefs.length : numSamples] according to linear predictive coding.
-	private void restoreLpc(int numSamples, int[] block, int[] coefs, int shift) {
+	private void restoreLpc(int numSamples, long[] block, int[] coefs, int shift) {
 		if (numSamples < 0 || numSamples > block.length)
 			throw new IllegalArgumentException();
 		for (int i = coefs.length; i < numSamples; i++) {
 			long val = 0;
 			for (int j = 0; j < coefs.length; j++)
-				val += (long)block[i - 1 - j] * coefs[j];
-			block[i] += (int)(val >> shift);
+				val += block[i - 1 - j] * coefs[j];
+			block[i] += val >> shift;
 		}
 	}
 	
 	
-	private void readResiduals(int count, int warmup, int[] result) throws IOException, DataFormatException {
+	private void readResiduals(int count, int warmup, long[] result) throws IOException, DataFormatException {
 		int method = in.readInt(2);
 		if (method == 0 || method == 1) {
 			int numPartitions = 1 << in.readInt(4);
