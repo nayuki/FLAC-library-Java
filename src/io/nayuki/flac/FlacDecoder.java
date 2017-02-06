@@ -21,6 +21,7 @@ public final class FlacDecoder {
 	public int[][] samples;
 	
 	private BitInputStream in;
+	private int[][] subframes;  // Temporary arrays, reused on every call of decodeSubframes()
 	
 	
 	
@@ -31,6 +32,7 @@ public final class FlacDecoder {
 	public FlacDecoder(BitInputStream in) throws IOException, DataFormatException {
 		// Initialize some fields
 		this.in = in;
+		subframes = new int[2][65536];
 		
 		// Parse header blocks
 		if (in.readInt(32) != 0x664C6143)  // Magic string "fLaC"
@@ -134,8 +136,8 @@ public final class FlacDecoder {
 	private void decodeSubframes(int blockSamples, int channelAssignment, int sampleOffset) throws IOException, DataFormatException {
 		if (blockSamples < 1 || blockSamples > 65536 || (channelAssignment >>> 4) != 0)
 			throw new IllegalArgumentException();
-		int[] temp0 = new int[blockSamples];
-		int[] temp1 = new int[blockSamples];
+		int[] temp0 = subframes[0];
+		int[] temp1 = subframes[1];
 		
 		if (channelAssignment < 8) {  // Independent channels
 			if (channelAssignment + 1 != numChannels)
@@ -194,7 +196,7 @@ public final class FlacDecoder {
 		}
 		
 		if (type == 0) {
-			Arrays.fill(block, in.readInt(sampleDepth), 0, numSamples);
+			Arrays.fill(block, 0, numSamples, in.readSignedInt(sampleDepth));
 		} else if (type == 1) {
 			for (int i = 0; i < numSamples; i++)
 				block[i] = in.readSignedInt(sampleDepth);
@@ -258,7 +260,7 @@ public final class FlacDecoder {
 	}
 	
 	
-	// Updates the values of block[coefs.length : block.length] according to linear predictive coding.
+	// Updates the values of block[coefs.length : numSamples] according to linear predictive coding.
 	private void restoreLpc(int numSamples, int[] block, int[] coefs, int shift) {
 		if (numSamples < 0 || numSamples > block.length)
 			throw new IllegalArgumentException();
