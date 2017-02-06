@@ -285,7 +285,7 @@ public final class FlacDecoder {
 	}
 	
 	
-	private void decodeSubframe(int numSamples, int sampleDepth, long[] block) throws IOException, DataFormatException {
+	private void decodeSubframe(int numSamples, int sampleDepth, long[] result) throws IOException, DataFormatException {
 		if (in.readUint(1) != 0)
 			throw new DataFormatException("Invalid padding bit");
 		int type = in.readUint(6);
@@ -296,36 +296,36 @@ public final class FlacDecoder {
 		}
 		
 		if (type == 0) {
-			Arrays.fill(block, 0, numSamples, in.readSignedInt(sampleDepth));
+			Arrays.fill(result, 0, numSamples, in.readSignedInt(sampleDepth));
 		} else if (type == 1) {
 			for (int i = 0; i < numSamples; i++)
-				block[i] = in.readSignedInt(sampleDepth);
+				result[i] = in.readSignedInt(sampleDepth);
 		} else if (type < 8)
 			throw new DataFormatException("Reserved subframe type");
 		else if (type <= 12)
-			decodeFixedPrediction(numSamples, type - 8, sampleDepth, block);
+			decodeFixedPrediction(numSamples, type - 8, sampleDepth, result);
 		else if (type < 32)
 			throw new DataFormatException("Reserved subframe type");
 		else if (type < 64)
-			decodeLinearPredictiveCoding(numSamples, type - 31, sampleDepth, block);
+			decodeLinearPredictiveCoding(numSamples, type - 31, sampleDepth, result);
 		else
 			throw new AssertionError();
 		
 		for (int i = 0; i < numSamples; i++)
-			block[i] <<= shift;
+			result[i] <<= shift;
 	}
 	
 	
-	private void decodeFixedPrediction(int numSamples, int order, int sampleDepth, long[] block)
+	private void decodeFixedPrediction(int numSamples, int order, int sampleDepth, long[] result)
 			throws IOException, DataFormatException {
 		if (order < 0 || order > 4)
 			throw new IllegalArgumentException();
 		
 		for (int i = 0; i < order; i++)
-			block[i] = in.readSignedInt(sampleDepth);
+			result[i] = in.readSignedInt(sampleDepth);
 		
-		readResiduals(numSamples, order, block);
-		restoreLpc(numSamples, block, FIXED_PREDICTION_COEFFICIENTS[order], 0);
+		readResiduals(numSamples, order, result);
+		restoreLpc(numSamples, result, FIXED_PREDICTION_COEFFICIENTS[order], 0);
 	}
 	
 	private static final int[][] FIXED_PREDICTION_COEFFICIENTS = {
@@ -337,13 +337,13 @@ public final class FlacDecoder {
 	};
 	
 	
-	private void decodeLinearPredictiveCoding(int numSamples, int order, int sampleDepth, long[] block)
+	private void decodeLinearPredictiveCoding(int numSamples, int order, int sampleDepth, long[] result)
 			throws IOException, DataFormatException {
 		if (order < 1 || order > 32)
 			throw new IllegalArgumentException();
 		
 		for (int i = 0; i < order; i++)
-			block[i] = in.readSignedInt(sampleDepth);
+			result[i] = in.readSignedInt(sampleDepth);
 		
 		int precision = in.readUint(4) + 1;
 		if (precision == 16)
@@ -356,20 +356,20 @@ public final class FlacDecoder {
 		for (int i = 0; i < coefs.length; i++)
 			coefs[i] = in.readSignedInt(precision);
 		
-		readResiduals(numSamples, order, block);
-		restoreLpc(numSamples, block, coefs, shift);
+		readResiduals(numSamples, order, result);
+		restoreLpc(numSamples, result, coefs, shift);
 	}
 	
 	
 	// Updates the values of block[coefs.length : numSamples] according to linear predictive coding.
-	private void restoreLpc(int numSamples, long[] block, int[] coefs, int shift) {
-		if (numSamples < 0 || numSamples > block.length)
+	private void restoreLpc(int numSamples, long[] result, int[] coefs, int shift) {
+		if (numSamples < 0 || numSamples > result.length)
 			throw new IllegalArgumentException();
 		for (int i = coefs.length; i < numSamples; i++) {
 			long val = 0;
 			for (int j = 0; j < coefs.length; j++)
-				val += block[i - 1 - j] * coefs[j];
-			block[i] += val >> shift;
+				val += result[i - 1 - j] * coefs[j];
+			result[i] += val >> shift;
 		}
 	}
 	
