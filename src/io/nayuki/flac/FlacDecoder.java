@@ -374,14 +374,14 @@ public final class FlacDecoder {
 	}
 	
 	
-	private void readResiduals(int count, int warmup, long[] result) throws IOException, DataFormatException {
+	private void readResiduals(int numSamples, int warmup, long[] result) throws IOException, DataFormatException {
 		int method = in.readUint(2);
 		if (method == 0 || method == 1) {
 			int numPartitions = 1 << in.readUint(4);
 			int paramBits = method == 0 ? 4 : 5;
 			int escape = method == 0 ? 0xF : 0x1F;
 			for (int partitionIndex = 0, resultIndex = warmup; partitionIndex < numPartitions; partitionIndex++) {
-				int subcount = count / numPartitions;
+				int subcount = numSamples / numPartitions;
 				if (partitionIndex == 0)
 					subcount -= warmup;
 				int param = in.readUint(paramBits);
