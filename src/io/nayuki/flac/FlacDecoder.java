@@ -112,38 +112,7 @@ public class FlacDecoder {
 		} else
 			throw new AssertionError();
 		
-		int blockSamples;
-		switch (blockSamplesCode) {
-			case 0:
-				throw new DataFormatException("Reserved");
-			case 1:
-				blockSamples = 192;
-				break;
-			case 2:
-			case 3:
-			case 4:
-			case 5:
-				blockSamples = 576 << (blockSamplesCode - 2);
-				break;
-			case 6:
-				blockSamples = in.readInt(8) + 1;
-				break;
-			case 7:
-				blockSamples = in.readInt(16) + 1;
-				break;
-			case 8:
-			case 9:
-			case 10:
-			case 11:
-			case 12:
-			case 13:
-			case 14:
-			case 15:
-				blockSamples = 256 << (blockSamplesCode - 8);
-				break;
-			default:
-				throw new AssertionError();
-		}
+		int blockSamples = decodeBlockSamples(blockSamplesCode);
 		
 		if (decodeSampleRate(sampleRateCode) != sampleRate)
 			throw new DataFormatException("Sample rate mismatch");
@@ -346,6 +315,27 @@ public class FlacDecoder {
 			}
 			return result;
 		}
+	}
+	
+	
+	// Argument is uint4, return value is in the range [1, 65536], may read 2 bytes of input.
+	private int decodeBlockSamples(int code) throws IOException, DataFormatException {
+		if ((code >>> 4) != 0)
+			throw new IllegalArgumentException();
+		else if (code == 0)
+			throw new DataFormatException("Reserved");
+		else if (code == 1)
+			return 192;
+		else if (2 <= code && code <= 5)
+			return 576 << (code - 2);
+		else if (code == 6)
+			return in.readInt(8) + 1;
+		else if (code == 7)
+			return in.readInt(16) + 1;
+		else if (8 <= code && code <= 15)
+			return 256 << (code - 8);
+		else
+			throw new AssertionError();
 	}
 	
 	
