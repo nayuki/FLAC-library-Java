@@ -36,7 +36,7 @@ public final class FlacDecoder {
 		Objects.requireNonNull(in);
 		this.in = in;
 		steamInfoSeen = false;
-		subframes = new long[2][65536];
+		subframes = new long[2][FRAME_MAX_SAMPLES];
 		
 		// Parse header blocks
 		if (in.readInt(32) != 0x664C6143)  // Magic string "fLaC"
@@ -95,7 +95,7 @@ public final class FlacDecoder {
 	
 	
 	// Reads some bytes, performs decoding computations, and stores new samples in all channels starting at sampleOffset.
-	// Returns the number of samples in the block just processed (in the range [1, 65536]),
+	// Returns the number of samples in the block just processed (in the range [1, FRAME_MAX_SAMPLES]),
 	// or -1 if the end of stream was encountered before any data was read.
 	private int decodeFrame(int frameIndex, int sampleOffset) throws IOException, DataFormatException {
 		if (frameIndex < 0 || sampleOffset < 0)
@@ -148,7 +148,7 @@ public final class FlacDecoder {
 	
 	
 	private void decodeSubframes(int blockSamples, int channelAssignment, int sampleOffset) throws IOException, DataFormatException {
-		if (blockSamples < 1 || blockSamples > 65536 || (channelAssignment >>> 4) != 0)
+		if (blockSamples < 1 || blockSamples > FRAME_MAX_SAMPLES || (channelAssignment >>> 4) != 0)
 			throw new IllegalArgumentException();
 		long[] temp0 = subframes[0];
 		long[] temp1 = subframes[1];
@@ -348,7 +348,7 @@ public final class FlacDecoder {
 	}
 	
 	
-	// Argument is uint4, return value is in the range [1, 65536], may read 2 bytes of input.
+	// Argument is uint4, return value is in the range [1, FRAME_MAX_SAMPLES], may read 2 bytes of input.
 	private int decodeBlockSamples(int code) throws IOException, DataFormatException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
@@ -405,5 +405,8 @@ public final class FlacDecoder {
 	}
 	
 	private static final int[] SAMPLE_DEPTHS = {-1, 8, 12, -1, 16, 20, 24, -1};
+	
+	
+	private static final int FRAME_MAX_SAMPLES = 1 << 16;
 	
 }
