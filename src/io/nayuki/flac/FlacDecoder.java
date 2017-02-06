@@ -241,13 +241,14 @@ public final class FlacDecoder {
 		long[] temp0 = subframes[0];
 		long[] temp1 = subframes[1];
 		
-		if (channelAssignment < 8) {  // Independent channels
+		if (0 <= channelAssignment && channelAssignment <= 7) {  // Independent channels
 			if (channelAssignment + 1 != numChannels)
 				throw new DataFormatException("Channel count mismatch");
-			for (int j = 0; j < numChannels; j++) {
+			for (int ch = 0; ch < numChannels; ch++) {
 				decodeSubframe(blockSamples, sampleDepth, temp0);
+				int[] outChan = samples[ch];
 				for (int i = 0; i < blockSamples; i++)
-					samples[j][sampleOffset + i] = (int)temp0[i];
+					outChan[sampleOffset + i] = (int)temp0[i];
 			}
 			
 		} else if (8 <= channelAssignment && channelAssignment <= 10) {  // Side-coded stereo methods
@@ -277,7 +278,7 @@ public final class FlacDecoder {
 				outLeft [sampleOffset + i] = (int)temp0[i];
 				outRight[sampleOffset + i] = (int)temp1[i];
 			}
-		} else
+		} else  // 11 <= channelAssignment <= 15
 			throw new DataFormatException("Reserved channel assignment");
 	}
 	
