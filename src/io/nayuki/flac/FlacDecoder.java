@@ -222,8 +222,7 @@ public final class FlacDecoder {
 		for (int i = 0; i < order; i++)
 			block[i] = in.readSignedInt(sampleDepth);
 		
-		int[] residuals = readResiduals(block.length, order);
-		System.arraycopy(residuals, 0, block, order, residuals.length);
+		readResiduals(block.length, order, block);
 		switch (order) {
 			case 0:  break;
 			case 1:  restoreLpc(block, new int[]{1}, 0);  break;
@@ -254,8 +253,7 @@ public final class FlacDecoder {
 		for (int i = 0; i < coefs.length; i++)
 			coefs[i] = in.readSignedInt(precision);
 		
-		int[] residuals = readResiduals(block.length, order);
-		System.arraycopy(residuals, 0, block, order, residuals.length);
+		readResiduals(block.length, order, block);
 		restoreLpc(block, coefs, shift);
 	}
 	
@@ -271,14 +269,13 @@ public final class FlacDecoder {
 	}
 	
 	
-	private int[] readResiduals(int count, int warmup) throws IOException, DataFormatException {
-		int[] result = new int[count - warmup];
+	private void readResiduals(int count, int warmup, int[] result) throws IOException, DataFormatException {
 		int method = in.readInt(2);
 		if (method == 0 || method == 1) {
 			int numPartitions = 1 << in.readInt(4);
 			int paramBits = method == 0 ? 4 : 5;
 			int escape = method == 0 ? 0xF : 0x1F;
-			for (int partitionIndex = 0, resultIndex = 0; partitionIndex < numPartitions; partitionIndex++) {
+			for (int partitionIndex = 0, resultIndex = warmup; partitionIndex < numPartitions; partitionIndex++) {
 				int subcount = count / numPartitions;
 				if (partitionIndex == 0)
 					subcount -= warmup;
@@ -294,7 +291,6 @@ public final class FlacDecoder {
 			}
 		} else
 			throw new DataFormatException("Reserved residual coding method");
-		return result;
 	}
 	
 	
