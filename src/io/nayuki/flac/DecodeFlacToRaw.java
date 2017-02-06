@@ -32,7 +32,7 @@ public final class DecodeFlacToRaw {
 		
 		try (DataOutputStream out = new DataOutputStream(
 				new BufferedOutputStream(new FileOutputStream(outFile)))) {
-			short[][] samples = dec.samples;
+			int[][] samples = dec.samples;
 			for (int i = 0; i < samples[0].length; i++) {
 				for (int j = 0; j < samples.length; j++)
 					out.writeShort(samples[j][i]);  // Big-endian

@@ -18,7 +18,7 @@ public final class FlacDecoder {
 	public int sampleRate;
 	public int sampleDepth;
 	public int numChannels;
-	public short[][] samples;
+	public int[][] samples;
 	
 	private BitInputStream in;
 	
@@ -75,7 +75,7 @@ public final class FlacDecoder {
 		numChannels = in.readInt(3) + 1;
 		sampleDepth = in.readInt(5) + 1;
 		long numSamples = (long)in.readInt(18) << 18 | in.readInt(18);
-		samples = new short[numChannels][(int)numSamples];
+		samples = new int[numChannels][(int)numSamples];
 		byte[] hash = new byte[16];
 		in.readFully(hash);
 	}
@@ -141,7 +141,7 @@ public final class FlacDecoder {
 			for (int j = 0; j < numChannels; j++) {
 				int[] block = decodeSubframe(blockSamples, j, sampleDepth);
 				for (int i = 0; i < block.length; i++)
-					samples[j][sampleOffset + i] = clamp(block[i]);
+					samples[j][sampleOffset + i] = block[i];
 			}
 			
 		} else if (channelAssignment == 8) {  // Left-side stereo
@@ -150,8 +150,8 @@ public final class FlacDecoder {
 			int[] left = decodeSubframe(blockSamples, 0, sampleDepth);
 			int[] side = decodeSubframe(blockSamples, 1, sampleDepth + 1);
 			for (int i = 0; i < blockSamples; i++) {
-				samples[0][sampleOffset + i] = clamp(left[i]);
-				samples[1][sampleOffset + i] = clamp(left[i] - side[i]);
+				samples[0][sampleOffset + i] = left[i];
+				samples[1][sampleOffset + i] = left[i] - side[i];
 			}
 			
 		} else if (channelAssignment == 9) {  // Side-right stereo
@@ -160,8 +160,8 @@ public final class FlacDecoder {
 			int[] side  = decodeSubframe(blockSamples, 0, sampleDepth + 1);
 			int[] right = decodeSubframe(blockSamples, 1, sampleDepth);
 			for (int i = 0; i < blockSamples; i++) {
-				samples[0][sampleOffset + i] = clamp(right[i] + side[i]);
-				samples[1][sampleOffset + i] = clamp(right[i]);
+				samples[0][sampleOffset + i] = right[i] + side[i];
+				samples[1][sampleOffset + i] = right[i];
 			}
 			
 		} else if (channelAssignment == 10) {  // Mid-side stereo
@@ -172,8 +172,8 @@ public final class FlacDecoder {
 			for (int i = 0; i < blockSamples; i++) {
 				int s = side[i];
 				int m = (mid[i] << 1) | (s & 1);
-				samples[0][sampleOffset + i] = clamp((m + s) >> 1);
-				samples[1][sampleOffset + i] = clamp((m - s) >> 1);
+				samples[0][sampleOffset + i] = (m + s) >> 1;
+				samples[1][sampleOffset + i] = (m - s) >> 1;
 			}
 			
 		} else
@@ -390,15 +390,5 @@ public final class FlacDecoder {
 	}
 	
 	private static final int[] SAMPLE_DEPTHS = {-1, 8, 12, -1, 16, 20, 24, -1};
-	
-	
-	private static short clamp(int val) {
-		if (val < Short.MIN_VALUE)
-			return Short.MIN_VALUE;
-		else if (val > Short.MAX_VALUE)
-			return Short.MAX_VALUE;
-		else
-			return (short)val;
-	}
 	
 }
