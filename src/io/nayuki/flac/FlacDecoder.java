@@ -78,6 +78,10 @@ public final class FlacDecoder {
 		int maxBlockSamples = in.readInt(16);
 		int minFrameBytes = in.readInt(24);
 		int maxFrameBytes = in.readInt(24);
+		if (maxBlockSamples < minBlockSamples)
+			throw new DataFormatException("Maximum block size less than minimum block size");
+		if (minFrameBytes != 0 && maxFrameBytes != 0 && maxFrameBytes < minFrameBytes)
+			throw new DataFormatException("Maximum frame size less than minimum frame size");
 		sampleRate = in.readInt(20);
 		if (sampleRate == 0 || sampleRate > 655350)
 			throw new DataFormatException("Invalid sample rate");
@@ -94,6 +98,9 @@ public final class FlacDecoder {
 	// Returns the number of samples in the block just processed (in the range [1, 65536]),
 	// or -1 if the end of stream was encountered before any data was read.
 	private int decodeFrame(int frameIndex, int sampleOffset) throws IOException, DataFormatException {
+		if (frameIndex < 0 || sampleOffset < 0)
+			throw new IllegalArgumentException();
+		
 		// Handle sync bits
 		int temp = in.readByte();
 		if (temp == -1)
