@@ -145,28 +145,7 @@ public class FlacDecoder {
 				throw new AssertionError();
 		}
 		
-		int sampleRate;
-		switch (sampleRateCode) {
-			case  0:  sampleRate = this.sampleRate;  break;
-			case  1:  sampleRate =  88200;  break;
-			case  2:  sampleRate = 176400;  break;
-			case  3:  sampleRate = 192000;  break;
-			case  4:  sampleRate =   8000;  break;
-			case  5:  sampleRate =  16000;  break;
-			case  6:  sampleRate =  22050;  break;
-			case  7:  sampleRate =  24000;  break;
-			case  8:  sampleRate =  32000;  break;
-			case  9:  sampleRate =  44100;  break;
-			case 10:  sampleRate =  48000;  break;
-			case 11:  sampleRate =  96000;  break;
-			case 12:  sampleRate = in.readInt(8);  break;
-			case 13:  sampleRate = in.readInt(16);  break;
-			case 14:  sampleRate = in.readInt(16) * 10;  break;
-			case 15:  throw new DataFormatException("Invalid sample rate");
-			default:
-				throw new AssertionError();
-		}
-		if (sampleRate != this.sampleRate)
+		if (decodeSampleRate(sampleRateCode) != sampleRate)
 			throw new DataFormatException("Sample rate mismatch");
 		
 		int crc8 = in.readInt(8);
@@ -368,6 +347,29 @@ public class FlacDecoder {
 			return result;
 		}
 	}
+	
+	
+	// Argument is uint4, may read 2 bytes of input.
+	private int decodeSampleRate(int code) throws IOException, DataFormatException {
+		if ((code >>> 4) != 0)
+			throw new IllegalArgumentException();
+		else if (code == 0)
+			return sampleRate;
+		else if (code < SAMPLE_RATES.length)
+			return SAMPLE_RATES[code];
+		else if (code == 12)
+			return in.readInt(8);
+		else if (code == 13)
+			return in.readInt(16);
+		else if (code == 14)
+			return in.readInt(16) * 10;
+		else if (code == 15)
+			throw new DataFormatException("Invalid sample rate");
+		else
+			throw new AssertionError();
+	}
+	
+	private static final int[] SAMPLE_RATES = {-1, 88200, 176400, 192000, 8000, 16000, 22050, 24000, 32000, 44100, 48000, 96000};
 	
 	
 	// Argument is uint3, return value is in the range [1, 32], performs no I/O.
