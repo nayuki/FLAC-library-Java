@@ -32,7 +32,7 @@ public class FlacDecoder {
 		// Initialize some fields
 		this.in = in;
 		
-		// Parse data chunks
+		// Parse header blocks
 		if (in.readInt(32) != 0x664C6143)  // Magic string "fLaC"
 			throw new DataFormatException();
 		while (handleMetadataBlock());
@@ -81,25 +81,30 @@ public class FlacDecoder {
 	}
 	
 	
+	// Reads some bytes, performs decoding computations, and stores new samples in all channels starting at sampleOffset.
+	// Returns the number of samples in the block just processed (in the range [1, 65536]),
+	// or -1 if the end of stream was encountered before any data was read.
 	private int decodeFrame(int frameIndex, int sampleOffset) throws IOException, DataFormatException {
+		// Handle sync bits
 		int temp = in.readByte();
 		if (temp == -1)
 			return -1;
 		if ((temp << 6 | in.readInt(6)) != 0x3FFE)  // Uint14
 			throw new DataFormatException("Sync code expected");
+		
+		// Save and/or check various fields
 		if (in.readInt(1) != 0)
 			throw new DataFormatException("Reserved bit");
 		int blockStrategy = in.readInt(1);
-		
 		int blockSamplesCode = in.readInt(4);
 		int sampleRateCode = in.readInt(4);
-		
 		int channelAssignment = in.readInt(4);
 		if (decodeSampleDepth(in.readInt(3)) != sampleDepth)
 			throw new DataFormatException("Sample depth mismatch");
 		if (in.readInt(1) != 0)
 			throw new DataFormatException("Reserved bit");
 		
+		// Read and check the frame/sample position field
 		long position = readUtf8Integer();
 		if (blockStrategy == 0) {
 			if ((position >>> 31) != 0)
@@ -112,12 +117,12 @@ public class FlacDecoder {
 		} else
 			throw new AssertionError();
 		
-		int blockSamples = decodeBlockSamples(blockSamplesCode);
-		
-		if (decodeSampleRate(sampleRateCode) != sampleRate)
+		// Read/check more fields
+		int blockSamples = decodeBlockSamples(blockSamplesCode);  // May read bytes
+		if (decodeSampleRate(sampleRateCode) != sampleRate)  // May read bytes
 			throw new DataFormatException("Sample rate mismatch");
+		int crc8 = in.readInt(8);  // End of frame header
 		
-		int crc8 = in.readInt(8);
 		if (channelAssignment < 8) {  // Independent channels
 			if (channelAssignment + 1 != numChannels)
 				throw new DataFormatException("Channel count mismatch");
@@ -163,7 +168,7 @@ public class FlacDecoder {
 			throw new DataFormatException("Reserved channel assignment");
 		
 		in.alignToByte();
-		int crc16 = in.readInt(16);
+		int crc16 = in.readInt(16);  // End of frame
 		return blockSamples;
 	}
 	
@@ -294,7 +299,7 @@ public class FlacDecoder {
 	}
 	
 	
-	// Read between 1 and 7 bytes of input, and returns a uint36 value.
+	// Reads between 1 and 7 bytes of input, and returns a uint36 value.
 	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
 	private long readUtf8Integer() throws IOException, DataFormatException {
 		int temp = in.readInt(8);
