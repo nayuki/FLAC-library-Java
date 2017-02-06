@@ -21,6 +21,7 @@ public final class FlacDecoder {
 	public int[][] samples;
 	
 	private BitInputStream in;
+	private boolean steamInfoSeen;
 	private long[][] subframes;  // Temporary arrays, reused on every call of decodeSubframes()
 	
 	
@@ -32,6 +33,7 @@ public final class FlacDecoder {
 	public FlacDecoder(BitInputStream in) throws IOException, DataFormatException {
 		// Initialize some fields
 		this.in = in;
+		steamInfoSeen = false;
 		subframes = new long[2][65536];
 		
 		// Parse header blocks
@@ -67,6 +69,9 @@ public final class FlacDecoder {
 	
 	
 	private void parseStreamInfoData() throws IOException, DataFormatException {
+		if (steamInfoSeen)
+			throw new DataFormatException("Duplicate stream info block");
+		steamInfoSeen = true;
 		int minBlockSamples = in.readInt(16);
 		int maxBlockSamples = in.readInt(16);
 		int minFrameBytes = in.readInt(24);
