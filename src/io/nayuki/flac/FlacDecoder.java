@@ -116,8 +116,16 @@ public class FlacDecoder {
 			throw new DataFormatException("Sample depth mismatch");
 		
 		long position = readUtf8Integer();
-		if (blockStrategy == 0 && position != frameIndex)
-			throw new DataFormatException("Frame index mismatch");
+		if (blockStrategy == 0) {
+			if ((position >>> 31) != 0)
+				throw new DataFormatException("Frame index too large");
+			if (position != frameIndex)
+				throw new DataFormatException("Frame index mismatch");
+		} else if (blockStrategy == 1) {
+			if (position != sampleOffset)
+				throw new DataFormatException("Sample offset mismatch");
+		} else
+			throw new AssertionError();
 		
 		int blockSamples;
 		switch (blockSamplesCode) {
