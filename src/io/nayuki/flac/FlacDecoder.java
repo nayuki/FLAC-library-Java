@@ -13,6 +13,8 @@ import java.util.zip.DataFormatException;
 
 public class FlacDecoder {
 	
+	/*---- Fields ----*/
+	
 	public int sampleRate;
 	public int sampleDepth;
 	public int numChannels;
@@ -21,6 +23,9 @@ public class FlacDecoder {
 	private BitInputStream in;
 	private int sampleOffset;
 	
+	
+	
+	/*---- Constructors ----*/
 	
 	public FlacDecoder(BitInputStream in) throws IOException, DataFormatException {
 		this.in = in;
@@ -31,6 +36,9 @@ public class FlacDecoder {
 		while (handleFrame());
 	}
 	
+	
+	
+	/*---- Methods ----*/
 	
 	private boolean handleMetadataBlock() throws IOException, DataFormatException {
 		boolean last = in.readInt(1) != 0;

@@ -13,10 +13,15 @@ import java.io.InputStream;
 
 final class BitInputStream implements AutoCloseable {
 	
+	/*---- Fields ----*/
+	
 	private InputStream in;
 	private long bitBuffer;
 	private int bitBufferLen;
 	
+	
+	
+	/*---- Constructors ----*/
 	
 	public BitInputStream(InputStream in) {
 		this.in = in;
@@ -24,6 +29,9 @@ final class BitInputStream implements AutoCloseable {
 		bitBufferLen = 0;
 	}
 	
+	
+	
+	/*---- Methods ----*/
 	
 	public int readInt(int n) throws IOException {
 		if (n < 0 || n > 32)
