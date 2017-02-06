@@ -329,7 +329,7 @@ public class FlacDecoder {
 						result[resultIndex] = in.readSignedInt(numBits);
 				} else {
 					for (int i = 0; i < subcount; i++, resultIndex++)
-						result[resultIndex] = decodeRice(param);
+						result[resultIndex] = readRiceSignedInt(param);
 				}
 			}
 		} else
@@ -338,7 +338,7 @@ public class FlacDecoder {
 	}
 	
 	
-	private int decodeRice(int param) throws IOException {
+	private int readRiceSignedInt(int param) throws IOException {
 		int result = 0;
 		while (in.readInt(1) == 0)
 			result++;
