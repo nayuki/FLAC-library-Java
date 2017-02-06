@@ -54,7 +54,7 @@ public final class FlacDecoder {
 	
 	
 	
-	/*---- Methods ----*/
+	/*---- Methods to handle metadata blocks ----*/
 	
 	private boolean handleMetadataBlock() throws IOException, DataFormatException {
 		boolean last = in.readInt(1) != 0;
@@ -93,6 +93,35 @@ public final class FlacDecoder {
 		in.readFully(hash);
 	}
 	
+	
+	// Reads between 1 and 7 bytes of input, and returns a uint36 value.
+	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
+	private long readUtf8Integer() throws IOException, DataFormatException {
+		int temp = in.readInt(8);
+		int n = Integer.numberOfLeadingZeros(~(temp << 24));  // Number of leading 1s in the byte
+		if (n < 0 || n > 8)
+			throw new AssertionError();
+		else if (n == 0)
+			return temp;
+		else if (n == 1 || n == 8)
+			throw new DataFormatException("Invalid UTF-8 coded number");
+		else {
+			long result = temp & ((1 << (7 - n)) - 1);
+			for (int i = 0; i < n - 1; i++) {
+				temp = in.readInt(8);
+				if ((temp & 0xC0) != 0x80)
+					throw new DataFormatException("Invalid UTF-8 coded number");
+				result = (result << 6) | (temp & 0x3F);
+			}
+			if ((result >>> 36) != 0)
+				throw new AssertionError();
+			return result;
+		}
+	}
+	
+	
+	
+	/*---- Methods to handle audio frames ----*/
 	
 	// Reads some bytes, performs decoding computations, and stores new samples in all channels starting at sampleOffset.
 	// Returns the number of samples in the block just processed (in the range [1, FRAME_MAX_SAMPLES]),
@@ -145,6 +174,65 @@ public final class FlacDecoder {
 		int crc16 = in.readInt(16);  // End of frame
 		return blockSamples;
 	}
+	
+	
+	// Argument is uint4, return value is in the range [1, FRAME_MAX_SAMPLES], may read 2 bytes of input.
+	private int decodeBlockSamples(int code) throws IOException, DataFormatException {
+		if ((code >>> 4) != 0)
+			throw new IllegalArgumentException();
+		else if (code == 0)
+			throw new DataFormatException("Reserved block size");
+		else if (code == 1)
+			return 192;
+		else if (2 <= code && code <= 5)
+			return 576 << (code - 2);
+		else if (code == 6)
+			return in.readInt(8) + 1;
+		else if (code == 7)
+			return in.readInt(16) + 1;
+		else if (8 <= code && code <= 15)
+			return 256 << (code - 8);
+		else
+			throw new AssertionError();
+	}
+	
+	
+	// Argument is uint4, may read 2 bytes of input.
+	private int decodeSampleRate(int code) throws IOException, DataFormatException {
+		if ((code >>> 4) != 0)
+			throw new IllegalArgumentException();
+		else if (code == 0)
+			return sampleRate;
+		else if (code < SAMPLE_RATES.length)
+			return SAMPLE_RATES[code];
+		else if (code == 12)
+			return in.readInt(8);
+		else if (code == 13)
+			return in.readInt(16);
+		else if (code == 14)
+			return in.readInt(16) * 10;
+		else if (code == 15)
+			throw new DataFormatException("Invalid sample rate");
+		else
+			throw new AssertionError();
+	}
+	
+	private static final int[] SAMPLE_RATES = {-1, 88200, 176400, 192000, 8000, 16000, 22050, 24000, 32000, 44100, 48000, 96000};
+	
+	
+	// Argument is uint3, return value is in the range [1, 32], performs no I/O.
+	private int decodeSampleDepth(int code) throws DataFormatException {
+		if ((code >>> 3) != 0)
+			throw new IllegalArgumentException();
+		else if (code == 0)
+			return sampleDepth;
+		else if (SAMPLE_DEPTHS[code] < 0)
+			throw new DataFormatException("Reserved bit depth");
+		else
+			return SAMPLE_DEPTHS[code];
+	}
+	
+	private static final int[] SAMPLE_DEPTHS = {-1, 8, 12, -1, 16, 20, 24, -1};
 	
 	
 	private void decodeSubframes(int blockSamples, int channelAssignment, int sampleOffset) throws IOException, DataFormatException {
@@ -320,91 +408,6 @@ public final class FlacDecoder {
 		result = (result << param) | in.readInt(param);
 		return (result >>> 1) ^ (-(result & 1));
 	}
-	
-	
-	// Reads between 1 and 7 bytes of input, and returns a uint36 value.
-	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
-	private long readUtf8Integer() throws IOException, DataFormatException {
-		int temp = in.readInt(8);
-		int n = Integer.numberOfLeadingZeros(~(temp << 24));  // Number of leading 1s in the byte
-		if (n < 0 || n > 8)
-			throw new AssertionError();
-		else if (n == 0)
-			return temp;
-		else if (n == 1 || n == 8)
-			throw new DataFormatException("Invalid UTF-8 coded number");
-		else {
-			long result = temp & ((1 << (7 - n)) - 1);
-			for (int i = 0; i < n - 1; i++) {
-				temp = in.readInt(8);
-				if ((temp & 0xC0) != 0x80)
-					throw new DataFormatException("Invalid UTF-8 coded number");
-				result = (result << 6) | (temp & 0x3F);
-			}
-			if ((result >>> 36) != 0)
-				throw new AssertionError();
-			return result;
-		}
-	}
-	
-	
-	// Argument is uint4, return value is in the range [1, FRAME_MAX_SAMPLES], may read 2 bytes of input.
-	private int decodeBlockSamples(int code) throws IOException, DataFormatException {
-		if ((code >>> 4) != 0)
-			throw new IllegalArgumentException();
-		else if (code == 0)
-			throw new DataFormatException("Reserved block size");
-		else if (code == 1)
-			return 192;
-		else if (2 <= code && code <= 5)
-			return 576 << (code - 2);
-		else if (code == 6)
-			return in.readInt(8) + 1;
-		else if (code == 7)
-			return in.readInt(16) + 1;
-		else if (8 <= code && code <= 15)
-			return 256 << (code - 8);
-		else
-			throw new AssertionError();
-	}
-	
-	
-	// Argument is uint4, may read 2 bytes of input.
-	private int decodeSampleRate(int code) throws IOException, DataFormatException {
-		if ((code >>> 4) != 0)
-			throw new IllegalArgumentException();
-		else if (code == 0)
-			return sampleRate;
-		else if (code < SAMPLE_RATES.length)
-			return SAMPLE_RATES[code];
-		else if (code == 12)
-			return in.readInt(8);
-		else if (code == 13)
-			return in.readInt(16);
-		else if (code == 14)
-			return in.readInt(16) * 10;
-		else if (code == 15)
-			throw new DataFormatException("Invalid sample rate");
-		else
-			throw new AssertionError();
-	}
-	
-	private static final int[] SAMPLE_RATES = {-1, 88200, 176400, 192000, 8000, 16000, 22050, 24000, 32000, 44100, 48000, 96000};
-	
-	
-	// Argument is uint3, return value is in the range [1, 32], performs no I/O.
-	private int decodeSampleDepth(int code) throws DataFormatException {
-		if ((code >>> 3) != 0)
-			throw new IllegalArgumentException();
-		else if (code == 0)
-			return sampleDepth;
-		else if (SAMPLE_DEPTHS[code] < 0)
-			throw new DataFormatException("Reserved bit depth");
-		else
-			return SAMPLE_DEPTHS[code];
-	}
-	
-	private static final int[] SAMPLE_DEPTHS = {-1, 8, 12, -1, 16, 20, 24, -1};
 	
 	
 	private static final int FRAME_MAX_SAMPLES = 1 << 16;
