@@ -225,15 +225,16 @@ public final class FlacDecoder {
 			block[i] = in.readSignedInt(sampleDepth);
 		
 		readResiduals(numSamples, order, block);
-		switch (order) {
-			case 0:  break;
-			case 1:  restoreLpc(numSamples, block, new int[]{1}, 0);  break;
-			case 2:  restoreLpc(numSamples, block, new int[]{2, -1}, 0);  break;
-			case 3:  restoreLpc(numSamples, block, new int[]{3, -3, 1}, 0);  break;
-			case 4:  restoreLpc(numSamples, block, new int[]{4, -6, 4, -1}, 0);  break;
-			default:  throw new AssertionError();
-		}
+		restoreLpc(numSamples, block, FIXED_PREDICTION_COEFFICIENTS[order], 0);
 	}
+	
+	private static final int[][] FIXED_PREDICTION_COEFFICIENTS = {
+		{},
+		{1},
+		{2, -1},
+		{3, -3, 1},
+		{4, -6, 4, -1},
+	};
 	
 	
 	private void decodeLinearPredictiveCoding(int numSamples, int order, int sampleDepth, long[] block)
