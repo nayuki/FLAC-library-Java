@@ -225,10 +225,10 @@ public class FlacDecoder {
 		if (in.readInt(1) != 0)
 			throw new DataFormatException("Invalid padding bit");
 		int type = in.readInt(6);
-		int wastedBitsPerSample = in.readInt(1);
-		if (wastedBitsPerSample == 1) {
+		int shift = in.readInt(1);  // Also known as "wasted bits-per-sample"
+		if (shift == 1) {
 			while (in.readInt(1) == 0)  // Unary coding
-				wastedBitsPerSample++;
+				shift++;
 		}
 		
 		int[] block = new int[numSamples];
@@ -249,7 +249,7 @@ public class FlacDecoder {
 			throw new AssertionError();
 		
 		for (int i = 0; i < block.length; i++)
-			block[i] <<= wastedBitsPerSample;
+			block[i] <<= shift;
 		return block;
 	}
 	
