@@ -54,16 +54,18 @@ public final class FlacDecoder {
 		}
 		
 		// Check audio data against hash
-		Md5Hasher hasher = new Md5Hasher();
-		for (int i = 0; i < samples[0].length; i++) {
-			for (int j = 0; j < samples.length; j++) {
-				int val = samples[j][i];
-				hasher.update((byte)(val >>> 0));
-				hasher.update((byte)(val >>> 8));
+		if (!Arrays.equals(md5Hash, new byte[16])) {
+			Md5Hasher hasher = new Md5Hasher();
+			for (int i = 0; i < samples[0].length; i++) {
+				for (int j = 0; j < samples.length; j++) {
+					int val = samples[j][i];
+					hasher.update((byte)(val >>> 0));
+					hasher.update((byte)(val >>> 8));
+				}
 			}
+			if (!Arrays.equals(hasher.getHash(), md5Hash))
+				throw new DataFormatException("MD5 hash mismatch");
 		}
-		if (!Arrays.equals(hasher.getHash(), md5Hash))
-			throw new DataFormatException("MD5 hash mismatch");
 	}
 	
 	
