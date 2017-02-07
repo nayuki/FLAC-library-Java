@@ -20,13 +20,13 @@ import java.util.zip.DataFormatException;
 public final class DecodeFlacToWav {
 	
 	public static void main(String[] args) throws IOException, DataFormatException {
-		File inFile  = new File(args[0]);
-		File outFile = new File(args[1]);
 		if (args.length != 2) {
 			System.err.println("Usage: java DecodeFlacToWav InFile.flac OutFile.wav");
 			System.exit(1);
 			return;
 		}
+		File inFile  = new File(args[0]);
+		File outFile = new File(args[1]);
 		
 		FlacDecoder dec;
 		try (InputStream in = new BufferedInputStream(new FileInputStream(inFile))) {
