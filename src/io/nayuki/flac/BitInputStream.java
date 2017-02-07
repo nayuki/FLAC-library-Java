@@ -19,6 +19,8 @@ final class BitInputStream implements AutoCloseable {
 	private InputStream in;
 	private long bitBuffer;
 	private int bitBufferLen;
+	private int crc8;
+	private int crc16;
 	
 	
 	
@@ -29,6 +31,8 @@ final class BitInputStream implements AutoCloseable {
 		this.in = in;
 		bitBuffer = 0;
 		bitBufferLen = 0;
+		crc8  = 0;
+		crc16 = 0;
 	}
 	
 	
@@ -41,7 +45,7 @@ final class BitInputStream implements AutoCloseable {
 		if (n < 0 || n > 32)
 			throw new IllegalArgumentException();
 		while (bitBufferLen < n) {
-			int b = in.read();
+			int b = readUnderlying();
 			if (b == -1)
 				throw new EOFException();
 			bitBuffer = (bitBuffer << 8) | b;
@@ -89,7 +93,7 @@ final class BitInputStream implements AutoCloseable {
 			return result;
 		} else {
 			bitBufferLen = 0;
-			return in.read();
+			return readUnderlying();
 		}
 	}
 	
@@ -100,11 +104,52 @@ final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	public int getCrc8() {
+		if (bitBufferLen % 8 != 0)
+			throw new IllegalStateException();
+		if ((crc8 >>> 8) != 0)
+			throw new AssertionError();
+		return crc8;
+	}
+	
+	
+	public int getCrc16() {
+		if (bitBufferLen % 8 != 0)
+			throw new IllegalStateException();
+		if ((crc16 >>> 16) != 0)
+			throw new AssertionError();
+		return crc16;
+	}
+	
+	
+	public void resetCrcs() {
+		crc8 = 0;
+		crc16 = 0;
+	}
+	
+	
 	public void close() throws IOException {
 		in.close();
 		in = null;
 		bitBuffer = 0;
 		bitBufferLen = 0;
+	}
+	
+	
+	private int readUnderlying() throws IOException {
+		int temp = in.read();
+		if (temp == -1)
+			return temp;
+		
+		crc8 ^= temp;
+		crc16 ^= temp << 8;
+		for (int i = 0; i < 8; i++) {
+			crc8 <<= 1;
+			crc16 <<= 1;
+			crc8 ^= (crc8 >>> 8) * 0x107;
+			crc16 ^= (crc16 >>> 16) * 0x18005;
+		}
+		return temp;
 	}
 	
 }

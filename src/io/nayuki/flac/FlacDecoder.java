@@ -147,6 +147,7 @@ public final class FlacDecoder {
 			throw new IllegalArgumentException();
 		
 		// Handle sync bits
+		in.resetCrcs();
 		int temp = in.readByte();
 		if (temp == -1)
 			return -1;
@@ -183,13 +184,15 @@ public final class FlacDecoder {
 		int blockSamples = decodeBlockSamples(blockSamplesCode);  // May read bytes
 		if (decodeSampleRate(sampleRateCode) != sampleRate)  // May read bytes
 			throw new DataFormatException("Sample rate mismatch");
-		@SuppressWarnings("unused")
-		int crc8 = in.readUint(8);  // End of frame header
+		int computedCrc8 = in.getCrc8();
+		if (in.readUint(8) != computedCrc8)
+			throw new DataFormatException("CRC-8 mismatch");
 		
 		decodeSubframes(blockSamples, channelAssignment, sampleOffset);
 		in.alignToByte();
-		@SuppressWarnings("unused")
-		int crc16 = in.readUint(16);  // End of frame
+		int computedCrc16 = in.getCrc16();
+		if (in.readUint(16) != computedCrc16)
+			throw new DataFormatException("CRC-16 mismatch");
 		return blockSamples;
 	}
 	
