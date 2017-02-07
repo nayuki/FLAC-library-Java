@@ -378,15 +378,20 @@ public final class FlacDecoder {
 	private void readResiduals(int numSamples, int warmup, long[] result) throws IOException, DataFormatException {
 		int method = in.readUint(2);
 		if (method == 0 || method == 1) {
-			int numPartitions = 1 << in.readUint(4);
+			int partitionOrder = in.readUint(4);
+			int numPartitions = 1 << partitionOrder;
+			if (numSamples % numPartitions != 0)
+				throw new DataFormatException("Block size not divisible by number of Rice partitions");
 			int paramBits = method == 0 ? 4 : 5;
-			int escape = method == 0 ? 0xF : 0x1F;
-			for (int partitionIndex = 0, resultIndex = warmup; partitionIndex < numPartitions; partitionIndex++) {
-				int subcount = numSamples / numPartitions;
-				if (partitionIndex == 0)
+			int escapeParam = method == 0 ? 0xF : 0x1F;
+			
+			for (int partIndex = 0, resultIndex = warmup; partIndex < numPartitions; partIndex++) {
+				int subcount = numSamples >>> partitionOrder;
+				if (partIndex == 0)
 					subcount -= warmup;
+				
 				int param = in.readUint(paramBits);
-				if (param == escape) {
+				if (param == escapeParam) {
 					int numBits = in.readUint(5);
 					for (int i = 0; i < subcount; i++, resultIndex++)
 						result[resultIndex] = in.readSignedInt(numBits);
