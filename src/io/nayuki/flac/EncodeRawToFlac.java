@@ -15,28 +15,32 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 
-// Handles mono raw 16-bit big-endian audio files only.
+// Handles raw 16-bit big-endian audio files only.
 public final class EncodeRawToFlac {
 	
 	public static void main(String[] args) throws IOException {
-		if (args.length != 2) {
-			System.err.println("Usage: java EncodeRawToFlac InFile.raw OutFile.flac");
+		if (args.length < 2) {
+			System.err.println("Usage: java EncodeRawToFlac InFileChan0.raw [InFileChan1.raw ...] OutFile.flac");
 			System.exit(1);
 			return;
 		}
-		File inFile  = new File(args[0]);
-		File outFile = new File(args[1]);
 		
-		int[] samples = new int[(int)(inFile.length() / 2)];
-		try (DataInputStream in = new DataInputStream(
-				new BufferedInputStream(new FileInputStream(inFile)))) {
-			for (int i = 0; i < samples.length; i++)
-				samples[i] = in.readShort();
+		int numSamples = (int)(new File(args[0]).length() / 2);
+		int[][] samples = new int[args.length - 1][];
+		for (int i = 0; i < args.length - 1; i++) {
+			int[] smpl = new int[numSamples];
+			try (DataInputStream in = new DataInputStream(
+					new BufferedInputStream(new FileInputStream(args[i])))) {
+				for (int j = 0; j < numSamples; j++)
+					smpl[j] = in.readShort();
+			}
+			samples[i] = smpl;
 		}
 		
+		File outFile = new File(args[args.length - 1]);
 		try (BitOutputStream out = new BitOutputStream(
 				new BufferedOutputStream(new FileOutputStream(outFile)))) {
-			new FlacEncoder(new int[][]{samples}, 16, 44100, out);
+			new FlacEncoder(samples, 16, 44100, out);
 		}
 	}
 	
