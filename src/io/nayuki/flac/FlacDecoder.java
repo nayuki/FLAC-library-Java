@@ -383,10 +383,10 @@ public final class FlacDecoder {
 		if (numSamples < 0 || numSamples > result.length)
 			throw new IllegalArgumentException();
 		for (int i = coefs.length; i < numSamples; i++) {
-			long val = 0;
+			long sum = 0;
 			for (int j = 0; j < coefs.length; j++)
-				val += result[i - 1 - j] * coefs[j];
-			result[i] += val >> shift;
+				sum += result[i - 1 - j] * coefs[j];
+			result[i] += sum >> shift;
 		}
 	}
 	
