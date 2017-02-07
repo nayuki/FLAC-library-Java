@@ -23,6 +23,7 @@ public final class FlacDecoder {
 	
 	private BitInputStream in;
 	private boolean steamInfoSeen;
+	private byte[] md5Hash;
 	private long[][] subframes;  // Temporary arrays, reused on every call of decodeSubframes()
 	
 	
@@ -36,6 +37,7 @@ public final class FlacDecoder {
 		Objects.requireNonNull(in);
 		this.in = in;
 		steamInfoSeen = false;
+		md5Hash = new byte[16];
 		subframes = new long[2][FRAME_MAX_SAMPLES];
 		
 		// Parse header blocks
@@ -50,6 +52,18 @@ public final class FlacDecoder {
 				break;
 			sampleOffset += numSamples;
 		}
+		
+		// Check audio data against hash
+		Md5Hasher hasher = new Md5Hasher();
+		for (int i = 0; i < samples[0].length; i++) {
+			for (int j = 0; j < samples.length; j++) {
+				int val = samples[j][i];
+				hasher.update((byte)(val >>> 0));
+				hasher.update((byte)(val >>> 8));
+			}
+		}
+		if (!Arrays.equals(hasher.getHash(), md5Hash))
+			throw new DataFormatException("MD5 hash mismatch");
 	}
 	
 	
@@ -89,8 +103,7 @@ public final class FlacDecoder {
 		sampleDepth = in.readUint(5) + 1;
 		long numSamples = (long)in.readUint(18) << 18 | in.readUint(18);
 		samples = new int[numChannels][(int)numSamples];
-		byte[] hash = new byte[16];
-		in.readFully(hash);
+		in.readFully(md5Hash);
 	}
 	
 	
