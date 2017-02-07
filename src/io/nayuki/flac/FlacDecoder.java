@@ -110,32 +110,6 @@ public final class FlacDecoder {
 	}
 	
 	
-	// Reads between 1 and 7 bytes of input, and returns a uint36 value.
-	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
-	private long readUtf8Integer() throws IOException, DataFormatException {
-		int temp = in.readUint(8);
-		int n = Integer.numberOfLeadingZeros(~(temp << 24));  // Number of leading 1s in the byte
-		if (n < 0 || n > 8)
-			throw new AssertionError();
-		else if (n == 0)
-			return temp;
-		else if (n == 1 || n == 8)
-			throw new DataFormatException("Invalid UTF-8 coded number");
-		else {
-			long result = temp & ((1 << (7 - n)) - 1);
-			for (int i = 0; i < n - 1; i++) {
-				temp = in.readUint(8);
-				if ((temp & 0xC0) != 0x80)
-					throw new DataFormatException("Invalid UTF-8 coded number");
-				result = (result << 6) | (temp & 0x3F);
-			}
-			if ((result >>> 36) != 0)
-				throw new AssertionError();
-			return result;
-		}
-	}
-	
-	
 	
 	/*---- Methods to handle audio frames ----*/
 	
@@ -194,6 +168,32 @@ public final class FlacDecoder {
 		if (in.readUint(16) != computedCrc16)
 			throw new DataFormatException("CRC-16 mismatch");
 		return blockSamples;
+	}
+	
+	
+	// Reads between 1 and 7 bytes of input, and returns a uint36 value.
+	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
+	private long readUtf8Integer() throws IOException, DataFormatException {
+		int temp = in.readUint(8);
+		int n = Integer.numberOfLeadingZeros(~(temp << 24));  // Number of leading 1s in the byte
+		if (n < 0 || n > 8)
+			throw new AssertionError();
+		else if (n == 0)
+			return temp;
+		else if (n == 1 || n == 8)
+			throw new DataFormatException("Invalid UTF-8 coded number");
+		else {
+			long result = temp & ((1 << (7 - n)) - 1);
+			for (int i = 0; i < n - 1; i++) {
+				temp = in.readUint(8);
+				if ((temp & 0xC0) != 0x80)
+					throw new DataFormatException("Invalid UTF-8 coded number");
+				result = (result << 6) | (temp & 0x3F);
+			}
+			if ((result >>> 36) != 0)
+				throw new AssertionError();
+			return result;
+		}
 	}
 	
 	
