@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.zip.DataFormatException;
 
 
@@ -23,8 +24,7 @@ public final class DecodeFlacToWav {
 		File outFile = new File(args[1]);
 		
 		FlacDecoder dec;
-		try (BitInputStream in = new BitInputStream(
-				new BufferedInputStream(new FileInputStream(inFile)))) {
+		try (InputStream in = new BufferedInputStream(new FileInputStream(inFile))) {
 			dec = new FlacDecoder(in);
 		}
 		if (dec.sampleDepth != 16)

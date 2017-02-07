@@ -7,6 +7,7 @@
 package io.nayuki.flac;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.zip.DataFormatException;
@@ -32,16 +33,16 @@ public final class FlacDecoder {
 	
 	// Constructs a FLAC decoder from the given input stream, and immediately
 	// performs full decoding of the data until the end of stream is reached.
-	public FlacDecoder(BitInputStream in) throws IOException, DataFormatException {
+	public FlacDecoder(InputStream in) throws IOException, DataFormatException {
 		// Initialize some fields
 		Objects.requireNonNull(in);
-		this.in = in;
+		this.in = new BitInputStream(in);
 		steamInfoSeen = false;
 		md5Hash = new byte[16];
 		subframes = new long[2][FRAME_MAX_SAMPLES];
 		
 		// Parse header blocks
-		if (in.readUint(32) != 0x664C6143)  // Magic string "fLaC"
+		if (this.in.readUint(32) != 0x664C6143)  // Magic string "fLaC"
 			throw new DataFormatException("Invalid magic string");
 		while (handleMetadataBlock());
 		
