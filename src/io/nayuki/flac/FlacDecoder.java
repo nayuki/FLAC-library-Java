@@ -374,6 +374,7 @@ public final class FlacDecoder {
 	}
 	
 	
+	// Reads metadata and Rice-coded numbers from the input stream, storing them in result[warmup : numSamples].
 	private void readResiduals(int numSamples, int warmup, long[] result) throws IOException, DataFormatException {
 		int method = in.readUint(2);
 		if (method == 0 || method == 1) {
@@ -394,7 +395,7 @@ public final class FlacDecoder {
 						result[resultIndex] = readRiceSignedInt(param);
 				}
 			}
-		} else
+		} else  // method == 2, 3
 			throw new DataFormatException("Reserved residual coding method");
 	}
 	

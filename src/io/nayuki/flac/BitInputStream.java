@@ -35,6 +35,8 @@ final class BitInputStream implements AutoCloseable {
 	
 	/*---- Methods ----*/
 	
+	// Reads the next given number of bits as an unsigned integer (i.e. zero-extended to int32).
+	// Note that when n = 32, the result will be always a signed integer.
 	public int readUint(int n) throws IOException {
 		if (n < 0 || n > 32)
 			throw new IllegalArgumentException();
@@ -53,12 +55,14 @@ final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Reads the next given number of bits as an signed integer (i.e. sign-extended to int32).
 	public int readSignedInt(int n) throws IOException {
 		int shift = 32 - n;
 		return (readUint(n) << shift) >> shift;
 	}
 	
 	
+	// Discards any partial bits, then reads the given array fully or throws EOFEOxception.
 	public void readFully(byte[] b) throws IOException {
 		Objects.requireNonNull(b);
 		alignToByte();
@@ -76,6 +80,7 @@ final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Discards any partial bits, then either returns an unsigned byte value or -1 for EOF.
 	public int readByte() throws IOException {
 		alignToByte();
 		if (bitBufferLen >= 8) {
@@ -89,6 +94,7 @@ final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Discards between 0 to 7 bits so that the next read starts at a whole byte boundary.
 	public void alignToByte() {
 		bitBufferLen &= ~7;
 	}
