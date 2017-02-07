@@ -102,6 +102,9 @@ final class BitInputStream implements AutoCloseable {
 	
 	public void close() throws IOException {
 		in.close();
+		in = null;
+		bitBuffer = 0;
+		bitBufferLen = 0;
 	}
 	
 }
