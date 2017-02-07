@@ -21,6 +21,7 @@ final class FrameEncoder {
 	private final int sampleDepth;
 	private final int sampleRate;
 	private final int blockSize;
+	private final int channelAssignment;
 	private int encodedBitLength;
 	private SubframeEncoder[] subEncoders;
 	
@@ -35,6 +36,58 @@ final class FrameEncoder {
 		this.sampleRate = sampleRate;
 		this.blockSize = data[0].length;
 		
+		// Add up subframe sizes
+		int numChannels = data.length;
+		subEncoders = new SubframeEncoder[numChannels];
+		encodedBitLength = 0;
+		if (numChannels != 2) {
+			channelAssignment = numChannels - 1;
+			for (int i = 0; i < subEncoders.length; i++) {
+				subEncoders[i] = SubframeEncoder.computeBest(data[i], sampleDepth);
+				encodedBitLength += subEncoders[i].getEncodedBitLength();
+			}
+		} else {  // Explore the 4 stereo encoding modes
+			long[] left  = data[0];
+			long[] right = data[1];
+			long[] mid  = new long[blockSize];
+			long[] side = new long[blockSize];
+			for (int i = 0; i < blockSize; i++) {
+				mid[i] = (left[i] + right[i]) >> 1;
+				side[i] = left[i] - right[i];
+			}
+			SubframeEncoder leftEnc  = SubframeEncoder.computeBest(left , sampleDepth);
+			SubframeEncoder rightEnc = SubframeEncoder.computeBest(right, sampleDepth);
+			SubframeEncoder midEnc   = SubframeEncoder.computeBest(mid  , sampleDepth);
+			SubframeEncoder sideEnc  = SubframeEncoder.computeBest(side , sampleDepth + 1);
+			int leftSize  = leftEnc .getEncodedBitLength();
+			int rightSize = rightEnc.getEncodedBitLength();
+			int midSize   = midEnc  .getEncodedBitLength();
+			int sideSize  = sideEnc .getEncodedBitLength();
+			int mode1Size = leftSize + rightSize;
+			int mode8Size = leftSize + sideSize;
+			int mode9Size = rightSize + sideSize;
+			int mode10Size = midSize + sideSize;
+			int minimum = Math.min(Math.min(mode1Size, mode8Size), Math.min(mode9Size, mode10Size));
+			if (mode1Size == minimum) {
+				channelAssignment = 1;
+				subEncoders[0] = leftEnc;
+				subEncoders[1] = rightEnc;
+			} else if (mode8Size == minimum) {
+				channelAssignment = 8;
+				subEncoders[0] = leftEnc;
+				subEncoders[1] = sideEnc;
+			} else if (mode9Size == minimum) {
+				channelAssignment = 9;
+				subEncoders[0] = sideEnc;
+				subEncoders[1] = rightEnc;
+			} else if (mode10Size == minimum) {
+				channelAssignment = 10;
+				subEncoders[0] = midEnc;
+				subEncoders[1] = sideEnc;
+			} else
+				throw new AssertionError();
+		}
+		
 		// Count length of header (always in whole bytes)
 		try {
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
@@ -42,16 +95,9 @@ final class FrameEncoder {
 				encodeHeader(data, bitout);
 			}
 			bout.close();
-			encodedBitLength = bout.toByteArray().length * 8;
+			encodedBitLength += bout.toByteArray().length * 8;
 		} catch (IOException e) {
 			throw new AssertionError(e);
-		}
-		
-		// Add up subframe sizes
-		subEncoders = new SubframeEncoder[data.length];
-		for (int i = 0; i < data.length; i++) {
-			subEncoders[i] = SubframeEncoder.computeBest(data[i], sampleDepth);
-			encodedBitLength += subEncoders[i].getEncodedBitLength();
 		}
 		
 		// Count padding and footer
@@ -76,8 +122,31 @@ final class FrameEncoder {
 			throw new IllegalArgumentException();
 		
 		encodeHeader(data, out);
-		for (int i = 0; i < data.length; i++)
-			subEncoders[i].encode(data[i], out);
+		if (0 <= channelAssignment && channelAssignment <= 7) {
+			for (int i = 0; i < data.length; i++)
+				subEncoders[i].encode(data[i], out);
+		} else if (8 <= channelAssignment || channelAssignment <= 10) {
+			long[] left  = data[0];
+			long[] right = data[1];
+			long[] mid  = new long[blockSize];
+			long[] side = new long[blockSize];
+			for (int i = 0; i < blockSize; i++) {
+				mid[i] = (left[i] + right[i]) >> 1;
+				side[i] = left[i] - right[i];
+			}
+			if (channelAssignment == 8) {
+				subEncoders[0].encode(left, out);
+				subEncoders[1].encode(side, out);
+			} else if (channelAssignment == 9) {
+				subEncoders[0].encode(side, out);
+				subEncoders[1].encode(right, out);
+			} else if (channelAssignment == 10) {
+				subEncoders[0].encode(mid, out);
+				subEncoders[1].encode(side, out);
+			} else
+				throw new AssertionError();
+		} else
+			throw new AssertionError();
 		out.alignToByte();
 		out.writeInt(16, out.getCrc16());
 	}
@@ -97,7 +166,7 @@ final class FrameEncoder {
 		int sampleRateCode = getSampleRateCode(sampleRate);
 		out.writeInt(4, sampleRateCode);
 		
-		out.writeInt(4, data.length - 1);  // Channel assignment
+		out.writeInt(4, channelAssignment);
 		out.writeInt(3, SAMPLE_DEPTH_CODES.get(sampleDepth));
 		out.writeInt(1, 0);  // Reserved
 		
