@@ -307,6 +307,7 @@ public final class FlacDecoder {
 			while (in.readUint(1) == 0)  // Unary coding
 				shift++;
 		}
+		sampleDepth -= shift;
 		
 		if (type == 0) {
 			Arrays.fill(result, 0, numSamples, in.readSignedInt(sampleDepth));
