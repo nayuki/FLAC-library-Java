@@ -6,8 +6,31 @@
 
 package io.nayuki.flac;
 
+import java.util.Objects;
+
 
 final class Md5Hasher {
+	
+	/*---- Static functions ----*/
+	
+	public static byte[] getHash(int[][] samples, int depth) {
+		Objects.requireNonNull(samples);
+		if (depth < 0 || depth > 32 || depth % 8 != 0)
+			throw new IllegalArgumentException();
+		
+		Md5Hasher hasher = new Md5Hasher();
+		int numBytes = depth / 8;
+		for (int i = 0; i < samples[0].length; i++) {
+			for (int j = 0; j < samples.length; j++) {
+				int val = samples[j][i];
+				for (int k = 0; k < numBytes; k++)
+					hasher.update((byte)(val >>> (k << 3)));
+			}
+		}
+		return hasher.getHash();
+	}
+	
+	
 	
 	/*---- Fields ----*/
 	
