@@ -21,6 +21,7 @@ public final class FlacDecoder {
 	public int sampleDepth;
 	public int numChannels;
 	public int[][] samples;
+	public int hashCheck;  // 0 = skipped because hash in file was all zeros, 1 = hash check passed, 2 = hash mismatch
 	
 	private BitInputStream in;
 	private boolean steamInfoSeen;
@@ -55,11 +56,12 @@ public final class FlacDecoder {
 		}
 		
 		// Check audio data against hash
-		if (!Arrays.equals(md5Hash, new byte[16])) {
-			byte[] actual = Md5Hasher.getHash(samples, sampleDepth);
-			if (!Arrays.equals(actual, md5Hash))
-				throw new DataFormatException("MD5 hash mismatch");
-		}
+		if (Arrays.equals(md5Hash, new byte[16]))
+			hashCheck = 0;
+		else if (Arrays.equals(Md5Hasher.getHash(samples, sampleDepth), md5Hash))
+			hashCheck = 1;
+		else
+			hashCheck = 2;  // Hash check failed!
 	}
 	
 	

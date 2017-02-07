@@ -32,6 +32,10 @@ public final class DecodeFlacToWav {
 		try (InputStream in = new BufferedInputStream(new FileInputStream(inFile))) {
 			dec = new FlacDecoder(in);
 		}
+		if (dec.hashCheck == 0)
+			System.err.println("Warning: MD5 hash field was blank");
+		else if (dec.hashCheck == 2)
+			throw new DataFormatException("MD5 hash check failed");
 		if (dec.sampleDepth != 16)
 			throw new UnsupportedOperationException("Only 16-bit sample depth supported");
 		
