@@ -143,7 +143,7 @@ final class BitInputStream implements AutoCloseable {
 	public int getCrc8() {
 		if (bitBufferLen % 8 != 0)
 			throw new IllegalStateException();
-		updateCrcs();
+		updateCrcs(bitBufferLen / 8);
 		if ((crc8 >>> 8) != 0)
 			throw new AssertionError();
 		return crc8;
@@ -153,27 +153,30 @@ final class BitInputStream implements AutoCloseable {
 	public int getCrc16() {
 		if (bitBufferLen % 8 != 0)
 			throw new IllegalStateException();
-		updateCrcs();
+		updateCrcs(bitBufferLen / 8);
 		if ((crc16 >>> 16) != 0)
 			throw new AssertionError();
 		return crc16;
 	}
 	
 	
-	private void updateCrcs() {
-		for (int i = crcStartIndex; i < byteBufferIndex; i++) {
+	private void updateCrcs(int delta) {
+		int end = byteBufferIndex - delta;
+		for (int i = crcStartIndex; i < end; i++) {
 			int b = byteBuffer[i] & 0xFF;
 			crc8 = CRC8_TABLE[crc8 ^ b] & 0xFF;
 			crc16 = CRC16_TABLE[crc16 >>> 8 ^ b] ^ ((crc16 & 0xFF) << 8);
 			assert (crc8 >>> 8) == 0;
 			assert (crc16 >>> 16) == 0;
 		}
-		crcStartIndex = byteBufferIndex;
+		crcStartIndex = end;
 	}
 	
 	
 	public void resetCrcs() {
-		crcStartIndex = byteBufferIndex;
+		if (bitBufferLen % 8 != 0)
+			throw new IllegalStateException();
+		crcStartIndex = byteBufferIndex - bitBufferLen / 8;
 		crc8 = 0;
 		crc16 = 0;
 	}
@@ -191,7 +194,7 @@ final class BitInputStream implements AutoCloseable {
 		if (byteBufferIndex >= byteBufferLen) {
 			if (byteBufferLen == -1)
 				return -1;
-			updateCrcs();
+			updateCrcs(0);
 			byteBufferLen = in.read(byteBuffer);
 			crcStartIndex = 0;
 			if (byteBufferLen <= 0)
