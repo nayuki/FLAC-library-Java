@@ -76,7 +76,10 @@ public final class FrameDecoder {
 		decodeSubframes(in, result.numSamples, result.sampleDepth, channelAssignment, outSamples, outOffset);
 		
 		// Read padding and footer
-		in.alignToByte();
+		while (in.getBitPosition() != 0) {
+			if (in.readUint(1) != 0)
+				throw new DataFormatException("Invalid padding bit");
+		}
 		int computedCrc16 = in.getCrc16();
 		if (in.readUint(16) != computedCrc16)
 			throw new DataFormatException("CRC-16 mismatch");

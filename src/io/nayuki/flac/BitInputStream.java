@@ -104,6 +104,11 @@ final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	public int getBitPosition() {
+		return (-bitBufferLen) & 7;
+	}
+	
+	
 	public int getCrc8() {
 		if (bitBufferLen % 8 != 0)
 			throw new IllegalStateException();
