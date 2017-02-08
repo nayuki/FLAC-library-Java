@@ -20,7 +20,7 @@ final class FrameEncoder {
 	private final int sampleOffset;
 	private final int sampleDepth;
 	private final int sampleRate;
-	private final int blockSize;
+	public final int blockSize;
 	private final int channelAssignment;
 	private int encodedBitLength;
 	private SubframeEncoder[] subEncoders;
