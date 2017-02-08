@@ -34,10 +34,12 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 		for (int r = 0; r < matrix.length; r++) {
 			for (int c = 0; c < matrix[r].length; c++) {
 				double val;
-				if (r <= c)
-					val = dotProduct(data, r, c, numSamples - order);
-				else
+				if (r == 0)
+					val = dotProduct(data, r, c, data.length - order);
+				else if (c < r)
 					val = matrix[c][r];
+				else  // 0 < r <= c
+					val = matrix[r - 1][c - 1] - (double)data[r - 1] * data[c - 1] + (double)data[r + data.length - order - 1] * data[c + data.length - order - 1];
 				matrix[r][c] = val;
 			}
 		}
