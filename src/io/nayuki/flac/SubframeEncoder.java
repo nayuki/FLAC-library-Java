@@ -39,6 +39,13 @@ abstract class SubframeEncoder {
 				result = temp;
 		}
 		
+		// Try linear predictive coding
+		for (int order = 2; order <= 32; order++) {
+			LinearPredictiveEncoder temp = new LinearPredictiveEncoder(data, shift, sampleDepth, order);
+			if (temp.encodedBitLength < result.encodedBitLength)
+				result = temp;
+		}
+		
 		// Return the encoder found with the lowest bit length
 		return result;
 	}
