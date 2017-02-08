@@ -18,7 +18,7 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	private final int coefShift;
 	
 	
-	public LinearPredictiveEncoder(long[] data, int shift, int depth, int order) {
+	public LinearPredictiveEncoder(long[] data, int shift, int depth, int order, FastDotProduct fdp) {
 		super(shift, depth);
 		int numSamples = data.length;
 		if (order < 1 || order > 32 || numSamples < order)
@@ -34,12 +34,10 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 		for (int r = 0; r < matrix.length; r++) {
 			for (int c = 0; c < matrix[r].length; c++) {
 				double val;
-				if (r == 0)
-					val = dotProduct(data, r, c, data.length - order);
-				else if (c < r)
+				if (c >= r)
+					val = fdp.dotProduct(r, c, data.length - order);
+				else
 					val = matrix[c][r];
-				else  // 0 < r <= c
-					val = matrix[r - 1][c - 1] - (double)data[r - 1] * data[c - 1] + (double)data[r + data.length - order - 1] * data[c + data.length - order - 1];
 				matrix[r][c] = val;
 			}
 		}
@@ -151,14 +149,6 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 				sum += data[i - 1 - j] * coefs[j];
 			data[i] -= sum >> shift;
 		}
-	}
-	
-	
-	private static double dotProduct(long[] array, int off0, int off1, int len) {
-		double sum = 0;
-		for (int i = 0; i < len; i++)
-			sum += (double)array[off0 + i] * array[off1 + i];
-		return sum;
 	}
 	
 }

@@ -40,8 +40,9 @@ abstract class SubframeEncoder {
 		}
 		
 		// Try linear predictive coding
+		FastDotProduct fdp = new FastDotProduct(data, 32);
 		for (int order = 2; order <= 32; order++) {
-			LinearPredictiveEncoder temp = new LinearPredictiveEncoder(data, shift, sampleDepth, order);
+			LinearPredictiveEncoder temp = new LinearPredictiveEncoder(data, shift, sampleDepth, order, fdp);
 			if (temp.encodedBitLength < result.encodedBitLength)
 				result = temp;
 		}
