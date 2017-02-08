@@ -331,20 +331,11 @@ public final class FrameDecoder {
 						result[resultIndex] = in.readSignedInt(numBits);
 				} else {
 					for (int i = 0; i < subcount; i++, resultIndex++)
-						result[resultIndex] = readRiceSignedInt(in, param);
+						result[resultIndex] = in.readRiceSignedInt(param);
 				}
 			}
 		} else  // method == 2, 3
 			throw new DataFormatException("Reserved residual coding method");
-	}
-	
-	
-	private static int readRiceSignedInt(BitInputStream in, int param) throws IOException {
-		int result = 0;
-		while (in.readUint(1) == 0)
-			result++;
-		result = (result << param) | in.readUint(param);
-		return (result >>> 1) ^ (-(result & 1));
 	}
 	
 }

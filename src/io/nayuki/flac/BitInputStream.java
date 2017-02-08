@@ -66,6 +66,44 @@ final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	public int readRiceSignedInt(int param) throws IOException {
+		if (bitBufferLen == 0) {
+			int b = readUnderlying();
+			if (b == -1)
+				throw new EOFException();
+			bitBuffer = b;
+			bitBufferLen = 8;
+		}
+		int result = Long.numberOfLeadingZeros(~(~bitBuffer << (64 - bitBufferLen)));
+		bitBufferLen -= result;
+		while (bitBufferLen == 0) {
+			int b = readUnderlying();
+			if (b == -1)
+				throw new EOFException();
+			bitBuffer = b;
+			bitBufferLen = 8;
+			int temp = Long.numberOfLeadingZeros(~(~bitBuffer << (64 - bitBufferLen)));
+			result += temp;
+			bitBufferLen -= temp;
+		}
+		assert (bitBuffer >>> (bitBufferLen - 1)) == 1;
+		bitBufferLen--;
+		if (param > 0) {
+			result <<= param;
+			while (bitBufferLen < param) {
+				int b = readUnderlying();
+				if (b == -1)
+					throw new EOFException();
+				bitBuffer = (bitBuffer << 8) | b;
+				bitBufferLen += 8;
+			}
+			result |= (bitBuffer << (64 - bitBufferLen)) >>> (64 - param);
+			bitBufferLen -= param;
+		}
+		return (result >>> 1) ^ (-(result & 1));
+	}
+	
+	
 	// Discards any partial bits, then reads the given array fully or throws EOFEOxception.
 	public void readFully(byte[] b) throws IOException {
 		Objects.requireNonNull(b);
