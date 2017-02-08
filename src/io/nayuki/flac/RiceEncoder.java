@@ -18,12 +18,6 @@ final class RiceEncoder {
 		long bestSize = Integer.MAX_VALUE;
 		int bestOrder = -1;
 		
-		long[] unsigned = new long[data.length];
-		for (int i = warmup; i < unsigned.length; i++) {
-			long val = data[i];
-			unsigned[i] = (val >= 0) ? (val << 1) : (((-val) << 1) - 1);
-		}
-		
 		int[] escapeBits = null;
 		int[] bitsAtParam = null;
 		for (int order = 15; order >= 0; order--) {
@@ -39,8 +33,9 @@ final class RiceEncoder {
 					int j = i / partSize;
 					long val = data[i];
 					escapeBits[j] = Math.max(65 - Long.numberOfLeadingZeros(val ^ (val >> 63)), escapeBits[j]);
-					for (int param = 0; param < 15; param++)
-						bitsAtParam[param + j * 16] += (unsigned[i] >>> param) + 1 + param;
+					val = (val >= 0) ? (val << 1) : (((-val) << 1) - 1);
+					for (int param = 0; param < 15; param++, val >>>= 1)
+						bitsAtParam[param + j * 16] += val + 1 + param;
 				}
 			} else {
 				for (int i = 0; i < numPartitions; i++) {
