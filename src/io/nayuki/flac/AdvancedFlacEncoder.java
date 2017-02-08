@@ -69,11 +69,15 @@ public final class AdvancedFlacEncoder {
 		}
 		
 		// Do the actual encoding and writing
-		for (int i = 0; i < bestEncoders.length; ) {
+		for (int i = 0, numBlocks = 0; i < bestEncoders.length; numBlocks++) {
 			FrameEncoder enc = bestEncoders[i];
 			int pos = i * baseSize;
 			int n = Math.min(enc.blockSize, numSamples - pos);
-			System.err.println(n);
+			if (numBlocks % 20 == 0)
+				System.err.println();
+			else
+				System.err.print(" ");
+			System.err.print(n);
 			long[][] subsamples = getRange(samples, pos, n);
 			bestEncoders[i].encode(subsamples, out);
 			i += (n + baseSize - 1) / baseSize;
