@@ -36,16 +36,13 @@ final class FrameEncoder {
 		this.sampleRate = sampleRate;
 		this.blockSize = data[0].length;
 		
-		// Add up subframe sizes
+		
 		int numChannels = data.length;
 		subEncoders = new SubframeEncoder[numChannels];
-		encodedBitLength = 0;
 		if (numChannels != 2) {
 			channelAssignment = numChannels - 1;
-			for (int i = 0; i < subEncoders.length; i++) {
+			for (int i = 0; i < subEncoders.length; i++)
 				subEncoders[i] = SubframeEncoder.computeBest(data[i], sampleDepth);
-				encodedBitLength += subEncoders[i].getEncodedBitLength();
-			}
 		} else {  // Explore the 4 stereo encoding modes
 			long[] left  = data[0];
 			long[] right = data[1];
@@ -87,6 +84,11 @@ final class FrameEncoder {
 			} else
 				throw new AssertionError();
 		}
+		
+		// Add up subframe sizes
+		encodedBitLength = 0;
+		for (SubframeEncoder enc : subEncoders)
+			encodedBitLength += enc.getEncodedBitLength();
 		
 		// Count length of header (always in whole bytes)
 		try {
