@@ -75,15 +75,18 @@ final class BitInputStream implements AutoCloseable {
 	
 	
 	public int readRiceSignedInt(int param) throws IOException {
-		if (bitBufferLen == 0)
+		if (bitBufferLen < RICE_DECODING_TABLE_BITS)
 			fillBitBuffer();
-		int result = Long.numberOfLeadingZeros(~(~bitBuffer << (64 - bitBufferLen)));
+		int result = RICE_DECODING_TABLE[(int)(bitBuffer >>> (bitBufferLen - RICE_DECODING_TABLE_BITS)) & RICE_DECODING_TABLE_MASK];
 		bitBufferLen -= result;
-		while (bitBufferLen == 0) {
-			fillBitBuffer();
-			int temp = Long.numberOfLeadingZeros(~(~bitBuffer << (64 - bitBufferLen)));
-			result += temp;
-			bitBufferLen -= temp;
+		if (result == RICE_DECODING_TABLE_BITS) {
+			do {
+				if (bitBufferLen == 0)
+					fillBitBuffer();
+				int temp = Long.numberOfLeadingZeros(~(~bitBuffer << (64 - bitBufferLen)));
+				result += temp;
+				bitBufferLen -= temp;
+			} while (bitBufferLen == 0);
 		}
 		assert (bitBuffer >>> (bitBufferLen - 1)) == 1;
 		bitBufferLen--;
@@ -225,6 +228,16 @@ final class BitInputStream implements AutoCloseable {
 	
 	
 	/*---- Tables of constants ----*/
+	
+	private static final int RICE_DECODING_TABLE_BITS = 8;  // Must be between 1 to 8 (inclusive)
+	private static final int RICE_DECODING_TABLE_MASK = (1 << RICE_DECODING_TABLE_BITS) - 1;
+	private static final byte[] RICE_DECODING_TABLE = new byte[1 << RICE_DECODING_TABLE_BITS];  // Number of leading 0 bits in the byte value
+	
+	static {
+		for (int i = 0; i < RICE_DECODING_TABLE.length; i++)
+			RICE_DECODING_TABLE[i] = (byte)(Integer.numberOfLeadingZeros(i) - (32 - RICE_DECODING_TABLE_BITS));
+	}
+	
 	
 	private static byte[] CRC8_TABLE  = new byte[256];
 	private static char[] CRC16_TABLE = new char[256];
