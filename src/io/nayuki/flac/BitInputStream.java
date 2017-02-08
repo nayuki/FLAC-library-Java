@@ -17,6 +17,9 @@ final class BitInputStream implements AutoCloseable {
 	/*---- Fields ----*/
 	
 	private InputStream in;
+	private byte[] byteBuffer;
+	private int byteBufferLen;
+	private int byteBufferIndex;
 	private long bitBuffer;
 	private int bitBufferLen;
 	private int crc8;
@@ -29,6 +32,9 @@ final class BitInputStream implements AutoCloseable {
 	public BitInputStream(InputStream in) {
 		Objects.requireNonNull(in);
 		this.in = in;
+		byteBuffer = new byte[4096];
+		byteBufferLen = 0;
+		byteBufferIndex = 0;
 		bitBuffer = 0;
 		bitBufferLen = 0;
 		crc8  = 0;
@@ -108,17 +114,8 @@ final class BitInputStream implements AutoCloseable {
 	public void readFully(byte[] b) throws IOException {
 		Objects.requireNonNull(b);
 		bitBufferLen &= ~7;  // Align to byte (discards between 0 to 7 bits)
-		int i = 0;
-		for (; bitBufferLen >= 8 && i < b.length; i++) {
-			b[i] = (byte)(bitBuffer >>> (bitBufferLen - 8));
-			bitBufferLen -= 8;
-		}
-		while (i < b.length) {
-			int n = in.read(b, i, b.length - i);
-			if (n == -1)
-				throw new EOFException();
-			i += n;
-		}
+		for (int i = 0; i < b.length; i++)
+			b[i] = (byte)readUint(8);
 	}
 	
 	
@@ -174,9 +171,17 @@ final class BitInputStream implements AutoCloseable {
 	
 	
 	private int readUnderlying() throws IOException {
-		int temp = in.read();
-		if (temp == -1)
-			return temp;
+		if (byteBufferIndex >= byteBufferLen) {
+			if (byteBufferLen == -1)
+				return -1;
+			byteBufferLen = in.read(byteBuffer);
+			if (byteBufferLen <= 0)
+				return -1;
+			byteBufferIndex = 0;
+		}
+		assert byteBufferIndex < byteBufferLen;
+		int temp = byteBuffer[byteBufferIndex] & 0xFF;
+		byteBufferIndex++;
 		crc8 = CRC8_TABLE[crc8 ^ temp] & 0xFF;
 		crc16 = CRC16_TABLE[crc16 >>> 8 ^ temp] ^ ((crc16 & 0xFF) << 8);
 		assert (crc8 >>> 8) == 0;
