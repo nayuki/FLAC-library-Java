@@ -6,7 +6,6 @@
 
 package io.nayuki.flac;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -29,7 +28,7 @@ public final class DecodeFlacToWav {
 		File outFile = new File(args[1]);
 		
 		FlacDecoder dec;
-		try (InputStream in = new BufferedInputStream(new FileInputStream(inFile))) {
+		try (InputStream in = new FileInputStream(inFile)) {
 			dec = new FlacDecoder(in);
 		}
 		if (dec.hashCheck == 0)
