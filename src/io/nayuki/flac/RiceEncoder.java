@@ -45,9 +45,9 @@ final class RiceEncoder {
 			} else {
 				for (int i = 0; i < numPartitions; i++) {
 					int j = i << 1;
-					escapeBits[i] = Math.max(escapeBits[j], escapeBits[j | 1]);
+					escapeBits[i] = Math.max(escapeBits[j], escapeBits[j + 1]);
 					for (int param = 0; param < 15; param++)
-						bitsAtParam[param + i * 16] = bitsAtParam[param + j * 16] + bitsAtParam[param + (j | 1) * 16];
+						bitsAtParam[param + i * 16] = bitsAtParam[param + j * 16] + bitsAtParam[param + (j + 1) * 16];
 				}
 			}
 			
