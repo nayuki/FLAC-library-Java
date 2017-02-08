@@ -75,33 +75,29 @@ final class BitInputStream implements AutoCloseable {
 	
 	
 	public int readRiceSignedInt(int param) throws IOException {
-		if (bitBufferLen < RICE_DECODING_TABLE_BITS)
-			fillBitBuffer();
-		int result = RICE_DECODING_TABLE[(int)(bitBuffer >>> (bitBufferLen - RICE_DECODING_TABLE_BITS)) & RICE_DECODING_TABLE_MASK];
-		bitBufferLen -= result;
-		if (result == RICE_DECODING_TABLE_BITS) {
-			do {
-				if (bitBufferLen == 0)
+		while (true) {  // Simulate goto
+			if (bitBufferLen < RICE_DECODING_TABLE_BITS) {
+				if (((byteBufferLen - byteBufferIndex) << 3) >= RICE_DECODING_TABLE_BITS) {
 					fillBitBuffer();
-				int temp = Long.numberOfLeadingZeros(~(~bitBuffer << (64 - bitBufferLen)));
-				result += temp;
-				bitBufferLen -= temp;
-			} while (bitBufferLen == 0);
-		}
-		assert (bitBuffer >>> (bitBufferLen - 1)) == 1;
-		bitBufferLen--;
-		if (param > 0) {
-			result <<= param;
-			while (bitBufferLen < param) {
-				int b = readUnderlying();
-				if (b == -1)
-					throw new EOFException();
-				bitBuffer = (bitBuffer << 8) | b;
-				bitBufferLen += 8;
+					assert bitBufferLen >= RICE_DECODING_TABLE_BITS;
+				} else
+					break;
 			}
-			result |= (bitBuffer << (64 - bitBufferLen)) >>> (64 - param);
-			bitBufferLen -= param;
+			
+			// Fast decoder
+			int extractedBits = (int)(bitBuffer >>> (bitBufferLen - RICE_DECODING_TABLE_BITS)) & RICE_DECODING_TABLE_MASK;
+			int consumed = RICE_DECODING_CONSUMED_TABLES[param][extractedBits];
+			if (consumed == 0)
+				break;
+			bitBufferLen -= consumed;
+			return RICE_DECODING_VALUE_TABLES[param][extractedBits];
 		}
+		
+		// Slow decoder
+		int result = 0;
+		while (readUint(1) == 0)
+			result++;
+		result = (result << param) | readUint(param);
 		return (result >>> 1) ^ (-(result & 1));
 	}
 	
@@ -235,13 +231,29 @@ final class BitInputStream implements AutoCloseable {
 	
 	/*---- Tables of constants ----*/
 	
-	private static final int RICE_DECODING_TABLE_BITS = 8;  // Must be between 1 to 8 (inclusive)
+	private static final int RICE_DECODING_TABLE_BITS = 13;  // Must be positive
 	private static final int RICE_DECODING_TABLE_MASK = (1 << RICE_DECODING_TABLE_BITS) - 1;
-	private static final byte[] RICE_DECODING_TABLE = new byte[1 << RICE_DECODING_TABLE_BITS];  // Number of leading 0 bits in the byte value
+	private static final byte[][] RICE_DECODING_CONSUMED_TABLES = new byte[31][1 << RICE_DECODING_TABLE_BITS];
+	private static final int[][] RICE_DECODING_VALUE_TABLES = new int[31][1 << RICE_DECODING_TABLE_BITS];
 	
 	static {
-		for (int i = 0; i < RICE_DECODING_TABLE.length; i++)
-			RICE_DECODING_TABLE[i] = (byte)(Integer.numberOfLeadingZeros(i) - (32 - RICE_DECODING_TABLE_BITS));
+		for (int param = 0; param < RICE_DECODING_CONSUMED_TABLES.length; param++) {
+			byte[] consumed = RICE_DECODING_CONSUMED_TABLES[param];
+			int[] values = RICE_DECODING_VALUE_TABLES[param];
+			for (int i = 0; ; i++) {
+				int numBits = (i >>> param) + 1 + param;
+				if (numBits > RICE_DECODING_TABLE_BITS)
+					break;
+				int bits = ((1 << param) | (i & ((1 << param) - 1)));
+				int shift = RICE_DECODING_TABLE_BITS - numBits;
+				for (int j = 0; j < (1 << shift); j++) {
+					consumed[(bits << shift) | j] = (byte)numBits;
+					values[(bits << shift) | j] = (i >>> 1) ^ (-(i & 1));
+				}
+			}
+			if (consumed[0] != 0)
+				throw new AssertionError();
+		}
 	}
 	
 	
