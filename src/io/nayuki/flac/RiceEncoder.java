@@ -25,7 +25,7 @@ final class RiceEncoder {
 		}
 		
 		int[] escapeBits = null;
-		int[][] bitsAtParam = null;
+		int[] bitsAtParam = null;
 		for (int order = 15; order >= 0; order--) {
 			int partSize = data.length >>> order;
 			if ((partSize << order) != data.length || partSize < warmup)
@@ -34,28 +34,28 @@ final class RiceEncoder {
 			
 			if (escapeBits == null) {
 				escapeBits = new int[numPartitions];
-				bitsAtParam = new int[15][numPartitions];
+				bitsAtParam = new int[numPartitions * 16];
 				for (int i = warmup; i < data.length; i++) {
 					int j = i / partSize;
 					long val = data[i];
 					escapeBits[j] = Math.max(65 - Long.numberOfLeadingZeros(val ^ (val >> 63)), escapeBits[j]);
-					for (int param = 0; param < bitsAtParam.length; param++)
-						bitsAtParam[param][j] += (unsigned[i] >>> param) + 1 + param;
+					for (int param = 0; param < 15; param++)
+						bitsAtParam[param + j * 16] += (unsigned[i] >>> param) + 1 + param;
 				}
 			} else {
 				for (int i = 0; i < numPartitions; i++) {
 					int j = i << 1;
 					escapeBits[i] = Math.max(escapeBits[j], escapeBits[j | 1]);
-					for (int param = 0; param < bitsAtParam.length; param++)
-						bitsAtParam[param][i] = bitsAtParam[param][j] + bitsAtParam[param][j | 1];
+					for (int param = 0; param < 15; param++)
+						bitsAtParam[param + i * 16] = bitsAtParam[param + j * 16] + bitsAtParam[param + (j | 1) * 16];
 				}
 			}
 			
 			long size = 4 + (4 << order);
 			for (int i = 0; i < numPartitions; i++) {
 				int min = 5 + escapeBits[i] * (partSize - (i == 0 ? warmup : 0));
-				for (int param = 0; param < bitsAtParam.length; param++)
-					min = Math.min(bitsAtParam[param][i], min);
+				for (int param = 0; param < 15; param++)
+					min = Math.min(bitsAtParam[param + i * 16], min);
 				size += min;
 			}
 			if (size < bestSize) {
