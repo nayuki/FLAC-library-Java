@@ -75,21 +75,12 @@ final class BitInputStream implements AutoCloseable {
 	
 	
 	public int readRiceSignedInt(int param) throws IOException {
-		if (bitBufferLen == 0) {
-			int b = readUnderlying();
-			if (b == -1)
-				throw new EOFException();
-			bitBuffer = b;
-			bitBufferLen = 8;
-		}
+		if (bitBufferLen == 0)
+			fillBitBuffer();
 		int result = Long.numberOfLeadingZeros(~(~bitBuffer << (64 - bitBufferLen)));
 		bitBufferLen -= result;
 		while (bitBufferLen == 0) {
-			int b = readUnderlying();
-			if (b == -1)
-				throw new EOFException();
-			bitBuffer = b;
-			bitBufferLen = 8;
+			fillBitBuffer();
 			int temp = Long.numberOfLeadingZeros(~(~bitBuffer << (64 - bitBufferLen)));
 			result += temp;
 			bitBufferLen -= temp;
@@ -187,6 +178,30 @@ final class BitInputStream implements AutoCloseable {
 		in = null;
 		bitBuffer = 0;
 		bitBufferLen = 0;
+	}
+	
+	
+	private void fillBitBuffer() throws IOException {
+		int i = byteBufferIndex;
+		int n = Math.min((64 - bitBufferLen) >>> 3, byteBufferLen - i);
+		byte[] b = byteBuffer;
+		if (n == 8) {
+			bitBuffer = ((long)(b[i] << 24 | (b[i + 1] & 0xFF) << 16 | (b[i + 2] & 0xFF) << 8 | (b[i + 3] & 0xFF)) << 32)
+				| ((b[i + 4] << 24 | (b[i + 5] & 0xFF) << 16 | (b[i + 6] & 0xFF) << 8 | (b[i + 7] & 0xFF)) & 0xFFFFFFFFL);
+			bitBufferLen = 64;
+		} else if (n > 0) {
+			for (int j = 0; j < n; j++, i++)
+				bitBuffer = (bitBuffer << 8) | (b[i] & 0xFF);
+			bitBufferLen += n << 3;
+		} else if (bitBufferLen <= 56) {
+			int temp = readUnderlying();
+			if (temp == -1)
+				throw new EOFException();
+			bitBuffer = (bitBuffer << 8) | temp;
+			bitBufferLen += 8;
+		}
+		assert bitBufferLen >= 8;
+		byteBufferIndex += n;
 	}
 	
 	
