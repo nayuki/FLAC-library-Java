@@ -139,16 +139,31 @@ final class BitInputStream implements AutoCloseable {
 		int temp = in.read();
 		if (temp == -1)
 			return temp;
-		
-		crc8 ^= temp;
-		crc16 ^= temp << 8;
-		for (int i = 0; i < 8; i++) {
-			crc8 <<= 1;
-			crc16 <<= 1;
-			crc8 ^= (crc8 >>> 8) * 0x107;
-			crc16 ^= (crc16 >>> 16) * 0x18005;
-		}
+		crc8 = CRC8_TABLE[crc8 ^ temp] & 0xFF;
+		crc16 = CRC16_TABLE[crc16 >>> 8 ^ temp] ^ ((crc16 & 0xFF) << 8);
+		assert (crc8 >>> 8) == 0;
+		assert (crc16 >>> 16) == 0;
 		return temp;
+	}
+	
+	
+	
+	/*---- Tables of constants ----*/
+	
+	private static byte[] CRC8_TABLE  = new byte[256];
+	private static char[] CRC16_TABLE = new char[256];
+	
+	static {
+		for (int i = 0; i < CRC8_TABLE.length; i++) {
+			int temp8 = i;
+			int temp16 = i << 8;
+			for (int j = 0; j < 8; j++) {
+				temp8 = (temp8 << 1) ^ ((temp8 >>> 7) * 0x107);
+				temp16 = (temp16 << 1) ^ ((temp16 >>> 15) * 0x18005);
+			}
+			CRC8_TABLE[i] = (byte)temp8;
+			CRC16_TABLE[i] = (char)temp16;
+		}
 	}
 	
 }
