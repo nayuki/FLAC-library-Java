@@ -36,14 +36,17 @@ public final class AdvancedFlacEncoder {
 		
 		// Calculate compressed sizes for many block positions and sizes
 		FrameEncoder[][] encoders = new FrameEncoder[sizeMultiples.length][(numSamples + baseSize - 1) / baseSize];
-		for (int i = 0; i < encoders.length; i++) {
-			int blockSize = sizeMultiples[i] * baseSize;
-			for (int j = 0; j < encoders[i].length; j++) {
-				int pos = j * baseSize;
-				int n = Math.min(blockSize, numSamples - pos);
+		long startTime = System.currentTimeMillis();
+		for (int i = 0; i < encoders[0].length; i++) {
+			double progress = (double)i / encoders[0].length;
+			double timeRemain = (System.currentTimeMillis() - startTime) / 1000.0 / progress * (1 - progress);
+			System.err.printf("\rprogress=%.2f%%    timeRemain=%ds", progress * 100, Math.round(timeRemain));
+			
+			int pos = i * baseSize;
+			for (int j = 0; j < encoders.length; j++) {
+				int n = Math.min(sizeMultiples[j] * baseSize, numSamples - pos);
 				long[][] subsamples = getRange(samples, pos, n);
-				encoders[i][j] = new FrameEncoder(pos, subsamples, 16, sampleRate);
-				System.err.printf("size=%d  position=%d  %.2f%%  bits=%d%n", blockSize, pos, 100.0 * pos / numSamples, encoders[i][j].getEncodedBitLength());
+				encoders[j][i] = new FrameEncoder(pos, subsamples, 16, sampleRate);
 			}
 		}
 		
