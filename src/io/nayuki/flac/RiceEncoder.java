@@ -17,37 +17,56 @@ final class RiceEncoder {
 	public static long computeBestSizeAndOrder(long[] data, int warmup) {
 		long bestSize = Integer.MAX_VALUE;
 		int bestOrder = -1;
-		for (int i = 0; i <= 15; i++) {
-			long size = computeBestSize(data, warmup, i);
+		
+		long[] unsigned = new long[data.length];
+		for (int i = warmup; i < unsigned.length; i++) {
+			long val = data[i];
+			unsigned[i] = (val >= 0) ? (val << 1) : (((-val) << 1) - 1);
+		}
+		
+		int[] escapeBits = null;
+		int[][] bitsAtParam = null;
+		for (int order = 15; order >= 0; order--) {
+			int partSize = data.length >>> order;
+			if ((partSize << order) != data.length || partSize < warmup)
+				continue;
+			int numPartitions = 1 << order;
+			
+			if (escapeBits == null) {
+				escapeBits = new int[numPartitions];
+				bitsAtParam = new int[15][numPartitions];
+				for (int i = warmup; i < data.length; i++) {
+					int j = i / partSize;
+					long val = data[i];
+					escapeBits[j] = Math.max(65 - Long.numberOfLeadingZeros(val ^ (val >> 63)), escapeBits[j]);
+					for (int param = 0; param < bitsAtParam.length; param++)
+						bitsAtParam[param][j] += (unsigned[i] >>> param) + 1 + param;
+				}
+			} else {
+				for (int i = 0; i < numPartitions; i++) {
+					int j = i << 1;
+					escapeBits[i] = Math.max(escapeBits[j], escapeBits[j | 1]);
+					for (int param = 0; param < bitsAtParam.length; param++)
+						bitsAtParam[param][i] = bitsAtParam[param][j] + bitsAtParam[param][j | 1];
+				}
+			}
+			
+			long size = 4 + (4 << order);
+			for (int i = 0; i < numPartitions; i++) {
+				int min = 5 + escapeBits[i] * (partSize - (i == 0 ? warmup : 0));
+				for (int param = 0; param < bitsAtParam.length; param++)
+					min = Math.min(bitsAtParam[param][i], min);
+				size += min;
+			}
 			if (size < bestSize) {
 				bestSize = size;
-				bestOrder = i;
+				bestOrder = order;
 			}
 		}
+		
 		if (bestSize == Integer.MAX_VALUE)
 			throw new AssertionError();
 		return bestSize << 4 | bestOrder;
-	}
-	
-	
-	// Calculates the number of bits needed to encode the sequence of values data[warmup : data.length]
-	// with the given partition order (i.e. log2 of the number of partitions).
-	private static long computeBestSize(long[] data, int warmup, int partOrder) {
-		int numPartitions = 1 << partOrder;
-		int partSize = data.length >>> partOrder;
-		if (data.length % numPartitions != 0 || partSize < warmup)
-			return Integer.MAX_VALUE;
-		
-		int start = warmup;
-		int end = partSize;
-		long result = 4;
-		for (int i = 0; i < numPartitions; i++) {
-			long temp = computeBestSizeAndParam(data, start, end);
-			result += temp >>> 7;
-			start = end;
-			end += partSize;
-		}
-		return result;
 	}
 	
 	
