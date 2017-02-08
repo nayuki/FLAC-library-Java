@@ -318,19 +318,16 @@ public final class FrameDecoder {
 				throw new DataFormatException("Block size not divisible by number of Rice partitions");
 			int paramBits = method == 0 ? 4 : 5;
 			int escapeParam = method == 0 ? 0xF : 0x1F;
-			
-			for (int partIndex = 0, resultIndex = warmup; partIndex < numPartitions; partIndex++) {
-				int subcount = numSamples >>> partitionOrder;
-				if (partIndex == 0)
-					subcount -= warmup;
+			for (int inc = numSamples >>> partitionOrder, partEnd = inc, resultIndex = warmup;
+					partEnd <= numSamples; partEnd += inc) {
 				
 				int param = in.readUint(paramBits);
 				if (param == escapeParam) {
 					int numBits = in.readUint(5);
-					for (int i = 0; i < subcount; i++, resultIndex++)
+					for (; resultIndex < partEnd; resultIndex++)
 						result[resultIndex] = in.readSignedInt(numBits);
 				} else {
-					for (int i = 0; i < subcount; i++, resultIndex++)
+					for (; resultIndex < partEnd; resultIndex++)
 						result[resultIndex] = in.readRiceSignedInt(param);
 				}
 			}
