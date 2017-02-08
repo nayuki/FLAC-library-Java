@@ -20,6 +20,7 @@ final class BitInputStream implements AutoCloseable {
 	private byte[] byteBuffer;
 	private int byteBufferLen;
 	private int byteBufferIndex;
+	private int crcStartIndex;
 	private long bitBuffer;
 	private int bitBufferLen;
 	private int crc8;
@@ -35,6 +36,7 @@ final class BitInputStream implements AutoCloseable {
 		byteBuffer = new byte[4096];
 		byteBufferLen = 0;
 		byteBufferIndex = 0;
+		crcStartIndex = 0;
 		bitBuffer = 0;
 		bitBufferLen = 0;
 		crc8  = 0;
@@ -141,6 +143,7 @@ final class BitInputStream implements AutoCloseable {
 	public int getCrc8() {
 		if (bitBufferLen % 8 != 0)
 			throw new IllegalStateException();
+		updateCrcs();
 		if ((crc8 >>> 8) != 0)
 			throw new AssertionError();
 		return crc8;
@@ -150,13 +153,27 @@ final class BitInputStream implements AutoCloseable {
 	public int getCrc16() {
 		if (bitBufferLen % 8 != 0)
 			throw new IllegalStateException();
+		updateCrcs();
 		if ((crc16 >>> 16) != 0)
 			throw new AssertionError();
 		return crc16;
 	}
 	
 	
+	private void updateCrcs() {
+		for (int i = crcStartIndex; i < byteBufferIndex; i++) {
+			int b = byteBuffer[i] & 0xFF;
+			crc8 = CRC8_TABLE[crc8 ^ b] & 0xFF;
+			crc16 = CRC16_TABLE[crc16 >>> 8 ^ b] ^ ((crc16 & 0xFF) << 8);
+			assert (crc8 >>> 8) == 0;
+			assert (crc16 >>> 16) == 0;
+		}
+		crcStartIndex = byteBufferIndex;
+	}
+	
+	
 	public void resetCrcs() {
+		crcStartIndex = byteBufferIndex;
 		crc8 = 0;
 		crc16 = 0;
 	}
@@ -174,7 +191,9 @@ final class BitInputStream implements AutoCloseable {
 		if (byteBufferIndex >= byteBufferLen) {
 			if (byteBufferLen == -1)
 				return -1;
+			updateCrcs();
 			byteBufferLen = in.read(byteBuffer);
+			crcStartIndex = 0;
 			if (byteBufferLen <= 0)
 				return -1;
 			byteBufferIndex = 0;
@@ -182,10 +201,6 @@ final class BitInputStream implements AutoCloseable {
 		assert byteBufferIndex < byteBufferLen;
 		int temp = byteBuffer[byteBufferIndex] & 0xFF;
 		byteBufferIndex++;
-		crc8 = CRC8_TABLE[crc8 ^ temp] & 0xFF;
-		crc16 = CRC16_TABLE[crc16 >>> 8 ^ temp] ^ ((crc16 & 0xFF) << 8);
-		assert (crc8 >>> 8) == 0;
-		assert (crc16 >>> 16) == 0;
 		return temp;
 	}
 	
