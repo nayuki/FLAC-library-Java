@@ -69,7 +69,7 @@ final class BitInputStream implements AutoCloseable {
 	// Discards any partial bits, then reads the given array fully or throws EOFEOxception.
 	public void readFully(byte[] b) throws IOException {
 		Objects.requireNonNull(b);
-		alignToByte();
+		bitBufferLen &= ~7;  // Align to byte (discards between 0 to 7 bits)
 		int i = 0;
 		for (; bitBufferLen >= 8 && i < b.length; i++) {
 			b[i] = (byte)(bitBuffer >>> (bitBufferLen - 8));
@@ -86,7 +86,7 @@ final class BitInputStream implements AutoCloseable {
 	
 	// Discards any partial bits, then either returns an unsigned byte value or -1 for EOF.
 	public int readByte() throws IOException {
-		alignToByte();
+		bitBufferLen &= ~7;  // Align to byte (discards between 0 to 7 bits)
 		if (bitBufferLen >= 8) {
 			int result = (int)(bitBuffer >>> (bitBufferLen - 8)) & 0xFF;
 			bitBufferLen -= 8;
@@ -95,12 +95,6 @@ final class BitInputStream implements AutoCloseable {
 			bitBufferLen = 0;
 			return readUnderlying();
 		}
-	}
-	
-	
-	// Discards between 0 to 7 bits so that the next read starts at a whole byte boundary.
-	public void alignToByte() {
-		bitBufferLen &= ~7;
 	}
 	
 	
