@@ -39,15 +39,11 @@ final class FrameEncoder {
 			SizeEstimate<SubframeEncoder> rightInfo = SubframeEncoder.computeBest(right, sampleDepth);
 			SizeEstimate<SubframeEncoder> midInfo   = SubframeEncoder.computeBest(mid  , sampleDepth);
 			SizeEstimate<SubframeEncoder> sideInfo  = SubframeEncoder.computeBest(side , sampleDepth + 1);
-			int leftSize  = (int)leftInfo .sizeEstimate;
-			int rightSize = (int)rightInfo.sizeEstimate;
-			int midSize   = (int)midInfo  .sizeEstimate;
-			int sideSize  = (int)sideInfo .sizeEstimate;
-			int mode1Size = leftSize + rightSize;
-			int mode8Size = leftSize + sideSize;
-			int mode9Size = rightSize + sideSize;
-			int mode10Size = midSize + sideSize;
-			int minimum = Math.min(Math.min(mode1Size, mode8Size), Math.min(mode9Size, mode10Size));
+			long mode1Size = leftInfo.sizeEstimate + rightInfo.sizeEstimate;
+			long mode8Size = leftInfo.sizeEstimate + sideInfo.sizeEstimate;
+			long mode9Size = rightInfo.sizeEstimate + sideInfo.sizeEstimate;
+			long mode10Size = midInfo.sizeEstimate + sideInfo.sizeEstimate;
+			long minimum = Math.min(Math.min(mode1Size, mode8Size), Math.min(mode9Size, mode10Size));
 			if (mode1Size == minimum) {
 				enc.channelAssignment = 1;
 				encoderInfo[0] = leftInfo;
