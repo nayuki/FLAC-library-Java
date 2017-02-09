@@ -41,12 +41,12 @@ final class FastDotProduct {
 		if (delta > precomputed.length)
 			throw new IllegalArgumentException();
 		
-		double result = precomputed[delta];
+		double removal = 0;
 		for (int i = 0; i < off0; i++)
-			result -= (double)data[i] * data[i + delta];
+			removal += (double)data[i] * data[i + delta];
 		for (int i = off1 + len; i < data.length; i++)
-			result -= (double)data[i] * data[i - delta];
-		return result;
+			removal += (double)data[i] * data[i - delta];
+		return precomputed[delta] - removal;
 	}
 	
 }
