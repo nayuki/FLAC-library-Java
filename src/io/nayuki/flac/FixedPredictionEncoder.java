@@ -12,6 +12,13 @@ import java.util.Objects;
 
 final class FixedPredictionEncoder extends SubframeEncoder {
 	
+	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth, int order) {
+		FixedPredictionEncoder enc = new FixedPredictionEncoder(data, shift, depth, order);
+		return new SizeEstimate<SubframeEncoder>(enc.getEncodedBitLength(), enc);
+	}
+	
+	
+	
 	private final int order;
 	
 	

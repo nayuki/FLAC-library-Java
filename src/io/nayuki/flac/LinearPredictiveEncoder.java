@@ -12,6 +12,13 @@ import java.util.Objects;
 
 final class LinearPredictiveEncoder extends SubframeEncoder {
 	
+	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth, int order, FastDotProduct fdp) {
+		LinearPredictiveEncoder enc = new LinearPredictiveEncoder(data, shift, depth, order, fdp);
+		return new SizeEstimate<SubframeEncoder>(enc.getEncodedBitLength(), enc);
+	}
+	
+	
+	
 	private final int order;
 	private final int[] coefficients;
 	private final int coefDepth;

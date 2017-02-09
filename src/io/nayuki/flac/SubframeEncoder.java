@@ -14,6 +14,12 @@ abstract class SubframeEncoder {
 	
 	/*---- Static functions ----*/
 	
+	public static SizeEstimate<SubframeEncoder> computeBestNew(long[] data, int sampleDepth) {
+		SubframeEncoder enc = computeBest(data, sampleDepth);
+		return new SizeEstimate<>(enc.getEncodedBitLength(), enc);
+	}
+	
+	
 	public static SubframeEncoder computeBest(long[] data, int sampleDepth) {
 		// Check arguments
 		Objects.requireNonNull(data);

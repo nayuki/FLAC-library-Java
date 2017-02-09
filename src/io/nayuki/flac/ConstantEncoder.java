@@ -11,6 +11,14 @@ import java.io.IOException;
 
 final class ConstantEncoder extends SubframeEncoder {
 	
+	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth) {
+		if (!isConstant(data))
+			return null;
+		ConstantEncoder enc = new ConstantEncoder(data, shift, depth);
+		return new SizeEstimate<SubframeEncoder>(enc.getEncodedBitLength(), enc);
+	}
+	
+	
 	public ConstantEncoder(long[] data, int shift, int depth) {
 		super(shift, depth);
 		if (isConstant(data))
