@@ -35,35 +35,36 @@ public final class AdvancedFlacEncoder {
 		int[] sizeMultiples = {3, 4, 5, 6};
 		
 		// Calculate compressed sizes for many block positions and sizes
-		FrameEncoder[][] encoders = new FrameEncoder[sizeMultiples.length][(numSamples + baseSize - 1) / baseSize];
+		@SuppressWarnings("unchecked")
+		SizeEstimate<FrameEncoder>[][] encoderInfo = new SizeEstimate[sizeMultiples.length][(numSamples + baseSize - 1) / baseSize];
 		long startTime = System.currentTimeMillis();
-		for (int i = 0; i < encoders[0].length; i++) {
-			double progress = (double)i / encoders[0].length;
+		for (int i = 0; i < encoderInfo[0].length; i++) {
+			double progress = (double)i / encoderInfo[0].length;
 			double timeRemain = (System.currentTimeMillis() - startTime) / 1000.0 / progress * (1 - progress);
 			System.err.printf("\rprogress=%.2f%%    timeRemain=%ds", progress * 100, Math.round(timeRemain));
 			
 			int pos = i * baseSize;
-			for (int j = 0; j < encoders.length; j++) {
+			for (int j = 0; j < encoderInfo.length; j++) {
 				int n = Math.min(sizeMultiples[j] * baseSize, numSamples - pos);
 				long[][] subsamples = getRange(samples, pos, n);
-				encoders[j][i] = new FrameEncoder(pos, subsamples, 16, sampleRate);
+				encoderInfo[j][i] = FrameEncoder.computeBest(pos, subsamples, 16, sampleRate);
 			}
 		}
 		
 		// Initialize arrays to prepare for dynamic programming
-		FrameEncoder[] bestEncoders = new FrameEncoder[encoders[0].length];
+		FrameEncoder[] bestEncoders = new FrameEncoder[encoderInfo[0].length];
 		long[] bestSizes = new long[bestEncoders.length];
 		Arrays.fill(bestSizes, Integer.MAX_VALUE);
 		
 		// Use dynamic programming to calculate optimum block size switching
-		for (int i = 0; i < encoders.length; i++) {
+		for (int i = 0; i < encoderInfo.length; i++) {
 			for (int j = bestSizes.length - 1; j >= 0; j--) {
-				int size = encoders[i][j].getEncodedBitLength();
+				int size = (int)encoderInfo[i][j].sizeEstimate;
 				if (j + sizeMultiples[i] < bestSizes.length)
 					size += bestSizes[j + sizeMultiples[i]];
 				if (size < bestSizes[j]) {
 					bestSizes[j] = size;
-					bestEncoders[j] = encoders[i][j];
+					bestEncoders[j] = encoderInfo[i][j].encoder;
 				}
 			}
 		}

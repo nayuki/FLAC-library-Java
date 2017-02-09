@@ -15,6 +15,15 @@ import java.util.Objects;
 
 final class FrameEncoder {
 	
+	/*---- Static functions ----*/
+	
+	public static SizeEstimate<FrameEncoder> computeBest(int sampleOffset, long[][] data, int sampleDepth, int sampleRate) {
+		FrameEncoder enc = new FrameEncoder(sampleOffset, data, sampleDepth, sampleRate);
+		return new SizeEstimate<>(enc.encodedBitLength, enc);
+	}
+	
+	
+	
 	/*---- Fields ----*/
 	
 	private final int sampleOffset;
