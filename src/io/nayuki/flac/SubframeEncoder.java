@@ -14,13 +14,7 @@ abstract class SubframeEncoder {
 	
 	/*---- Static functions ----*/
 	
-	public static SizeEstimate<SubframeEncoder> computeBestNew(long[] data, int sampleDepth) {
-		SubframeEncoder enc = computeBest(data, sampleDepth);
-		return new SizeEstimate<>(enc.getEncodedBitLength(), enc);
-	}
-	
-	
-	public static SubframeEncoder computeBest(long[] data, int sampleDepth) {
+	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int sampleDepth) {
 		// Check arguments
 		Objects.requireNonNull(data);
 		if (sampleDepth < 1 || sampleDepth > 33)
@@ -30,7 +24,7 @@ abstract class SubframeEncoder {
 		SizeEstimate<SubframeEncoder> result = ConstantEncoder.computeBest(data, 0, sampleDepth);
 		if (result != null) {
 			result.encoder.encodedBitLength = (int)result.sizeEstimate;
-			return result.encoder;
+			return result;
 		}
 		
 		// Detect number of trailing zero bits
@@ -57,7 +51,7 @@ abstract class SubframeEncoder {
 		
 		// Return the encoder found with the lowest bit length
 		result.encoder.encodedBitLength = (int)result.sizeEstimate;
-		return result.encoder;
+		return result;
 	}
 	
 	

@@ -38,11 +38,12 @@ final class FrameEncoder {
 		
 		
 		int numChannels = data.length;
-		subEncoders = new SubframeEncoder[numChannels];
+		@SuppressWarnings("unchecked")
+		SizeEstimate<SubframeEncoder>[] encoderInfo = new SizeEstimate[numChannels];
 		if (numChannels != 2) {
 			channelAssignment = numChannels - 1;
-			for (int i = 0; i < subEncoders.length; i++)
-				subEncoders[i] = SubframeEncoder.computeBest(data[i], sampleDepth);
+			for (int i = 0; i < encoderInfo.length; i++)
+				encoderInfo[i] = SubframeEncoder.computeBest(data[i], sampleDepth);
 		} else {  // Explore the 4 stereo encoding modes
 			long[] left  = data[0];
 			long[] right = data[1];
@@ -52,14 +53,14 @@ final class FrameEncoder {
 				mid[i] = (left[i] + right[i]) >> 1;
 				side[i] = left[i] - right[i];
 			}
-			SubframeEncoder leftEnc  = SubframeEncoder.computeBest(left , sampleDepth);
-			SubframeEncoder rightEnc = SubframeEncoder.computeBest(right, sampleDepth);
-			SubframeEncoder midEnc   = SubframeEncoder.computeBest(mid  , sampleDepth);
-			SubframeEncoder sideEnc  = SubframeEncoder.computeBest(side , sampleDepth + 1);
-			int leftSize  = leftEnc .getEncodedBitLength();
-			int rightSize = rightEnc.getEncodedBitLength();
-			int midSize   = midEnc  .getEncodedBitLength();
-			int sideSize  = sideEnc .getEncodedBitLength();
+			SizeEstimate<SubframeEncoder> leftInfo  = SubframeEncoder.computeBest(left , sampleDepth);
+			SizeEstimate<SubframeEncoder> rightInfo = SubframeEncoder.computeBest(right, sampleDepth);
+			SizeEstimate<SubframeEncoder> midInfo   = SubframeEncoder.computeBest(mid  , sampleDepth);
+			SizeEstimate<SubframeEncoder> sideInfo  = SubframeEncoder.computeBest(side , sampleDepth + 1);
+			int leftSize  = (int)leftInfo .sizeEstimate;
+			int rightSize = (int)rightInfo.sizeEstimate;
+			int midSize   = (int)midInfo  .sizeEstimate;
+			int sideSize  = (int)sideInfo .sizeEstimate;
 			int mode1Size = leftSize + rightSize;
 			int mode8Size = leftSize + sideSize;
 			int mode9Size = rightSize + sideSize;
@@ -67,28 +68,31 @@ final class FrameEncoder {
 			int minimum = Math.min(Math.min(mode1Size, mode8Size), Math.min(mode9Size, mode10Size));
 			if (mode1Size == minimum) {
 				channelAssignment = 1;
-				subEncoders[0] = leftEnc;
-				subEncoders[1] = rightEnc;
+				encoderInfo[0] = leftInfo;
+				encoderInfo[1] = rightInfo;
 			} else if (mode8Size == minimum) {
 				channelAssignment = 8;
-				subEncoders[0] = leftEnc;
-				subEncoders[1] = sideEnc;
+				encoderInfo[0] = leftInfo;
+				encoderInfo[1] = sideInfo;
 			} else if (mode9Size == minimum) {
 				channelAssignment = 9;
-				subEncoders[0] = sideEnc;
-				subEncoders[1] = rightEnc;
+				encoderInfo[0] = sideInfo;
+				encoderInfo[1] = rightInfo;
 			} else if (mode10Size == minimum) {
 				channelAssignment = 10;
-				subEncoders[0] = midEnc;
-				subEncoders[1] = sideEnc;
+				encoderInfo[0] = midInfo;
+				encoderInfo[1] = sideInfo;
 			} else
 				throw new AssertionError();
 		}
 		
 		// Add up subframe sizes
 		encodedBitLength = 0;
-		for (SubframeEncoder enc : subEncoders)
-			encodedBitLength += enc.getEncodedBitLength();
+		subEncoders = new SubframeEncoder[encoderInfo.length];
+		for (int i = 0; i < subEncoders.length; i++) {
+			encodedBitLength += encoderInfo[i].sizeEstimate;
+			subEncoders[i] = encoderInfo[i].encoder;
+		}
 		
 		// Count length of header (always in whole bytes)
 		try {
