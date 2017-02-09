@@ -1,3 +1,9 @@
+/* 
+ * FLAC library (Java)
+ * Copyright (c) Project Nayuki. All rights reserved.
+ * https://www.nayuki.io/
+ */
+
 package io.nayuki.flac;
 
 import java.util.Objects;
