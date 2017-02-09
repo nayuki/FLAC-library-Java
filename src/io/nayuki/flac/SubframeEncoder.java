@@ -23,7 +23,6 @@ abstract class SubframeEncoder {
 		// Encode with constant if possible
 		SizeEstimate<SubframeEncoder> result = ConstantEncoder.computeBest(data, 0, sampleDepth);
 		if (result != null) {
-			result.encoder.encodedBitLength = (int)result.sizeEstimate;
 			return result;
 		}
 		
@@ -50,7 +49,6 @@ abstract class SubframeEncoder {
 		}
 		
 		// Return the encoder found with the lowest bit length
-		result.encoder.encodedBitLength = (int)result.sizeEstimate;
 		return result;
 	}
 	
@@ -68,7 +66,6 @@ abstract class SubframeEncoder {
 	
 	protected final int sampleShift;  // At least 0
 	protected final int sampleDepth;  // In the range [1, 33]
-	protected int encodedBitLength;   // Must be at least 0
 	
 	
 	protected SubframeEncoder(int shift, int depth) {
@@ -76,13 +73,6 @@ abstract class SubframeEncoder {
 			throw new IllegalArgumentException();
 		sampleShift = shift;
 		sampleDepth = depth;
-	}
-	
-	
-	public final int getEncodedBitLength() {
-		if (encodedBitLength < 0)
-			throw new IllegalStateException();
-		return encodedBitLength;
 	}
 	
 	
