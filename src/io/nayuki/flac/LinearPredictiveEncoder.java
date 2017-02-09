@@ -26,6 +26,7 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	
 	
 	private final int order;
+	private final double[] realCoefs;
 	private final int[] coefficients;
 	private final int coefDepth;
 	private final int coefShift;
@@ -52,9 +53,9 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 		}
 		
 		// Solve matrix, then examine range of coefficients
-		double[] coefs = solveMatrix(matrix);
+		realCoefs = solveMatrix(matrix);
 		double maxCoef = 0;
-		for (double x : coefs)
+		for (double x : realCoefs)
 			maxCoef = Math.max(Math.abs(x), maxCoef);
 		int wholeBits = maxCoef >= 1 ? (int)(Math.log(maxCoef) / Math.log(2)) + 1 : 0;
 		
@@ -62,8 +63,8 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 		coefficients = new int[order];
 		coefDepth = 15;  // The maximum possible
 		coefShift = coefDepth - 1 - wholeBits;
-		for (int i = 0; i < coefs.length; i++) {
-			double coef = coefs[coefs.length - 1 - i];
+		for (int i = 0; i < realCoefs.length; i++) {
+			double coef = realCoefs[realCoefs.length - 1 - i];
 			int val = (int)Math.round(coef * (1 << coefShift));
 			coefficients[i] = Math.max(Math.min(val, (1 << (coefDepth - 1)) - 1), -(1 << (coefDepth - 1)));
 		}
