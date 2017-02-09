@@ -33,13 +33,10 @@ final class FastDotProduct {
 	
 	
 	public double dotProduct(int off0, int off1, int len) {
-		if (off0 < 0 || off1 < 0 || len < 0 || data.length - len < Math.max(off0, off1))
+		if (off0 > off1)
+			return dotProduct(off1, off0, len);
+		if (off0 < 0 || off1 < 0 || len < 0 || data.length - len < off1)
 			throw new IndexOutOfBoundsException();
-		if (off0 > off1) {
-			int temp = off0;
-			off0 = off1;
-			off1 = temp;
-		}
 		int delta = off1 - off0;
 		if (delta > precomputed.length)
 			throw new IllegalArgumentException();
