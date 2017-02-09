@@ -27,34 +27,37 @@ abstract class SubframeEncoder {
 			throw new IllegalArgumentException();
 		
 		// Encode with constant if possible
-		SubframeEncoder result = new ConstantEncoder(data, 0, sampleDepth);
-		if (result.encodedBitLength != Integer.MAX_VALUE)
-			return result;
+		SizeEstimate<SubframeEncoder> result = ConstantEncoder.computeBest(data, 0, sampleDepth);
+		if (result != null) {
+			result.encoder.encodedBitLength = (int)result.sizeEstimate;
+			return result.encoder;
+		}
 		
 		// Detect number of trailing zero bits
 		int shift = computeWastedBits(data);
 		sampleDepth -= shift;
 		
 		// Start with verbatim as fallback
-		result = new VerbatimEncoder(data, shift, sampleDepth);
+		result = VerbatimEncoder.computeBest(data, shift, sampleDepth);
 		
 		// Try fixed prediction encoding
 		for (int order = 0; order <= 4; order++) {
-			FixedPredictionEncoder temp = new FixedPredictionEncoder(data, shift, sampleDepth, order);
-			if (temp.encodedBitLength < result.encodedBitLength)
+			SizeEstimate<SubframeEncoder> temp = FixedPredictionEncoder.computeBest(data, shift, sampleDepth, order);
+			if (temp.sizeEstimate < result.sizeEstimate)
 				result = temp;
 		}
 		
 		// Try linear predictive coding
 		FastDotProduct fdp = new FastDotProduct(data, 32);
 		for (int order = 2; order <= 32; order++) {
-			LinearPredictiveEncoder temp = new LinearPredictiveEncoder(data, shift, sampleDepth, order, fdp);
-			if (temp.encodedBitLength < result.encodedBitLength)
+			SizeEstimate<SubframeEncoder> temp = LinearPredictiveEncoder.computeBest(data, shift, sampleDepth, order, fdp);
+			if (temp.sizeEstimate < result.sizeEstimate)
 				result = temp;
 		}
 		
 		// Return the encoder found with the lowest bit length
-		return result;
+		result.encoder.encodedBitLength = (int)result.sizeEstimate;
+		return result.encoder;
 	}
 	
 	

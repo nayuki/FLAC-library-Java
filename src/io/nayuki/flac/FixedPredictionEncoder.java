@@ -14,7 +14,13 @@ final class FixedPredictionEncoder extends SubframeEncoder {
 	
 	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth, int order) {
 		FixedPredictionEncoder enc = new FixedPredictionEncoder(data, shift, depth, order);
-		return new SizeEstimate<SubframeEncoder>(enc.getEncodedBitLength(), enc);
+		data = data.clone();
+		for (int i = 0; i < data.length; i++)
+			data[i] >>= shift;
+		applyLpc(data, COEFFICIENTS[order], 0);
+		int temp = (int)(RiceEncoder.computeBestSizeAndOrder(data, order) >>> 4);
+		long size = 1 + 6 + 1 + shift + order * depth + temp;
+		return new SizeEstimate<SubframeEncoder>(size, enc);
 	}
 	
 	
@@ -27,14 +33,6 @@ final class FixedPredictionEncoder extends SubframeEncoder {
 		if (order < 0 || order >= COEFFICIENTS.length || data.length < order)
 			throw new IllegalArgumentException();
 		this.order = order;
-		
-		data = data.clone();
-		for (int i = 0; i < data.length; i++)
-			data[i] >>= shift;
-		
-		applyLpc(data, COEFFICIENTS[order], 0);
-		int temp = (int)(RiceEncoder.computeBestSizeAndOrder(data, order) >>> 4);
-		encodedBitLength = 1 + 6 + 1 + shift + order * depth + temp;
 	}
 	
 	

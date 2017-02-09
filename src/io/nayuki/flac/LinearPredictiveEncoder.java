@@ -14,7 +14,13 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	
 	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth, int order, FastDotProduct fdp) {
 		LinearPredictiveEncoder enc = new LinearPredictiveEncoder(data, shift, depth, order, fdp);
-		return new SizeEstimate<SubframeEncoder>(enc.getEncodedBitLength(), enc);
+		data = data.clone();
+		for (int i = 0; i < data.length; i++)
+			data[i] >>= shift;
+		applyLpc(data, enc.coefficients, enc.coefShift);
+		int temp = (int)(RiceEncoder.computeBestSizeAndOrder(data, order) >>> 4);
+		long size = 1 + 6 + 1 + shift + order * depth + temp;
+		return new SizeEstimate<SubframeEncoder>(size, enc);
 	}
 	
 	
@@ -31,10 +37,6 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 		if (order < 1 || order > 32 || numSamples < order)
 			throw new IllegalArgumentException();
 		this.order = order;
-		
-		data = data.clone();
-		for (int i = 0; i < data.length; i++)
-			data[i] >>= shift;
 		
 		// Set up matrix to solve linear least squares problem
 		double[][] matrix = new double[order][order + 1];
@@ -65,10 +67,6 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 			int val = (int)Math.round(coef * (1 << coefShift));
 			coefficients[i] = Math.max(Math.min(val, (1 << (coefDepth - 1)) - 1), -(1 << (coefDepth - 1)));
 		}
-		
-		applyLpc(data, coefficients, coefShift);
-		int temp = (int)(RiceEncoder.computeBestSizeAndOrder(data, order) >>> 4);
-		encodedBitLength = 1 + 6 + 1 + shift + order * depth + temp;
 	}
 	
 	

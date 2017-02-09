@@ -15,16 +15,13 @@ final class ConstantEncoder extends SubframeEncoder {
 		if (!isConstant(data))
 			return null;
 		ConstantEncoder enc = new ConstantEncoder(data, shift, depth);
-		return new SizeEstimate<SubframeEncoder>(enc.getEncodedBitLength(), enc);
+		long size = 1 + 6 + 1 + shift + depth;
+		return new SizeEstimate<SubframeEncoder>(size, enc);
 	}
 	
 	
 	public ConstantEncoder(long[] data, int shift, int depth) {
 		super(shift, depth);
-		if (isConstant(data))
-			encodedBitLength = 1 + 6 + 1 + shift + depth;
-		else
-			encodedBitLength = Integer.MAX_VALUE;
 	}
 	
 	
