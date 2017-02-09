@@ -19,46 +19,19 @@ final class FrameEncoder {
 	
 	public static SizeEstimate<FrameEncoder> computeBest(int sampleOffset, long[][] data, int sampleDepth, int sampleRate) {
 		FrameEncoder enc = new FrameEncoder(sampleOffset, data, sampleDepth, sampleRate);
-		return new SizeEstimate<>(enc.encodedBitLength, enc);
-	}
-	
-	
-	
-	/*---- Fields ----*/
-	
-	private final int sampleOffset;
-	private final int sampleDepth;
-	private final int sampleRate;
-	public final int blockSize;
-	private final int channelAssignment;
-	private int encodedBitLength;
-	private SubframeEncoder[] subEncoders;
-	
-	
-	
-	/*---- Constructors ----*/
-	
-	public FrameEncoder(int sampleOffset, long[][] data, int sampleDepth, int sampleRate) {
-		// Set fields
-		this.sampleOffset = sampleOffset;
-		this.sampleDepth = sampleDepth;
-		this.sampleRate = sampleRate;
-		this.blockSize = data[0].length;
-		
-		
 		int numChannels = data.length;
 		@SuppressWarnings("unchecked")
 		SizeEstimate<SubframeEncoder>[] encoderInfo = new SizeEstimate[numChannels];
 		if (numChannels != 2) {
-			channelAssignment = numChannels - 1;
+			enc.channelAssignment = numChannels - 1;
 			for (int i = 0; i < encoderInfo.length; i++)
 				encoderInfo[i] = SubframeEncoder.computeBest(data[i], sampleDepth);
 		} else {  // Explore the 4 stereo encoding modes
 			long[] left  = data[0];
 			long[] right = data[1];
-			long[] mid  = new long[blockSize];
-			long[] side = new long[blockSize];
-			for (int i = 0; i < blockSize; i++) {
+			long[] mid  = new long[data[0].length];
+			long[] side = new long[mid.length];
+			for (int i = 0; i < mid.length; i++) {
 				mid[i] = (left[i] + right[i]) >> 1;
 				side[i] = left[i] - right[i];
 			}
@@ -76,19 +49,19 @@ final class FrameEncoder {
 			int mode10Size = midSize + sideSize;
 			int minimum = Math.min(Math.min(mode1Size, mode8Size), Math.min(mode9Size, mode10Size));
 			if (mode1Size == minimum) {
-				channelAssignment = 1;
+				enc.channelAssignment = 1;
 				encoderInfo[0] = leftInfo;
 				encoderInfo[1] = rightInfo;
 			} else if (mode8Size == minimum) {
-				channelAssignment = 8;
+				enc.channelAssignment = 8;
 				encoderInfo[0] = leftInfo;
 				encoderInfo[1] = sideInfo;
 			} else if (mode9Size == minimum) {
-				channelAssignment = 9;
+				enc.channelAssignment = 9;
 				encoderInfo[0] = sideInfo;
 				encoderInfo[1] = rightInfo;
 			} else if (mode10Size == minimum) {
-				channelAssignment = 10;
+				enc.channelAssignment = 10;
 				encoderInfo[0] = midInfo;
 				encoderInfo[1] = sideInfo;
 			} else
@@ -96,38 +69,58 @@ final class FrameEncoder {
 		}
 		
 		// Add up subframe sizes
-		encodedBitLength = 0;
-		subEncoders = new SubframeEncoder[encoderInfo.length];
-		for (int i = 0; i < subEncoders.length; i++) {
-			encodedBitLength += encoderInfo[i].sizeEstimate;
-			subEncoders[i] = encoderInfo[i].encoder;
+		long size = 0;
+		enc.subEncoders = new SubframeEncoder[encoderInfo.length];
+		for (int i = 0; i < enc.subEncoders.length; i++) {
+			size += encoderInfo[i].sizeEstimate;
+			enc.subEncoders[i] = encoderInfo[i].encoder;
 		}
 		
 		// Count length of header (always in whole bytes)
 		try {
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
 			try (BitOutputStream bitout = new BitOutputStream(bout)) {
-				encodeHeader(data, bitout);
+				enc.encodeHeader(data, bitout);
 			}
 			bout.close();
-			encodedBitLength += bout.toByteArray().length * 8;
+			size += bout.toByteArray().length * 8;
 		} catch (IOException e) {
 			throw new AssertionError(e);
 		}
 		
 		// Count padding and footer
-		encodedBitLength = (encodedBitLength + 7) / 8 * 8;  // Round up to nearest byte
-		encodedBitLength += 16;  // CRC-16
+		size = (size + 7) / 8 * 8;  // Round up to nearest byte
+		size += 16;  // CRC-16
+		return new SizeEstimate<>(size, enc);
+	}
+	
+	
+	
+	/*---- Fields ----*/
+	
+	private final int sampleOffset;
+	private final int sampleDepth;
+	private final int sampleRate;
+	public final int blockSize;
+	private int channelAssignment;
+	private SubframeEncoder[] subEncoders;
+	
+	
+	
+	/*---- Constructors ----*/
+	
+	public FrameEncoder(int sampleOffset, long[][] data, int sampleDepth, int sampleRate) {
+		// Set fields
+		this.sampleOffset = sampleOffset;
+		this.sampleDepth = sampleDepth;
+		this.sampleRate = sampleRate;
+		this.blockSize = data[0].length;
+		channelAssignment = data.length - 1;
 	}
 	
 	
 	
 	/*---- Public methods ----*/
-	
-	public int getEncodedBitLength() {
-		return encodedBitLength;
-	}
-	
 	
 	public void encode(long[][] data, BitOutputStream out) throws IOException {
 		// Check arguments
