@@ -17,19 +17,12 @@ public final class FlacDecoder {
 	
 	/*---- Fields ----*/
 	
-	public int sampleRate;
-	public int sampleDepth;
-	public int numChannels;
 	public int[][] samples;
-	public int minBlockSize;  // Number of samples per channel; in the range [1, 65536]
-	public int maxBlockSize;  // Number of samples per channel; in the range [1, 65536]
-	public int minFrameSize;  // Number of bytes in any given frame, or 0 if unknown
-	public int maxFrameSize;  // Number of bytes in any given frame, or 0 if unknown
 	public int hashCheck;  // 0 = skipped because hash in file was all zeros, 1 = hash check passed, 2 = hash mismatch
 	
 	private BitInputStream in;
-	private boolean steamInfoSeen;
-	private byte[] md5Hash;
+	
+	public StreamInfo streamInfo;
 	
 	
 	
@@ -41,8 +34,7 @@ public final class FlacDecoder {
 		// Initialize some fields
 		Objects.requireNonNull(in);
 		this.in = new BitInputStream(in);
-		steamInfoSeen = false;
-		md5Hash = new byte[16];
+		streamInfo = null;
 		
 		// Parse header blocks
 		if (this.in.readUint(32) != 0x664C6143)  // Magic string "fLaC"
@@ -55,18 +47,18 @@ public final class FlacDecoder {
 			FrameMetadata meta = dec.readFrame(samples, sampleOffset);
 			if (meta == null)
 				break;
-			if (minFrameSize != 0 && meta.frameSize < minFrameSize)
+			if (streamInfo.minFrameSize != 0 && meta.frameSize < streamInfo.minFrameSize)
 				throw new DataFormatException("Frame size smaller than indicated minimum");
-			if (maxFrameSize != 0 && meta.frameSize > maxFrameSize)
+			if (streamInfo.maxFrameSize != 0 && meta.frameSize > streamInfo.maxFrameSize)
 				throw new DataFormatException("Frame size smaller than indicated maximum");
 			checkFrame(meta, i, sampleOffset);
 			sampleOffset += meta.blockSize;
 		}
 		
 		// Check audio data against hash
-		if (Arrays.equals(md5Hash, new byte[16]))
+		if (Arrays.equals(streamInfo.md5Hash, new byte[16]))
 			hashCheck = 0;
-		else if (Arrays.equals(Md5Hasher.getHash(samples, sampleDepth), md5Hash))
+		else if (Arrays.equals(Md5Hasher.getHash(samples, streamInfo.sampleDepth), streamInfo.md5Hash))
 			hashCheck = 1;
 		else
 			hashCheck = 2;  // Hash check failed!
@@ -91,46 +83,46 @@ public final class FlacDecoder {
 	
 	
 	private void parseStreamInfoData() throws IOException {
-		if (steamInfoSeen)
+		if (streamInfo != null)
 			throw new DataFormatException("Duplicate stream info block");
-		steamInfoSeen = true;
-		minBlockSize = in.readUint(16);
-		maxBlockSize = in.readUint(16);
-		minFrameSize = in.readUint(24);
-		maxFrameSize = in.readUint(24);
-		if (minBlockSize < 16)
+		streamInfo = new StreamInfo();
+		streamInfo.minBlockSize = in.readUint(16);
+		streamInfo.maxBlockSize = in.readUint(16);
+		streamInfo.minFrameSize = in.readUint(24);
+		streamInfo.maxFrameSize = in.readUint(24);
+		if (streamInfo.minBlockSize < 16)
 			throw new DataFormatException("Minimum block size less than 16");
-		if (maxBlockSize > 65535)
+		if (streamInfo.maxBlockSize > 65535)
 			throw new DataFormatException("Maximum block size greater than 65535");
-		if (maxBlockSize < minBlockSize)
+		if (streamInfo.maxBlockSize < streamInfo.minBlockSize)
 			throw new DataFormatException("Maximum block size less than minimum block size");
-		if (minFrameSize != 0 && maxFrameSize != 0 && maxFrameSize < minFrameSize)
+		if (streamInfo.minFrameSize != 0 && streamInfo.maxFrameSize != 0 && streamInfo.maxFrameSize < streamInfo.minFrameSize)
 			throw new DataFormatException("Maximum frame size less than minimum frame size");
-		sampleRate = in.readUint(20);
-		if (sampleRate == 0 || sampleRate > 655350)
+		streamInfo.sampleRate = in.readUint(20);
+		if (streamInfo.sampleRate == 0 || streamInfo.sampleRate > 655350)
 			throw new DataFormatException("Invalid sample rate");
-		numChannels = in.readUint(3) + 1;
-		sampleDepth = in.readUint(5) + 1;
-		long numSamples = (long)in.readUint(18) << 18 | in.readUint(18);
-		samples = new int[numChannels][(int)numSamples];
-		in.readFully(md5Hash);
+		streamInfo.numChannels = in.readUint(3) + 1;
+		streamInfo.sampleDepth = in.readUint(5) + 1;
+		streamInfo.numSamples = (long)in.readUint(18) << 18 | in.readUint(18);
+		samples = new int[streamInfo.numChannels][(int)streamInfo.numSamples];
+		in.readFully(streamInfo.md5Hash);
 	}
 	
 	
 	// Examines the values in the given frame metadata to check if they match the other arguments
 	// and the current object state, either returning silently or throwing an exception.
 	private void checkFrame(FrameMetadata meta, int frameIndex, long sampleOffset) {
-		if (meta.numChannels != this.numChannels)
+		if (meta.numChannels != streamInfo.numChannels)
 			throw new DataFormatException("Channel count mismatch");
-		if (meta.sampleRate != -1 && meta.sampleRate != this.sampleRate)
+		if (meta.sampleRate != -1 && meta.sampleRate != streamInfo.sampleRate)
 			throw new DataFormatException("Sample rate mismatch");
-		if (meta.sampleDepth != -1 && meta.sampleDepth != this.sampleDepth)
+		if (meta.sampleDepth != -1 && meta.sampleDepth != streamInfo.sampleDepth)
 			throw new DataFormatException("Sample depth mismatch");
 		if (meta.frameIndex != -1 && meta.frameIndex != frameIndex)
 			throw new DataFormatException("Frame index mismatch");
 		if (meta.sampleOffset != -1 && meta.sampleOffset != sampleOffset)
 			throw new DataFormatException("Sample offset mismatch");
-		if (meta.blockSize > maxBlockSize)
+		if (meta.blockSize > streamInfo.maxBlockSize)
 			throw new DataFormatException("Block size exceeds maximum");
 		// Note: If minBlockSize == maxBlockSize, then the final block
 		// in the stream is allowed to be smaller than minBlockSize

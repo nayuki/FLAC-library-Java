@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.decode.FlacDecoder;
+import io.nayuki.flac.decode.StreamInfo;
 
 
 public final class DecodeFlacToWav {
@@ -40,7 +41,8 @@ public final class DecodeFlacToWav {
 			System.err.println("Warning: MD5 hash field was blank");
 		else if (dec.hashCheck == 2)
 			throw new DataFormatException("MD5 hash check failed");
-		if (dec.sampleDepth != 16)
+		StreamInfo streamInfo = dec.streamInfo;
+		if (streamInfo.sampleDepth != 16)
 			throw new UnsupportedOperationException("Only 16-bit sample depth supported");
 		
 		// Start writing WAV output file
@@ -50,7 +52,7 @@ public final class DecodeFlacToWav {
 			
 			// Header chunk
 			int[][] samples = dec.samples;
-			int sampleDataLen = samples[0].length * dec.numChannels * dec.sampleDepth / 8;
+			int sampleDataLen = samples[0].length * streamInfo.numChannels * streamInfo.sampleDepth / 8;
 			out.writeInt(0x52494646);  // "RIFF"
 			writeLittleInt32(sampleDataLen + 36);
 			out.writeInt(0x57415645);  // "WAVE"
@@ -59,11 +61,11 @@ public final class DecodeFlacToWav {
 			out.writeInt(0x666D7420);  // "fmt "
 			writeLittleInt32(16);
 			writeLittleInt16(0x0001);
-			writeLittleInt16(dec.numChannels);
-			writeLittleInt32(dec.sampleRate);
-			writeLittleInt32(dec.sampleRate * dec.numChannels * dec.sampleDepth / 8);
-			writeLittleInt16(dec.numChannels * dec.sampleDepth / 8);
-			writeLittleInt16(dec.sampleDepth);
+			writeLittleInt16(streamInfo.numChannels);
+			writeLittleInt32(streamInfo.sampleRate);
+			writeLittleInt32(streamInfo.sampleRate * streamInfo.numChannels * streamInfo.sampleDepth / 8);
+			writeLittleInt16(streamInfo.numChannels * streamInfo.sampleDepth / 8);
+			writeLittleInt16(streamInfo.sampleDepth);
 			
 			// Audio data chunk ("data")
 			out.writeInt(0x64617461);  // "data"
