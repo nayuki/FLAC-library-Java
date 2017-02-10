@@ -8,6 +8,7 @@ package io.nayuki.flac.decode;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 
 
 // Note: Objects are stateful and not thread-safe, because of the bit input stream field and private temporary arrays.
@@ -50,6 +51,10 @@ public final class FrameDecoder {
 	// decodes a frame and returns a new metadata object, or throws an appropriate exception. A frame
 	// may have up to 8 channels and 65536 samples, so the output arrays need to be sized appropriately.
 	public FrameMetadata readFrame(int[][] outSamples, int outOffset) throws IOException {
+		// Some argument checks (plus more later)
+		Objects.requireNonNull(outSamples);
+		if (outOffset < 0 || outOffset > outSamples[0].length)
+			throw new IndexOutOfBoundsException();
 		
 		// Preliminaries
 		in.resetCrcs();
@@ -76,6 +81,8 @@ public final class FrameDecoder {
 			result.numChannels = 2;
 		else
 			throw new DataFormatException("Reserved channel assignment");
+		if (outSamples.length < result.numChannels)
+			throw new IllegalArgumentException("Output array too small for number of channels");
 		result.sampleDepth = decodeSampleDepth(in.readUint(3));
 		if (in.readUint(1) != 0)
 			throw new DataFormatException("Reserved bit");
@@ -97,6 +104,8 @@ public final class FrameDecoder {
 		
 		// Read variable-length data for some fields
 		currentBlockSize = decodeBlockSamples(blockSamplesCode);  // Reads 0 to 2 bytes
+		if (outOffset > outSamples[0].length - currentBlockSize)
+			throw new IndexOutOfBoundsException();
 		result.numSamples = currentBlockSize;
 		result.sampleRate = decodeSampleRate(sampleRateCode);  // Reads 0 to 2 bytes
 		int computedCrc8 = in.getCrc8();
@@ -206,6 +215,8 @@ public final class FrameDecoder {
 	// the final uncompressed audio data to the array range outSamples[0 : numChannels][outOffset : outOffset + currentBlockSize].
 	// Note that this method uses the private temporary arrays and passes them into sub-method calls.
 	private void decodeSubframes(int sampleDepth, int chanAsgn, int[][] outSamples, int outOffset) throws IOException {
+		if (sampleDepth < 1 || sampleDepth > 32)
+			throw new IllegalArgumentException();
 		if ((chanAsgn >>> 4) != 0)
 			throw new IllegalArgumentException();
 		
@@ -250,6 +261,8 @@ public final class FrameDecoder {
 	
 	// Writes to result[0 : currentBlockSize].
 	private void decodeSubframe(int sampleDepth, long[] result) throws IOException {
+		if (sampleDepth < 1 || sampleDepth > 33)
+			throw new IllegalArgumentException();
 		if (in.readUint(1) != 0)
 			throw new DataFormatException("Invalid padding bit");
 		int type = in.readUint(6);
@@ -283,6 +296,8 @@ public final class FrameDecoder {
 	
 	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
 	private void decodeFixedPrediction(int predOrder, int sampleDepth, long[] result) throws IOException {
+		if (sampleDepth < 1 || sampleDepth > 33)
+			throw new IllegalArgumentException();
 		if (predOrder < 0 || predOrder > 4)
 			throw new IllegalArgumentException();
 		
@@ -304,6 +319,8 @@ public final class FrameDecoder {
 	
 	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
 	private void decodeLinearPredictiveCoding(int lpcOrder, int sampleDepth, long[] result) throws IOException {
+		if (sampleDepth < 1 || sampleDepth > 33)
+			throw new IllegalArgumentException();
 		if (lpcOrder < 1 || lpcOrder > 32)
 			throw new IllegalArgumentException();
 		
