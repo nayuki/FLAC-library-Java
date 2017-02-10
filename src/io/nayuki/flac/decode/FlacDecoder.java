@@ -4,13 +4,14 @@
  * https://www.nayuki.io/
  */
 
-package io.nayuki.flac;
+package io.nayuki.flac.decode;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.zip.DataFormatException;
+import io.nayuki.flac.common.Md5Hasher;
 
 
 public final class FlacDecoder {

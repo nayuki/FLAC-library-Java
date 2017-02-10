@@ -4,7 +4,7 @@
  * https://www.nayuki.io/
  */
 
-package io.nayuki.flac;
+package io.nayuki.flac.app;
 
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
@@ -14,6 +14,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.DataFormatException;
+import io.nayuki.flac.decode.FlacDecoder;
 
 
 public final class DecodeFlacToWav {

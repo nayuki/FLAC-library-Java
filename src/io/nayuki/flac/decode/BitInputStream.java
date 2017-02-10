@@ -4,7 +4,7 @@
  * https://www.nayuki.io/
  */
 
-package io.nayuki.flac;
+package io.nayuki.flac.decode;
 
 import java.io.EOFException;
 import java.io.IOException;

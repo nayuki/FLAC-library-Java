@@ -4,7 +4,7 @@
  * https://www.nayuki.io/
  */
 
-package io.nayuki.flac;
+package io.nayuki.flac.common;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

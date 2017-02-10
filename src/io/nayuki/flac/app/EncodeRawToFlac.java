@@ -4,7 +4,7 @@
  * https://www.nayuki.io/
  */
 
-package io.nayuki.flac;
+package io.nayuki.flac.app;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -13,6 +13,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import io.nayuki.flac.encode.BitOutputStream;
+import io.nayuki.flac.encode.FlacEncoder;
 
 
 // Handles raw 16-bit big-endian audio files only.

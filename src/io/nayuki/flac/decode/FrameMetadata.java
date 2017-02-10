@@ -4,7 +4,7 @@
  * https://www.nayuki.io/
  */
 
-package io.nayuki.flac;
+package io.nayuki.flac.decode;
 
 
 // A mutable structure holding key pieces of information from decoding a frame header.

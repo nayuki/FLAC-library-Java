@@ -4,9 +4,10 @@
  * https://www.nayuki.io/
  */
 
-package io.nayuki.flac;
+package io.nayuki.flac.encode;
 
 import java.io.IOException;
+import io.nayuki.flac.common.Md5Hasher;
 
 
 public final class FlacEncoder {
