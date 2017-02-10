@@ -63,4 +63,31 @@ public final class StreamInfo {
 		in.readFully(md5Hash);
 	}
 	
+	
+	
+	/*---- Methods ----*/
+	
+	// Checks whether the given frame metadata is consistent with this stream info object.
+	// This method either returns silently or throws an exception.
+	public void checkFrame(FrameMetadata meta) {
+		if (meta.numChannels != numChannels)
+			throw new DataFormatException("Channel count mismatch");
+		if (meta.sampleRate != -1 && meta.sampleRate != sampleRate)
+			throw new DataFormatException("Sample rate mismatch");
+		if (meta.sampleDepth != -1 && meta.sampleDepth != sampleDepth)
+			throw new DataFormatException("Sample depth mismatch");
+		if (numSamples != 0 && meta.blockSize > numSamples)
+			throw new DataFormatException("Block size exceeds total number of samples");
+		
+		if (meta.blockSize > maxBlockSize)
+			throw new DataFormatException("Block size exceeds maximum");
+		// Note: If minBlockSize == maxBlockSize, then the final block
+		// in the stream is allowed to be smaller than minBlockSize
+		
+		if (minFrameSize != 0 && meta.frameSize < minFrameSize)
+			throw new DataFormatException("Frame size less than minimum");
+		if (maxFrameSize != 0 && meta.frameSize > maxFrameSize)
+			throw new DataFormatException("Frame size exceeds maximum");
+	}
+	
 }

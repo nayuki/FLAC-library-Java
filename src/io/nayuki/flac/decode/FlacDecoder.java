@@ -47,11 +47,11 @@ public final class FlacDecoder {
 			FrameMetadata meta = dec.readFrame(samples, sampleOffset);
 			if (meta == null)
 				break;
-			if (streamInfo.minFrameSize != 0 && meta.frameSize < streamInfo.minFrameSize)
-				throw new DataFormatException("Frame size smaller than indicated minimum");
-			if (streamInfo.maxFrameSize != 0 && meta.frameSize > streamInfo.maxFrameSize)
-				throw new DataFormatException("Frame size smaller than indicated maximum");
-			checkFrame(meta, i, sampleOffset);
+			streamInfo.checkFrame(meta);
+			if (meta.frameIndex != -1 && meta.frameIndex != i)
+				throw new DataFormatException("Frame index mismatch");
+			if (meta.sampleOffset != -1 && meta.sampleOffset != sampleOffset)
+				throw new DataFormatException("Sample offset mismatch");
 			sampleOffset += meta.blockSize;
 		}
 		
@@ -87,26 +87,6 @@ public final class FlacDecoder {
 			throw new DataFormatException("Duplicate stream info block");
 		streamInfo = new StreamInfo(in);
 		samples = new int[streamInfo.numChannels][(int)streamInfo.numSamples];
-	}
-	
-	
-	// Examines the values in the given frame metadata to check if they match the other arguments
-	// and the current object state, either returning silently or throwing an exception.
-	private void checkFrame(FrameMetadata meta, int frameIndex, long sampleOffset) {
-		if (meta.numChannels != streamInfo.numChannels)
-			throw new DataFormatException("Channel count mismatch");
-		if (meta.sampleRate != -1 && meta.sampleRate != streamInfo.sampleRate)
-			throw new DataFormatException("Sample rate mismatch");
-		if (meta.sampleDepth != -1 && meta.sampleDepth != streamInfo.sampleDepth)
-			throw new DataFormatException("Sample depth mismatch");
-		if (meta.frameIndex != -1 && meta.frameIndex != frameIndex)
-			throw new DataFormatException("Frame index mismatch");
-		if (meta.sampleOffset != -1 && meta.sampleOffset != sampleOffset)
-			throw new DataFormatException("Sample offset mismatch");
-		if (meta.blockSize > streamInfo.maxBlockSize)
-			throw new DataFormatException("Block size exceeds maximum");
-		// Note: If minBlockSize == maxBlockSize, then the final block
-		// in the stream is allowed to be smaller than minBlockSize
 	}
 	
 }
