@@ -72,21 +72,16 @@ public final class FlacDecoder {
 		boolean last = in.readUint(1) != 0;
 		int type = in.readUint(7);
 		int length = in.readUint(24);
-		if (type == 0)
-			parseStreamInfoData();
-		else {
+		if (type == 0) {  // Stream info block
+			if (streamInfo != null)
+				throw new DataFormatException("Duplicate stream info block");
+			streamInfo = new StreamInfo(in);
+			samples = new int[streamInfo.numChannels][(int)streamInfo.numSamples];
+		} else {
 			byte[] data = new byte[length];
 			in.readFully(data);
 		}
 		return !last;
-	}
-	
-	
-	private void parseStreamInfoData() throws IOException {
-		if (streamInfo != null)
-			throw new DataFormatException("Duplicate stream info block");
-		streamInfo = new StreamInfo(in);
-		samples = new int[streamInfo.numChannels][(int)streamInfo.numSamples];
 	}
 	
 }
