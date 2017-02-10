@@ -21,6 +21,7 @@ public final class BitOutputStream implements AutoCloseable {
 	private OutputStream out;  // The underlying byte-based output stream to write to.
 	private long bitBuffer;  // Only the bottom bitBufferLen bits are valid; the top bits are garbage.
 	private int bitBufferLen;  // Always in the range [0, 64].
+	private long byteCount;  // Number of bytes written since the start of stream.
 	
 	// Current state of the CRC calculations.
 	private int crc8;  // Always a uint8 value.
@@ -35,6 +36,7 @@ public final class BitOutputStream implements AutoCloseable {
 		this.out = out;
 		bitBuffer = 0;
 		bitBufferLen = 0;
+		byteCount = 0;
 		resetCrcs();
 	}
 	
@@ -83,6 +85,7 @@ public final class BitOutputStream implements AutoCloseable {
 			bitBufferLen -= 8;
 			int b = (int)(bitBuffer >>> bitBufferLen) & 0xFF;
 			out.write(b);
+			byteCount++;
 			crc8 ^= b;
 			crc16 ^= b << 8;
 			for (int i = 0; i < 8; i++) {
@@ -131,6 +134,11 @@ public final class BitOutputStream implements AutoCloseable {
 	
 	
 	/*-- Miscellaneous --*/
+	
+	public long getByteCount() {
+		return byteCount + bitBufferLen / 8;
+	}
+	
 	
 	// Writes out any internally buffered bit data, closes the underlying output stream,
 	// and invalidates this bit output stream object for any future operation.
