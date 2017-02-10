@@ -59,11 +59,15 @@ public final class BitInputStream implements AutoCloseable {
 				throw new EOFException();
 			bitBuffer = (bitBuffer << 8) | b;
 			bitBufferLen += 8;
+			assert 0 <= bitBufferLen && bitBufferLen <= 64;
 		}
 		int result = (int)(bitBuffer >>> (bitBufferLen - n));
-		if (n != 32)
+		if (n != 32) {
 			result &= (1 << n) - 1;
+			assert (result >>> n) == 0;
+		}
 		bitBufferLen -= n;
+		assert 0 <= bitBufferLen && bitBufferLen <= 64;
 		return result;
 	}
 	
@@ -216,7 +220,7 @@ public final class BitInputStream implements AutoCloseable {
 			bitBuffer = (bitBuffer << 8) | temp;
 			bitBufferLen += 8;
 		}
-		assert bitBufferLen >= 8;
+		assert 8 <= bitBufferLen && bitBufferLen <= 64;
 		byteBufferIndex += n;
 	}
 	
