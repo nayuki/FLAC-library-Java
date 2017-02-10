@@ -31,6 +31,7 @@ public final class BitOutputStream implements AutoCloseable {
 	
 	/*---- Constructors ----*/
 	
+	// Constructs a FLAC-oriented bit output stream from the given byte-based output stream.
 	public BitOutputStream(OutputStream out) throws IOException {
 		Objects.requireNonNull(out);
 		this.out = out;
@@ -136,13 +137,17 @@ public final class BitOutputStream implements AutoCloseable {
 	
 	/*-- Miscellaneous --*/
 	
+	// Returns the number of bytes written since the start of the stream.
 	public long getByteCount() {
 		return byteCount + bitBufferLen / 8;
 	}
 	
 	
-	// Writes out any internally buffered bit data, closes the underlying output stream,
-	// and invalidates this bit output stream object for any future operation.
+	// Writes out any internally buffered bit data, closes the underlying output stream, and invalidates this
+	// bit output stream object for any future operation. Note that a BitOutputStream only uses memory but
+	// does not have native resources. It is okay to flush() the pending data and simply let a BitOutputStream
+	// be garbage collected without calling close(), but the parent is still responsible for calling close()
+	// on the underlying output stream if it uses native resources (such as FileOutputStream or SocketOutputStream).
 	public void close() throws IOException {
 		checkByteAligned();
 		flush();

@@ -109,17 +109,26 @@ abstract class SubframeEncoder {
 		
 		/*-- Fields --*/
 		
+		// The values satisfy (minFixedOrder = maxFixedOrder = -1) || (0 <= minFixedOrder <= maxFixedOrder <= 4).
 		public final int minFixedOrder;
 		public final int maxFixedOrder;
+		
+		// The values satisfy (minLpcOrder = maxLpcOrder = -1) || (1 <= minLpcOrder <= maxLpcOrder <= 32).
+		// Note that the FLAC subset format requires maxLpcOrder <= 12 when sampleRate <= 48000.
 		public final int minLpcOrder;
 		public final int maxLpcOrder;
+		
+		// In the range [0, 30]. Note that each increase by one will double the search time!
 		public final int lpcRoundVariables;
+		
+		// In the range [0, 15]. Note that the FLAC subset format requires maxRiceOrder <= 8.
 		public final int maxRiceOrder;
 		
 		
 		/*-- Constructors --*/
 		
 		public SearchOptions(int minFixedOrder, int maxFixedOrder, int minLpcOrder, int maxLpcOrder, int lpcRoundVars, int maxRiceOrder) {
+			// Check argument ranges
 			if ((minFixedOrder != -1 || maxFixedOrder != -1) &&
 					!(0 <= minFixedOrder && minFixedOrder <= maxFixedOrder && maxFixedOrder <= 4))
 				throw new IllegalArgumentException();
@@ -130,6 +139,8 @@ abstract class SubframeEncoder {
 				throw new IllegalArgumentException();
 			if (maxRiceOrder < 0 || maxRiceOrder > 15)
 				throw new IllegalArgumentException();
+			
+			// Copy arguments to fields
 			this.minFixedOrder = minFixedOrder;
 			this.maxFixedOrder = maxFixedOrder;
 			this.minLpcOrder = minLpcOrder;
@@ -141,11 +152,11 @@ abstract class SubframeEncoder {
 		
 		/*-- Constants for recommended defaults --*/
 		
-		// These search ranges conform to the FLAC subset.
+		// These search ranges conform to the FLAC subset format.
 		public static final SearchOptions SUBSET_ONLY_FIXED = new SearchOptions(0, 4, -1, -1, 0, 8);
 		public static final SearchOptions SUBSET_BEST = new SearchOptions(0, 1, 2, 12, 0, 8);
 		
-		// These search ranges do conform to the FLAC subset (i.e. they are lax).
+		// These cannot guarantee that an encoded file conforms to the FLAC subset (i.e. they are lax).
 		public static final SearchOptions LAX_MEDIUM = new SearchOptions(0, 1, 2, 22, 0, 15);
 		public static final SearchOptions LAX_BEST = new SearchOptions(0, 1, 2, 32, 0, 15);
 		

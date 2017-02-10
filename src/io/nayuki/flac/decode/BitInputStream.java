@@ -296,7 +296,7 @@ public final class BitInputStream implements AutoCloseable {
 	
 	/*---- Tables of constants ----*/
 	
-	// For rice decoding
+	// For Rice decoding
 	
 	private static final int RICE_DECODING_TABLE_BITS = 13;  // Configurable, must be positive
 	private static final int RICE_DECODING_TABLE_MASK = (1 << RICE_DECODING_TABLE_BITS) - 1;
