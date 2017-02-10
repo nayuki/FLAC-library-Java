@@ -13,12 +13,20 @@ import java.util.zip.DataFormatException;
 
 public final class FrameDecoder {
 	
+	public BitInputStream in;
+	
+	
+	public FrameDecoder(BitInputStream in) {
+		this.in = in;
+	}
+	
+	
 	// Reads and decodes the next FLAC frame, storing output samples and returning metadata.
 	// The bit input stream must be initially aligned at a byte boundary. If EOF is encountered before
 	// any actual bytes were read, then this returns null. Otherwise this function either successfully
 	// decodes a frame and returns a new metadata object, or throws an appropriate exception. A frame
 	// may have up to 8 channels and 65536 samples, so the output arrays need to be sized appropriately.
-	public static FrameMetadata readFrame(BitInputStream in, int[][] outSamples, int outOffset)
+	public FrameMetadata readFrame(int[][] outSamples, int outOffset)
 			throws IOException, DataFormatException {
 		
 		// Preliminaries
@@ -51,7 +59,7 @@ public final class FrameDecoder {
 			throw new DataFormatException("Reserved bit");
 		
 		// Read and check the frame/sample position field
-		long position = readUtf8Integer(in);
+		long position = readUtf8Integer();
 		if (blockStrategy == 0) {
 			if ((position >>> 31) != 0)
 				throw new DataFormatException("Frame index too large");
@@ -66,14 +74,14 @@ public final class FrameDecoder {
 			throw new AssertionError();
 		
 		// Read variable-length data for some fields
-		result.numSamples = decodeBlockSamples(in, blockSamplesCode);  // Reads 0 to 2 bytes
-		result.sampleRate = decodeSampleRate(in, sampleRateCode);  // Reads 0 to 2 bytes
+		result.numSamples = decodeBlockSamples(blockSamplesCode);  // Reads 0 to 2 bytes
+		result.sampleRate = decodeSampleRate(sampleRateCode);  // Reads 0 to 2 bytes
 		int computedCrc8 = in.getCrc8();
 		if (in.readUint(8) != computedCrc8)
 			throw new DataFormatException("CRC-8 mismatch");
 		
 		// Do the hard work
-		decodeSubframes(in, result.numSamples, result.sampleDepth, channelAssignment, outSamples, outOffset);
+		decodeSubframes(result.numSamples, result.sampleDepth, channelAssignment, outSamples, outOffset);
 		
 		// Read padding and footer
 		while (in.getBitPosition() != 0) {
@@ -89,7 +97,7 @@ public final class FrameDecoder {
 	
 	// Reads between 1 and 7 bytes of input, and returns a uint36 value.
 	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
-	private static long readUtf8Integer(BitInputStream in) throws IOException, DataFormatException {
+	private long readUtf8Integer() throws IOException, DataFormatException {
 		int temp = in.readUint(8);
 		int n = Integer.numberOfLeadingZeros(~(temp << 24));  // Number of leading 1s in the byte
 		if (n < 0 || n > 8)
@@ -114,7 +122,7 @@ public final class FrameDecoder {
 	
 	
 	// Argument is uint4, return value is in the range [1, FRAME_MAX_SAMPLES], may read 2 bytes of input.
-	private static int decodeBlockSamples(BitInputStream in, int code) throws IOException, DataFormatException {
+	private int decodeBlockSamples(int code) throws IOException, DataFormatException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
 		else if (code == 0)
@@ -135,7 +143,7 @@ public final class FrameDecoder {
 	
 	
 	// Argument is uint4, may read 2 bytes of input.
-	private static int decodeSampleRate(BitInputStream in, int code) throws IOException, DataFormatException {
+	private int decodeSampleRate(int code) throws IOException, DataFormatException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
 		else if (code == 0)
@@ -172,7 +180,7 @@ public final class FrameDecoder {
 	private static final int[] SAMPLE_DEPTHS = {-1, 8, 12, -1, 16, 20, 24, -1};
 	
 	
-	private static void decodeSubframes(BitInputStream in, int blockSamples, int sampleDepth, int chanAsgn, int[][] outSamples, int outOffset)
+	private void decodeSubframes(int blockSamples, int sampleDepth, int chanAsgn, int[][] outSamples, int outOffset)
 			throws IOException, DataFormatException {
 		if ((chanAsgn >>> 4) != 0)
 			throw new IllegalArgumentException();
@@ -182,15 +190,15 @@ public final class FrameDecoder {
 		if (0 <= chanAsgn && chanAsgn <= 7) {  // Independent channels
 			int numChannels = chanAsgn + 1;
 			for (int ch = 0; ch < numChannels; ch++) {
-				decodeSubframe(in, blockSamples, sampleDepth, temp0);
+				decodeSubframe(blockSamples, sampleDepth, temp0);
 				int[] outChan = outSamples[ch];
 				for (int i = 0; i < blockSamples; i++)
 					outChan[outOffset + i] = (int)temp0[i];
 			}
 			
 		} else if (8 <= chanAsgn && chanAsgn <= 10) {  // Side-coded stereo methods
-			decodeSubframe(in, blockSamples, sampleDepth + (chanAsgn == 9 ? 1 : 0), temp0);
-			decodeSubframe(in, blockSamples, sampleDepth + (chanAsgn == 9 ? 0 : 1), temp1);
+			decodeSubframe(blockSamples, sampleDepth + (chanAsgn == 9 ? 1 : 0), temp0);
+			decodeSubframe(blockSamples, sampleDepth + (chanAsgn == 9 ? 0 : 1), temp1);
 			
 			if (chanAsgn == 8) {  // Left-side stereo
 				for (int i = 0; i < blockSamples; i++)
@@ -218,7 +226,7 @@ public final class FrameDecoder {
 	}
 	
 	
-	private static void decodeSubframe(BitInputStream in, int numSamples, int sampleDepth, long[] result) throws IOException, DataFormatException {
+	private void decodeSubframe(int numSamples, int sampleDepth, long[] result) throws IOException, DataFormatException {
 		if (in.readUint(1) != 0)
 			throw new DataFormatException("Invalid padding bit");
 		int type = in.readUint(6);
@@ -237,11 +245,11 @@ public final class FrameDecoder {
 		} else if (type < 8)
 			throw new DataFormatException("Reserved subframe type");
 		else if (type <= 12)
-			decodeFixedPrediction(in, numSamples, type - 8, sampleDepth, result);
+			decodeFixedPrediction(numSamples, type - 8, sampleDepth, result);
 		else if (type < 32)
 			throw new DataFormatException("Reserved subframe type");
 		else if (type < 64)
-			decodeLinearPredictiveCoding(in, numSamples, type - 31, sampleDepth, result);
+			decodeLinearPredictiveCoding(numSamples, type - 31, sampleDepth, result);
 		else
 			throw new AssertionError();
 		
@@ -250,7 +258,7 @@ public final class FrameDecoder {
 	}
 	
 	
-	private static void decodeFixedPrediction(BitInputStream in, int numSamples, int order, int sampleDepth, long[] result)
+	private void decodeFixedPrediction(int numSamples, int order, int sampleDepth, long[] result)
 			throws IOException, DataFormatException {
 		if (order < 0 || order > 4)
 			throw new IllegalArgumentException();
@@ -258,7 +266,7 @@ public final class FrameDecoder {
 		for (int i = 0; i < order; i++)
 			result[i] = in.readSignedInt(sampleDepth);
 		
-		readResiduals(in, numSamples, order, result);
+		readResiduals(numSamples, order, result);
 		restoreLpc(numSamples, result, FIXED_PREDICTION_COEFFICIENTS[order], 0);
 	}
 	
@@ -271,7 +279,7 @@ public final class FrameDecoder {
 	};
 	
 	
-	private static void decodeLinearPredictiveCoding(BitInputStream in, int numSamples, int order, int sampleDepth, long[] result)
+	private void decodeLinearPredictiveCoding(int numSamples, int order, int sampleDepth, long[] result)
 			throws IOException, DataFormatException {
 		if (order < 1 || order > 32)
 			throw new IllegalArgumentException();
@@ -290,7 +298,7 @@ public final class FrameDecoder {
 		for (int i = 0; i < coefs.length; i++)
 			coefs[i] = in.readSignedInt(precision);
 		
-		readResiduals(in, numSamples, order, result);
+		readResiduals(numSamples, order, result);
 		restoreLpc(numSamples, result, coefs, shift);
 	}
 	
@@ -309,7 +317,7 @@ public final class FrameDecoder {
 	
 	
 	// Reads metadata and Rice-coded numbers from the input stream, storing them in result[warmup : numSamples].
-	private static void readResiduals(BitInputStream in, int numSamples, int warmup, long[] result) throws IOException, DataFormatException {
+	private void readResiduals(int numSamples, int warmup, long[] result) throws IOException, DataFormatException {
 		int method = in.readUint(2);
 		if (method == 0 || method == 1) {
 			int partitionOrder = in.readUint(4);

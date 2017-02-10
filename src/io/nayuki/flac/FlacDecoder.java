@@ -46,8 +46,9 @@ public final class FlacDecoder {
 		while (handleMetadataBlock());
 		
 		// Decode frames until end of stream
+		FrameDecoder dec = new FrameDecoder(this.in);
 		for (int i = 0, sampleOffset = 0; ; i++) {
-			FrameMetadata meta = FrameDecoder.readFrame(this.in, samples, sampleOffset);
+			FrameMetadata meta = dec.readFrame(samples, sampleOffset);
 			if (meta == null)
 				break;
 			checkFrame(meta, i, sampleOffset);
