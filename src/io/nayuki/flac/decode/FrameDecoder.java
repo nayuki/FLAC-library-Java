@@ -57,6 +57,7 @@ public final class FrameDecoder {
 			throw new IndexOutOfBoundsException();
 		
 		// Preliminaries
+		long startByte = in.getByteCount();
 		in.resetCrcs();
 		int temp = in.readByte();
 		if (temp == -1)
@@ -123,6 +124,12 @@ public final class FrameDecoder {
 		int computedCrc16 = in.getCrc16();
 		if (in.readUint(16) != computedCrc16)
 			throw new DataFormatException("CRC-16 mismatch");
+		long frameSize = in.getByteCount() - startByte;
+		if (frameSize < 10)
+			throw new AssertionError();
+		if ((int)frameSize != frameSize)
+			throw new DataFormatException("Frame size too large");
+		result.frameSize = (int)frameSize;
 		return result;
 	}
 	
