@@ -23,6 +23,8 @@ public final class FlacDecoder {
 	public int[][] samples;
 	public int minBlockSize;  // Number of samples per channel; in the range [1, 65536]
 	public int maxBlockSize;  // Number of samples per channel; in the range [1, 65536]
+	public int minFrameSize;  // Number of bytes in any given frame, or 0 if unknown
+	public int maxFrameSize;  // Number of bytes in any given frame, or 0 if unknown
 	public int hashCheck;  // 0 = skipped because hash in file was all zeros, 1 = hash check passed, 2 = hash mismatch
 	
 	private BitInputStream in;
@@ -53,6 +55,10 @@ public final class FlacDecoder {
 			FrameMetadata meta = dec.readFrame(samples, sampleOffset);
 			if (meta == null)
 				break;
+			if (minFrameSize != 0 && meta.frameSize < minFrameSize)
+				throw new DataFormatException("Frame size smaller than indicated minimum");
+			if (maxFrameSize != 0 && meta.frameSize > maxFrameSize)
+				throw new DataFormatException("Frame size smaller than indicated maximum");
 			checkFrame(meta, i, sampleOffset);
 			sampleOffset += meta.numSamples;
 		}
@@ -90,15 +96,15 @@ public final class FlacDecoder {
 		steamInfoSeen = true;
 		minBlockSize = in.readUint(16);
 		maxBlockSize = in.readUint(16);
-		int minFrameBytes = in.readUint(24);
-		int maxFrameBytes = in.readUint(24);
+		minFrameSize = in.readUint(24);
+		maxFrameSize = in.readUint(24);
 		if (minBlockSize < 16)
 			throw new DataFormatException("Minimum block size less than 16");
 		if (maxBlockSize > 65535)
 			throw new DataFormatException("Maximum block size greater than 65535");
 		if (maxBlockSize < minBlockSize)
 			throw new DataFormatException("Maximum block size less than minimum block size");
-		if (minFrameBytes != 0 && maxFrameBytes != 0 && maxFrameBytes < minFrameBytes)
+		if (minFrameSize != 0 && maxFrameSize != 0 && maxFrameSize < minFrameSize)
 			throw new DataFormatException("Maximum frame size less than minimum frame size");
 		sampleRate = in.readUint(20);
 		if (sampleRate == 0 || sampleRate > 655350)
