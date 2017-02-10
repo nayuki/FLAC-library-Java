@@ -11,7 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 
 
-final class Md5Hasher {
+public final class Md5Hasher {
 	
 	public static byte[] getHash(int[][] samples, int depth) {
 		Objects.requireNonNull(samples);

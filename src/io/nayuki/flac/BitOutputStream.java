@@ -11,7 +11,7 @@ import java.io.OutputStream;
 import java.util.Objects;
 
 
-final class BitOutputStream implements AutoCloseable {
+public final class BitOutputStream implements AutoCloseable {
 	
 	/*---- Fields ----*/
 	

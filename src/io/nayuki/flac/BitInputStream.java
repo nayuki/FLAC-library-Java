@@ -12,7 +12,7 @@ import java.io.InputStream;
 import java.util.Objects;
 
 
-final class BitInputStream implements AutoCloseable {
+public final class BitInputStream implements AutoCloseable {
 	
 	/*---- Fields ----*/
 	
