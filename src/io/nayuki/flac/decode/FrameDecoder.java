@@ -49,8 +49,7 @@ public final class FrameDecoder {
 	// any actual bytes were read, then this returns null. Otherwise this function either successfully
 	// decodes a frame and returns a new metadata object, or throws an appropriate exception. A frame
 	// may have up to 8 channels and 65536 samples, so the output arrays need to be sized appropriately.
-	public FrameMetadata readFrame(int[][] outSamples, int outOffset)
-			throws IOException {
+	public FrameMetadata readFrame(int[][] outSamples, int outOffset) throws IOException {
 		
 		// Preliminaries
 		in.resetCrcs();
@@ -67,9 +66,9 @@ public final class FrameDecoder {
 		// Read various simple fields
 		if (in.readUint(1) != 0)
 			throw new DataFormatException("Reserved bit");
-		int blockStrategy = in.readUint(1);
-		int blockSamplesCode = in.readUint(4);
-		int sampleRateCode = in.readUint(4);
+		int blockStrategy     = in.readUint(1);
+		int blockSamplesCode  = in.readUint(4);
+		int sampleRateCode    = in.readUint(4);
 		int channelAssignment = in.readUint(4);
 		if (channelAssignment < 8)
 			result.numChannels = channelAssignment + 1;
@@ -212,8 +211,7 @@ public final class FrameDecoder {
 	// Based on the two audio parameters, this method reads and decodes each subframe, decodes stereo if necessary, and writes
 	// the final uncompressed audio data to the array range outSamples[0 : numChannels][outOffset : outOffset + currentBlockSize].
 	// Note that this method uses the private temporary arrays and passes them into sub-method calls.
-	private void decodeSubframes(int sampleDepth, int chanAsgn, int[][] outSamples, int outOffset)
-			throws IOException {
+	private void decodeSubframes(int sampleDepth, int chanAsgn, int[][] outSamples, int outOffset) throws IOException {
 		if ((chanAsgn >>> 4) != 0)
 			throw new IllegalArgumentException();
 		
@@ -268,9 +266,9 @@ public final class FrameDecoder {
 		}
 		sampleDepth -= shift;
 		
-		if (type == 0) {  // Constant coding
+		if (type == 0)  // Constant coding
 			Arrays.fill(result, 0, currentBlockSize, in.readSignedInt(sampleDepth));
-		} else if (type == 1) {  // Verbatim coding
+		else if (type == 1) {  // Verbatim coding
 			for (int i = 0; i < currentBlockSize; i++)
 				result[i] = in.readSignedInt(sampleDepth);
 		} else if (type < 8)
@@ -290,8 +288,7 @@ public final class FrameDecoder {
 	
 	
 	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
-	private void decodeFixedPrediction(int order, int sampleDepth, long[] result)
-			throws IOException {
+	private void decodeFixedPrediction(int order, int sampleDepth, long[] result) throws IOException {
 		if (order < 0 || order > 4)
 			throw new IllegalArgumentException();
 		
@@ -312,8 +309,7 @@ public final class FrameDecoder {
 	
 	
 	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
-	private void decodeLinearPredictiveCoding(int order, int sampleDepth, long[] result)
-			throws IOException {
+	private void decodeLinearPredictiveCoding(int order, int sampleDepth, long[] result) throws IOException {
 		if (order < 1 || order > 32)
 			throw new IllegalArgumentException();
 		
