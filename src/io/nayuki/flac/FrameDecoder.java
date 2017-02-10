@@ -23,6 +23,10 @@ public final class FrameDecoder {
 	private long[] temp0;
 	private long[] temp1;
 	
+	// The number of samples (per channel) in the current block/frame being processed.
+	// This value is only valid while the method readFrame() is on the call stack.
+	private int currentBlockSize;
+	
 	
 	public FrameDecoder(BitInputStream in) {
 		this.in = in;
@@ -84,14 +88,15 @@ public final class FrameDecoder {
 			throw new AssertionError();
 		
 		// Read variable-length data for some fields
-		result.numSamples = decodeBlockSamples(blockSamplesCode);  // Reads 0 to 2 bytes
+		currentBlockSize = decodeBlockSamples(blockSamplesCode);  // Reads 0 to 2 bytes
+		result.numSamples = currentBlockSize;
 		result.sampleRate = decodeSampleRate(sampleRateCode);  // Reads 0 to 2 bytes
 		int computedCrc8 = in.getCrc8();
 		if (in.readUint(8) != computedCrc8)
 			throw new DataFormatException("CRC-8 mismatch");
 		
 		// Do the hard work
-		decodeSubframes(result.numSamples, result.sampleDepth, channelAssignment, outSamples, outOffset);
+		decodeSubframes(result.sampleDepth, channelAssignment, outSamples, outOffset);
 		
 		// Read padding and footer
 		while (in.getBitPosition() != 0) {
@@ -190,7 +195,7 @@ public final class FrameDecoder {
 	private static final int[] SAMPLE_DEPTHS = {-1, 8, 12, -1, 16, 20, 24, -1};
 	
 	
-	private void decodeSubframes(int blockSamples, int sampleDepth, int chanAsgn, int[][] outSamples, int outOffset)
+	private void decodeSubframes(int sampleDepth, int chanAsgn, int[][] outSamples, int outOffset)
 			throws IOException, DataFormatException {
 		if ((chanAsgn >>> 4) != 0)
 			throw new IllegalArgumentException();
@@ -198,24 +203,24 @@ public final class FrameDecoder {
 		if (0 <= chanAsgn && chanAsgn <= 7) {  // Independent channels
 			int numChannels = chanAsgn + 1;
 			for (int ch = 0; ch < numChannels; ch++) {
-				decodeSubframe(blockSamples, sampleDepth, temp0);
+				decodeSubframe(sampleDepth, temp0);
 				int[] outChan = outSamples[ch];
-				for (int i = 0; i < blockSamples; i++)
+				for (int i = 0; i < currentBlockSize; i++)
 					outChan[outOffset + i] = (int)temp0[i];
 			}
 			
 		} else if (8 <= chanAsgn && chanAsgn <= 10) {  // Side-coded stereo methods
-			decodeSubframe(blockSamples, sampleDepth + (chanAsgn == 9 ? 1 : 0), temp0);
-			decodeSubframe(blockSamples, sampleDepth + (chanAsgn == 9 ? 0 : 1), temp1);
+			decodeSubframe(sampleDepth + (chanAsgn == 9 ? 1 : 0), temp0);
+			decodeSubframe(sampleDepth + (chanAsgn == 9 ? 0 : 1), temp1);
 			
 			if (chanAsgn == 8) {  // Left-side stereo
-				for (int i = 0; i < blockSamples; i++)
+				for (int i = 0; i < currentBlockSize; i++)
 					temp1[i] = temp0[i] - temp1[i];
 			} else if (chanAsgn == 9) {  // Side-right stereo
-				for (int i = 0; i < blockSamples; i++)
+				for (int i = 0; i < currentBlockSize; i++)
 					temp0[i] += temp1[i];
 			} else if (chanAsgn == 10) {  // Mid-side stereo
-				for (int i = 0; i < blockSamples; i++) {
+				for (int i = 0; i < currentBlockSize; i++) {
 					long s = temp1[i];
 					long m = (temp0[i] << 1) | (s & 1);
 					temp0[i] = (m + s) >> 1;
@@ -225,7 +230,7 @@ public final class FrameDecoder {
 			
 			int[] outLeft  = outSamples[0];
 			int[] outRight = outSamples[1];
-			for (int i = 0; i < blockSamples; i++) {
+			for (int i = 0; i < currentBlockSize; i++) {
 				outLeft [outOffset + i] = (int)temp0[i];
 				outRight[outOffset + i] = (int)temp1[i];
 			}
@@ -234,7 +239,7 @@ public final class FrameDecoder {
 	}
 	
 	
-	private void decodeSubframe(int numSamples, int sampleDepth, long[] result) throws IOException, DataFormatException {
+	private void decodeSubframe(int sampleDepth, long[] result) throws IOException, DataFormatException {
 		if (in.readUint(1) != 0)
 			throw new DataFormatException("Invalid padding bit");
 		int type = in.readUint(6);
@@ -246,27 +251,27 @@ public final class FrameDecoder {
 		sampleDepth -= shift;
 		
 		if (type == 0) {
-			Arrays.fill(result, 0, numSamples, in.readSignedInt(sampleDepth));
+			Arrays.fill(result, 0, currentBlockSize, in.readSignedInt(sampleDepth));
 		} else if (type == 1) {
-			for (int i = 0; i < numSamples; i++)
+			for (int i = 0; i < currentBlockSize; i++)
 				result[i] = in.readSignedInt(sampleDepth);
 		} else if (type < 8)
 			throw new DataFormatException("Reserved subframe type");
 		else if (type <= 12)
-			decodeFixedPrediction(numSamples, type - 8, sampleDepth, result);
+			decodeFixedPrediction(type - 8, sampleDepth, result);
 		else if (type < 32)
 			throw new DataFormatException("Reserved subframe type");
 		else if (type < 64)
-			decodeLinearPredictiveCoding(numSamples, type - 31, sampleDepth, result);
+			decodeLinearPredictiveCoding(type - 31, sampleDepth, result);
 		else
 			throw new AssertionError();
 		
-		for (int i = 0; i < numSamples; i++)
+		for (int i = 0; i < currentBlockSize; i++)
 			result[i] <<= shift;
 	}
 	
 	
-	private void decodeFixedPrediction(int numSamples, int order, int sampleDepth, long[] result)
+	private void decodeFixedPrediction(int order, int sampleDepth, long[] result)
 			throws IOException, DataFormatException {
 		if (order < 0 || order > 4)
 			throw new IllegalArgumentException();
@@ -274,8 +279,8 @@ public final class FrameDecoder {
 		for (int i = 0; i < order; i++)
 			result[i] = in.readSignedInt(sampleDepth);
 		
-		readResiduals(numSamples, order, result);
-		restoreLpc(numSamples, result, FIXED_PREDICTION_COEFFICIENTS[order], 0);
+		readResiduals(order, result);
+		restoreLpc(result, FIXED_PREDICTION_COEFFICIENTS[order], 0);
 	}
 	
 	private static final int[][] FIXED_PREDICTION_COEFFICIENTS = {
@@ -287,7 +292,7 @@ public final class FrameDecoder {
 	};
 	
 	
-	private void decodeLinearPredictiveCoding(int numSamples, int order, int sampleDepth, long[] result)
+	private void decodeLinearPredictiveCoding(int order, int sampleDepth, long[] result)
 			throws IOException, DataFormatException {
 		if (order < 1 || order > 32)
 			throw new IllegalArgumentException();
@@ -306,16 +311,14 @@ public final class FrameDecoder {
 		for (int i = 0; i < coefs.length; i++)
 			coefs[i] = in.readSignedInt(precision);
 		
-		readResiduals(numSamples, order, result);
-		restoreLpc(numSamples, result, coefs, shift);
+		readResiduals(order, result);
+		restoreLpc(result, coefs, shift);
 	}
 	
 	
-	// Updates the values of block[coefs.length : numSamples] according to linear predictive coding.
-	private static void restoreLpc(int numSamples, long[] result, int[] coefs, int shift) {
-		if (numSamples < 0 || numSamples > result.length)
-			throw new IllegalArgumentException();
-		for (int i = coefs.length; i < numSamples; i++) {
+	// Updates the values of block[coefs.length : currentBlockSize] according to linear predictive coding.
+	private void restoreLpc(long[] result, int[] coefs, int shift) {
+		for (int i = coefs.length; i < currentBlockSize; i++) {
 			long sum = 0;
 			for (int j = 0; j < coefs.length; j++)
 				sum += result[i - 1 - j] * coefs[j];
@@ -324,18 +327,18 @@ public final class FrameDecoder {
 	}
 	
 	
-	// Reads metadata and Rice-coded numbers from the input stream, storing them in result[warmup : numSamples].
-	private void readResiduals(int numSamples, int warmup, long[] result) throws IOException, DataFormatException {
+	// Reads metadata and Rice-coded numbers from the input stream, storing them in result[warmup : currentBlockSize].
+	private void readResiduals(int warmup, long[] result) throws IOException, DataFormatException {
 		int method = in.readUint(2);
 		if (method == 0 || method == 1) {
 			int partitionOrder = in.readUint(4);
 			int numPartitions = 1 << partitionOrder;
-			if (numSamples % numPartitions != 0)
+			if (currentBlockSize % numPartitions != 0)
 				throw new DataFormatException("Block size not divisible by number of Rice partitions");
 			int paramBits = method == 0 ? 4 : 5;
 			int escapeParam = method == 0 ? 0xF : 0x1F;
-			for (int inc = numSamples >>> partitionOrder, partEnd = inc, resultIndex = warmup;
-					partEnd <= numSamples; partEnd += inc) {
+			for (int inc = currentBlockSize >>> partitionOrder, partEnd = inc, resultIndex = warmup;
+					partEnd <= currentBlockSize; partEnd += inc) {
 				
 				int param = in.readUint(paramBits);
 				if (param == escapeParam) {
