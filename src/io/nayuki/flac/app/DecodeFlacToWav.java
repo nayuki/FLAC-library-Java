@@ -20,6 +20,7 @@ import io.nayuki.flac.decode.FlacDecoder;
 public final class DecodeFlacToWav {
 	
 	public static void main(String[] args) throws IOException {
+		// Handle command line arguments
 		if (args.length != 2) {
 			System.err.println("Usage: java DecodeFlacToWav InFile.flac OutFile.wav");
 			System.exit(1);
@@ -28,10 +29,13 @@ public final class DecodeFlacToWav {
 		File inFile  = new File(args[0]);
 		File outFile = new File(args[1]);
 		
+		// Read and decode the file
 		FlacDecoder dec;
 		try (InputStream in = new FileInputStream(inFile)) {
 			dec = new FlacDecoder(in);
 		}
+		
+		// Check decoder metadata
 		if (dec.hashCheck == 0)
 			System.err.println("Warning: MD5 hash field was blank");
 		else if (dec.hashCheck == 2)
@@ -39,17 +43,20 @@ public final class DecodeFlacToWav {
 		if (dec.sampleDepth != 16)
 			throw new UnsupportedOperationException("Only 16-bit sample depth supported");
 		
+		// Start writing WAV output file
 		try (DataOutputStream out = new DataOutputStream(
 				new BufferedOutputStream(new FileOutputStream(outFile)))) {
 			DecodeFlacToWav.out = out;
 			
+			// Header chunk
 			int[][] samples = dec.samples;
 			int sampleDataLen = samples[0].length * dec.numChannels * dec.sampleDepth / 8;
-			out.writeInt(0x52494646);  // "RIFF" chunk
+			out.writeInt(0x52494646);  // "RIFF"
 			writeLittleInt32(sampleDataLen + 36);
-			out.writeInt(0x57415645);
+			out.writeInt(0x57415645);  // "WAVE"
 			
-			out.writeInt(0x666D7420);  // "fmt " chunk
+			// Metadata chunk
+			out.writeInt(0x666D7420);  // "fmt "
 			writeLittleInt32(16);
 			writeLittleInt16(0x0001);
 			writeLittleInt16(dec.numChannels);
@@ -58,7 +65,8 @@ public final class DecodeFlacToWav {
 			writeLittleInt16(dec.numChannels * dec.sampleDepth / 8);
 			writeLittleInt16(dec.sampleDepth);
 			
-			out.writeInt(0x64617461);  // "data" chunk
+			// Audio data chunk ("data")
+			out.writeInt(0x64617461);  // "data"
 			writeLittleInt32(sampleDataLen);
 			for (int i = 0; i < samples[0].length; i++) {
 				for (int j = 0; j < samples.length; j++)

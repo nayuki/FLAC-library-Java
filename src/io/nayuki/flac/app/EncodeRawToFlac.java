@@ -21,12 +21,14 @@ import io.nayuki.flac.encode.FlacEncoder;
 public final class EncodeRawToFlac {
 	
 	public static void main(String[] args) throws IOException {
+		// Check command line arguments
 		if (args.length < 2) {
 			System.err.println("Usage: java EncodeRawToFlac InFileChan0.raw [InFileChan1.raw ...] OutFile.flac");
 			System.exit(1);
 			return;
 		}
 		
+		// Read raw audio samples, one channel per file
 		int numSamples = (int)(new File(args[0]).length() / 2);
 		int[][] samples = new int[args.length - 1][];
 		for (int i = 0; i < args.length - 1; i++) {
@@ -39,6 +41,7 @@ public final class EncodeRawToFlac {
 			samples[i] = smpl;
 		}
 		
+		// Encode to FLAC and write output file
 		File outFile = new File(args[args.length - 1]);
 		try (BitOutputStream out = new BitOutputStream(
 				new BufferedOutputStream(new FileOutputStream(outFile)))) {
