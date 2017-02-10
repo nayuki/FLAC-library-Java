@@ -22,6 +22,9 @@ public final class BitInputStream implements AutoCloseable {
 	// The underlying byte-based input stream to read from.
 	private InputStream in;
 	
+	// Number of bytes read since the start of stream.
+	private long byteCount;
+	
 	// Data from the underlying stream is first stored into this byte buffer before further processing.
 	private byte[] byteBuffer;
 	private int byteBufferLen;
@@ -45,6 +48,7 @@ public final class BitInputStream implements AutoCloseable {
 	public BitInputStream(InputStream in) {
 		Objects.requireNonNull(in);
 		this.in = in;
+		byteCount = 0;
 		
 		byteBuffer = new byte[4096];
 		byteBufferLen = 0;
@@ -254,12 +258,20 @@ public final class BitInputStream implements AutoCloseable {
 			crc16 = CRC16_TABLE[crc16 >>> 8 ^ b] ^ ((crc16 & 0xFF) << 8);
 			assert (crc8 >>> 8) == 0;
 			assert (crc16 >>> 16) == 0;
+			byteCount++;
 		}
 		crcStartIndex = end;
 	}
 	
 	
 	/*-- Miscellaneous --*/
+	
+	// Returns the number of bytes consumed since the start of the stream.
+	public long getByteCount() {
+		updateCrcs(bitBufferLen / 8);
+		return byteCount;
+	}
+	
 	
 	// Discards all buffers and closes the underlying input stream. This bit input stream becomes invalid
 	// for any future operation. Note that a BitInputStream only uses memory but does not have native resources.
