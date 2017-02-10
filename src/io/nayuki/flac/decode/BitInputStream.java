@@ -12,6 +12,9 @@ import java.io.InputStream;
 import java.util.Objects;
 
 
+/* 
+ * A bit-oriented input stream, with many methods tailored for FLAC usage (such as Rice decoding and CRC calculation).
+ */
 public final class BitInputStream implements AutoCloseable {
 	
 	/*---- Fields ----*/
@@ -220,7 +223,7 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
-	// Returns the CRC-8 hash of all the data seen since the last call to resetCrcs()
+	// Returns the CRC-8 hash of all the bytes read since the last call to resetCrcs()
 	// (or from the beginning of stream if reset was never called).
 	public int getCrc8() {
 		checkByteAligned();
@@ -231,7 +234,7 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
-	// Returns the CRC-16 hash of all the data seen since the last call to resetCrcs()
+	// Returns the CRC-16 hash of all the bytes read since the last call to resetCrcs()
 	// (or from the beginning of stream if reset was never called).
 	public int getCrc16() {
 		checkByteAligned();
