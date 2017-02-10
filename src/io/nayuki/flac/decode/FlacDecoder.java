@@ -21,6 +21,8 @@ public final class FlacDecoder {
 	public int sampleDepth;
 	public int numChannels;
 	public int[][] samples;
+	public int minBlockSize;  // Number of samples per channel; in the range [1, 65536]
+	public int maxBlockSize;  // Number of samples per channel; in the range [1, 65536]
 	public int hashCheck;  // 0 = skipped because hash in file was all zeros, 1 = hash check passed, 2 = hash mismatch
 	
 	private BitInputStream in;
@@ -86,15 +88,15 @@ public final class FlacDecoder {
 		if (steamInfoSeen)
 			throw new DataFormatException("Duplicate stream info block");
 		steamInfoSeen = true;
-		int minBlockSamples = in.readUint(16);
-		int maxBlockSamples = in.readUint(16);
+		minBlockSize = in.readUint(16);
+		maxBlockSize = in.readUint(16);
 		int minFrameBytes = in.readUint(24);
 		int maxFrameBytes = in.readUint(24);
-		if (minBlockSamples < 16)
+		if (minBlockSize < 16)
 			throw new DataFormatException("Minimum block size less than 16");
-		if (maxBlockSamples > 65535)
+		if (maxBlockSize > 65535)
 			throw new DataFormatException("Maximum block size greater than 65535");
-		if (maxBlockSamples < minBlockSamples)
+		if (maxBlockSize < minBlockSize)
 			throw new DataFormatException("Maximum block size less than minimum block size");
 		if (minFrameBytes != 0 && maxFrameBytes != 0 && maxFrameBytes < minFrameBytes)
 			throw new DataFormatException("Maximum frame size less than minimum frame size");
@@ -122,6 +124,10 @@ public final class FlacDecoder {
 			throw new DataFormatException("Frame index mismatch");
 		if (meta.sampleOffset != -1 && meta.sampleOffset != sampleOffset)
 			throw new DataFormatException("Sample offset mismatch");
+		if (meta.numSamples > maxBlockSize)
+			throw new DataFormatException("Block size exceeds maximum");
+		// Note: If minBlockSize == maxBlockSize, then the final block
+		// in the stream is allowed to be smaller than minBlockSize
 	}
 	
 }
