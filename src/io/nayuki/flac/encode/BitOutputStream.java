@@ -65,11 +65,17 @@ public final class BitOutputStream implements AutoCloseable {
 	}
 	
 	
+	// Either returns silently or throws an exception.
+	private void checkByteAligned() {
+		if (bitBufferLen % 8 != 0)
+			throw new IllegalStateException("Not at a byte boundary");
+	}
+	
+	
 	// Returns the CRC-8 hash of all the bytes written since the last call to resetCrcs()
 	// (or from the beginning of stream if reset was never called).
 	public int getCrc8() throws IOException {
-		if (bitBufferLen % 8 != 0)
-			throw new IllegalStateException();
+		checkByteAligned();
 		flushBuffer();
 		if ((crc8 >>> 8) != 0)
 			throw new AssertionError();
@@ -80,8 +86,7 @@ public final class BitOutputStream implements AutoCloseable {
 	// Returns the CRC-16 hash of all the bytes written since the last call to resetCrcs()
 	// (or from the beginning of stream if reset was never called).
 	public int getCrc16() throws IOException {
-		if (bitBufferLen % 8 != 0)
-			throw new IllegalStateException();
+		checkByteAligned();
 		flushBuffer();
 		if ((crc16 >>> 16) != 0)
 			throw new AssertionError();
