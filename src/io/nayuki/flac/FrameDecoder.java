@@ -14,6 +14,8 @@ import java.util.zip.DataFormatException;
 // Note: Objects are stateful and not thread-safe, because of the bit input stream field and private temporary arrays.
 public final class FrameDecoder {
 	
+	/*---- Fields ----*/
+	
 	public BitInputStream in;
 	
 	// Temporary arrays to hold two decoded audio channels. The maximum possible block size is either
@@ -28,12 +30,18 @@ public final class FrameDecoder {
 	private int currentBlockSize;
 	
 	
+	
+	/*---- Constructors ----*/
+	
 	public FrameDecoder(BitInputStream in) {
 		this.in = in;
 		temp0 = new long[65536];
 		temp1 = new long[65536];
 	}
 	
+	
+	
+	/*---- Frame header decoding methods ----*/
 	
 	// Reads and decodes the next FLAC frame, storing output samples and returning metadata.
 	// The bit input stream must be initially aligned at a byte boundary. If EOF is encountered before
@@ -194,6 +202,9 @@ public final class FrameDecoder {
 	
 	private static final int[] SAMPLE_DEPTHS = {-1, 8, 12, -1, 16, 20, 24, -1};
 	
+	
+	
+	/*---- Sub-frame audio data decoding methods ----*/
 	
 	private void decodeSubframes(int sampleDepth, int chanAsgn, int[][] outSamples, int outOffset)
 			throws IOException, DataFormatException {
