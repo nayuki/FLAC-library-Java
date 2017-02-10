@@ -17,7 +17,7 @@ final class FrameEncoder {
 	
 	/*---- Static functions ----*/
 	
-	public static SizeEstimate<FrameEncoder> computeBest(int sampleOffset, long[][] data, int sampleDepth, int sampleRate) {
+	public static SizeEstimate<FrameEncoder> computeBest(int sampleOffset, long[][] data, int sampleDepth, int sampleRate, SubframeEncoder.SearchOptions opt) {
 		FrameEncoder enc = new FrameEncoder(sampleOffset, data, sampleDepth, sampleRate);
 		int numChannels = data.length;
 		@SuppressWarnings("unchecked")
@@ -25,7 +25,7 @@ final class FrameEncoder {
 		if (numChannels != 2) {
 			enc.channelAssignment = numChannels - 1;
 			for (int i = 0; i < encoderInfo.length; i++)
-				encoderInfo[i] = SubframeEncoder.computeBest(data[i], sampleDepth);
+				encoderInfo[i] = SubframeEncoder.computeBest(data[i], sampleDepth, opt);
 		} else {  // Explore the 4 stereo encoding modes
 			long[] left  = data[0];
 			long[] right = data[1];
@@ -35,10 +35,10 @@ final class FrameEncoder {
 				mid[i] = (left[i] + right[i]) >> 1;
 				side[i] = left[i] - right[i];
 			}
-			SizeEstimate<SubframeEncoder> leftInfo  = SubframeEncoder.computeBest(left , sampleDepth);
-			SizeEstimate<SubframeEncoder> rightInfo = SubframeEncoder.computeBest(right, sampleDepth);
-			SizeEstimate<SubframeEncoder> midInfo   = SubframeEncoder.computeBest(mid  , sampleDepth);
-			SizeEstimate<SubframeEncoder> sideInfo  = SubframeEncoder.computeBest(side , sampleDepth + 1);
+			SizeEstimate<SubframeEncoder> leftInfo  = SubframeEncoder.computeBest(left , sampleDepth, opt);
+			SizeEstimate<SubframeEncoder> rightInfo = SubframeEncoder.computeBest(right, sampleDepth, opt);
+			SizeEstimate<SubframeEncoder> midInfo   = SubframeEncoder.computeBest(mid  , sampleDepth, opt);
+			SizeEstimate<SubframeEncoder> sideInfo  = SubframeEncoder.computeBest(side , sampleDepth + 1, opt);
 			long mode1Size = leftInfo.sizeEstimate + rightInfo.sizeEstimate;
 			long mode8Size = leftInfo.sizeEstimate + sideInfo.sizeEstimate;
 			long mode9Size = rightInfo.sizeEstimate + sideInfo.sizeEstimate;

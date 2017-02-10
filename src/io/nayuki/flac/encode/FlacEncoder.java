@@ -38,7 +38,7 @@ public final class FlacEncoder {
 			System.err.printf("frame=%d  position=%d  %.2f%%%n", i, pos, 100.0 * pos / samples[0].length);
 			int n = Math.min(samples[0].length - pos, 4096);
 			long[][] subsamples = getRange(samples, pos, n);
-			FrameEncoder enc = FrameEncoder.computeBest(pos, subsamples, 16, sampleRate).encoder;
+			FrameEncoder enc = FrameEncoder.computeBest(pos, subsamples, 16, sampleRate, SubframeEncoder.SearchOptions.SUBSET_BEST).encoder;
 			long startByte = out.getByteCount();
 			enc.encode(subsamples, out);
 			long frameSize = out.getByteCount() - startByte;

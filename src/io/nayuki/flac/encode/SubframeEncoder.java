@@ -14,7 +14,7 @@ abstract class SubframeEncoder {
 	
 	/*---- Static functions ----*/
 	
-	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int sampleDepth) {
+	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int sampleDepth, SearchOptions opt) {
 		// Check arguments
 		Objects.requireNonNull(data);
 		if (sampleDepth < 1 || sampleDepth > 33)
@@ -34,7 +34,7 @@ abstract class SubframeEncoder {
 		result = VerbatimEncoder.computeBest(data, shift, sampleDepth);
 		
 		// Try fixed prediction encoding
-		for (int order = 0; order <= 4; order++) {
+		for (int order = opt.minFixedOrder; order <= opt.maxFixedOrder; order++) {
 			SizeEstimate<SubframeEncoder> temp = FixedPredictionEncoder.computeBest(data, shift, sampleDepth, order);
 			if (temp.sizeEstimate < result.sizeEstimate)
 				result = temp;
@@ -42,7 +42,7 @@ abstract class SubframeEncoder {
 		
 		// Try linear predictive coding
 		FastDotProduct fdp = new FastDotProduct(data, 32);
-		for (int order = 2; order <= 32; order++) {
+		for (int order = opt.minLpcOrder; order <= opt.maxLpcOrder; order++) {
 			SizeEstimate<SubframeEncoder> temp = LinearPredictiveEncoder.computeBest(data, shift, sampleDepth, order, 0, fdp);
 			if (temp.sizeEstimate < result.sizeEstimate)
 				result = temp;
@@ -98,6 +98,49 @@ abstract class SubframeEncoder {
 				out.writeInt(1, 0);
 			out.writeInt(1, 1);
 		}
+	}
+	
+	
+	
+	/*---- Helper structure ----*/
+	
+	// Objects of this class are immutable.
+	public static final class SearchOptions {
+		
+		/*-- Fields --*/
+		
+		public final int minFixedOrder;
+		public final int maxFixedOrder;
+		public final int minLpcOrder;
+		public final int maxLpcOrder;
+		
+		
+		/*-- Constructors --*/
+		
+		public SearchOptions(int minFixedOrder, int maxFixedOrder, int minLpcOrder, int maxLpcOrder) {
+			if ((minFixedOrder != -1 || maxFixedOrder != -1) &&
+					!(0 <= minFixedOrder && minFixedOrder <= maxFixedOrder && maxFixedOrder <= 4))
+				throw new IllegalArgumentException();
+			if ((minLpcOrder != -1 || maxLpcOrder != -1) &&
+					!(1 <= minLpcOrder && minLpcOrder <= maxLpcOrder && maxLpcOrder <= 32))
+				throw new IllegalArgumentException();
+			this.minFixedOrder = minFixedOrder;
+			this.maxFixedOrder = maxFixedOrder;
+			this.minLpcOrder = minLpcOrder;
+			this.maxLpcOrder = maxLpcOrder;
+		}
+		
+		
+		/*-- Constants for recommended defaults --*/
+		
+		// These search ranges conform to the FLAC subset.
+		public static final SearchOptions SUBSET_ONLY_FIXED = new SearchOptions(0, 4, -1, -1);
+		public static final SearchOptions SUBSET_BEST = new SearchOptions(0, 1, 2, 12);
+		
+		// These search ranges do conform to the FLAC subset (i.e. they are lax).
+		public static final SearchOptions LAX_MEDIUM = new SearchOptions(0, 1, 2, 22);
+		public static final SearchOptions LAX_BEST = new SearchOptions(0, 1, 2, 32);
+		
 	}
 	
 }

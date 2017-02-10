@@ -48,7 +48,7 @@ public final class AdvancedFlacEncoder {
 			for (int j = 0; j < encoderInfo.length; j++) {
 				int n = Math.min(sizeMultiples[j] * baseSize, numSamples - pos);
 				long[][] subsamples = getRange(samples, pos, n);
-				encoderInfo[j][i] = FrameEncoder.computeBest(pos, subsamples, 16, sampleRate);
+				encoderInfo[j][i] = FrameEncoder.computeBest(pos, subsamples, 16, sampleRate, SubframeEncoder.SearchOptions.SUBSET_BEST);
 			}
 		}
 		
