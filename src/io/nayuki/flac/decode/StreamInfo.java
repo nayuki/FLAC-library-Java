@@ -6,6 +6,8 @@
 
 package io.nayuki.flac.decode;
 
+import java.io.IOException;
+
 
 // A mutable structure holding all fields of the stream info metadata block.
 public final class StreamInfo {
@@ -33,6 +35,32 @@ public final class StreamInfo {
 	// Constructs a blank stream info structure.
 	public StreamInfo() {
 		md5Hash = new byte[16];
+	}
+	
+	
+	// Constructs a stream info structure by reading 34 bytes from the given input
+	// stream to a FLAC file. This throws DataFormatException if values are invalid.
+	public StreamInfo(BitInputStream in) throws IOException {
+		this();
+		minBlockSize = in.readUint(16);
+		maxBlockSize = in.readUint(16);
+		minFrameSize = in.readUint(24);
+		maxFrameSize = in.readUint(24);
+		if (minBlockSize < 16)
+			throw new DataFormatException("Minimum block size less than 16");
+		if (maxBlockSize > 65535)
+			throw new DataFormatException("Maximum block size greater than 65535");
+		if (maxBlockSize < minBlockSize)
+			throw new DataFormatException("Maximum block size less than minimum block size");
+		if (minFrameSize != 0 && maxFrameSize != 0 && maxFrameSize < minFrameSize)
+			throw new DataFormatException("Maximum frame size less than minimum frame size");
+		sampleRate = in.readUint(20);
+		if (sampleRate == 0 || sampleRate > 655350)
+			throw new DataFormatException("Invalid sample rate");
+		numChannels = in.readUint(3) + 1;
+		sampleDepth = in.readUint(5) + 1;
+		numSamples = (long)in.readUint(18) << 18 | in.readUint(18);
+		in.readFully(md5Hash);
 	}
 	
 }

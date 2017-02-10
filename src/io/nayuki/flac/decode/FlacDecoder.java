@@ -85,27 +85,8 @@ public final class FlacDecoder {
 	private void parseStreamInfoData() throws IOException {
 		if (streamInfo != null)
 			throw new DataFormatException("Duplicate stream info block");
-		streamInfo = new StreamInfo();
-		streamInfo.minBlockSize = in.readUint(16);
-		streamInfo.maxBlockSize = in.readUint(16);
-		streamInfo.minFrameSize = in.readUint(24);
-		streamInfo.maxFrameSize = in.readUint(24);
-		if (streamInfo.minBlockSize < 16)
-			throw new DataFormatException("Minimum block size less than 16");
-		if (streamInfo.maxBlockSize > 65535)
-			throw new DataFormatException("Maximum block size greater than 65535");
-		if (streamInfo.maxBlockSize < streamInfo.minBlockSize)
-			throw new DataFormatException("Maximum block size less than minimum block size");
-		if (streamInfo.minFrameSize != 0 && streamInfo.maxFrameSize != 0 && streamInfo.maxFrameSize < streamInfo.minFrameSize)
-			throw new DataFormatException("Maximum frame size less than minimum frame size");
-		streamInfo.sampleRate = in.readUint(20);
-		if (streamInfo.sampleRate == 0 || streamInfo.sampleRate > 655350)
-			throw new DataFormatException("Invalid sample rate");
-		streamInfo.numChannels = in.readUint(3) + 1;
-		streamInfo.sampleDepth = in.readUint(5) + 1;
-		streamInfo.numSamples = (long)in.readUint(18) << 18 | in.readUint(18);
+		streamInfo = new StreamInfo(in);
 		samples = new int[streamInfo.numChannels][(int)streamInfo.numSamples];
-		in.readFully(streamInfo.md5Hash);
 	}
 	
 	
