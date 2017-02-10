@@ -24,6 +24,15 @@ public final class StreamInfo {
 	
 	// Always 16 bytes long. Can be all zeros to signify
 	// that the encoder did not compute the MD5 hash.
-	public byte[] md5Hash = new byte[16];
+	public byte[] md5Hash;
+	
+	
+	
+	/*---- Constructors ----*/
+	
+	// Constructs a blank stream info structure.
+	public StreamInfo() {
+		md5Hash = new byte[16];
+	}
 	
 }
