@@ -66,7 +66,7 @@ public final class BitOutputStream implements AutoCloseable {
 			throw new IllegalArgumentException();
 		
 		if (bitBufferLen + n > 64) {
-			flushBuffer();
+			flush();
 			assert bitBufferLen + n <= 64;
 		}
 		bitBuffer <<= n;
@@ -78,7 +78,7 @@ public final class BitOutputStream implements AutoCloseable {
 	
 	// Writes out whole bytes from the bit buffer to the underlying stream. After this is done,
 	// only 0 to 7 bits remain in the bit buffer. Also updates the CRCs on each byte written.
-	private void flushBuffer() throws IOException {
+	public void flush() throws IOException {
 		while (bitBufferLen >= 8) {
 			bitBufferLen -= 8;
 			int b = (int)(bitBuffer >>> bitBufferLen) & 0xFF;
@@ -102,7 +102,7 @@ public final class BitOutputStream implements AutoCloseable {
 	
 	// Marks the current position (which must be byte-aligned) as the start of both CRC calculations.
 	public void resetCrcs() throws IOException {
-		flushBuffer();
+		flush();
 		crc8 = 0;
 		crc16 = 0;
 	}
@@ -112,7 +112,7 @@ public final class BitOutputStream implements AutoCloseable {
 	// (or from the beginning of stream if reset was never called).
 	public int getCrc8() throws IOException {
 		checkByteAligned();
-		flushBuffer();
+		flush();
 		if ((crc8 >>> 8) != 0)
 			throw new AssertionError();
 		return crc8;
@@ -123,7 +123,7 @@ public final class BitOutputStream implements AutoCloseable {
 	// (or from the beginning of stream if reset was never called).
 	public int getCrc16() throws IOException {
 		checkByteAligned();
-		flushBuffer();
+		flush();
 		if ((crc16 >>> 16) != 0)
 			throw new AssertionError();
 		return crc16;
@@ -136,7 +136,7 @@ public final class BitOutputStream implements AutoCloseable {
 	// and invalidates this bit output stream object for any future operation.
 	public void close() throws IOException {
 		checkByteAligned();
-		flushBuffer();
+		flush();
 		out.close();
 		out = null;
 	}
