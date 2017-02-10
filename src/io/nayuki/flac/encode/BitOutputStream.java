@@ -48,11 +48,14 @@ public final class BitOutputStream implements AutoCloseable {
 		if (n < 0 || n > 32)
 			throw new IllegalArgumentException();
 		
-		if (bitBufferLen + n > 64)
+		if (bitBufferLen + n > 64) {
 			flushBuffer();
+			assert bitBufferLen + n <= 64;
+		}
 		bitBuffer <<= n;
 		bitBuffer |= val & ((1L << n) - 1);
 		bitBufferLen += n;
+		assert 0 <= bitBufferLen && bitBufferLen <= 64;
 	}
 	
 	
@@ -118,8 +121,11 @@ public final class BitOutputStream implements AutoCloseable {
 				crc16 <<= 1;
 				crc8 ^= (crc8 >>> 8) * 0x107;
 				crc16 ^= (crc16 >>> 16) * 0x18005;
+				assert (crc8 >>> 8) == 0;
+				assert (crc16 >>> 16) == 0;
 			}
 		}
+		assert 0 <= bitBufferLen && bitBufferLen <= 64;
 	}
 	
 }
