@@ -102,10 +102,10 @@ public final class BitOutputStream implements AutoCloseable {
 	}
 	
 	
-	// Pads the output bit stream up to a byte boundary, writes out any internally buffered data,
-	// closes the underlying output stream, and invalidates this stream object for any future operation.
+	// Writes out any internally buffered bit data, closes the underlying output stream,
+	// and invalidates this bit output stream object for any future operation.
 	public void close() throws IOException {
-		alignToByte();
+		checkByteAligned();
 		flushBuffer();
 		out.close();
 		out = null;
