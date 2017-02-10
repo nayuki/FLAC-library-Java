@@ -35,7 +35,7 @@ abstract class SubframeEncoder {
 		
 		// Try fixed prediction encoding
 		for (int order = opt.minFixedOrder; order <= opt.maxFixedOrder; order++) {
-			SizeEstimate<SubframeEncoder> temp = FixedPredictionEncoder.computeBest(data, shift, sampleDepth, order);
+			SizeEstimate<SubframeEncoder> temp = FixedPredictionEncoder.computeBest(data, shift, sampleDepth, order, opt.maxRiceOrder);
 			if (temp.sizeEstimate < result.sizeEstimate)
 				result = temp;
 		}
@@ -43,7 +43,7 @@ abstract class SubframeEncoder {
 		// Try linear predictive coding
 		FastDotProduct fdp = new FastDotProduct(data, 32);
 		for (int order = opt.minLpcOrder; order <= opt.maxLpcOrder; order++) {
-			SizeEstimate<SubframeEncoder> temp = LinearPredictiveEncoder.computeBest(data, shift, sampleDepth, order, Math.min(opt.lpcRoundVariables, order), fdp);
+			SizeEstimate<SubframeEncoder> temp = LinearPredictiveEncoder.computeBest(data, shift, sampleDepth, order, Math.min(opt.lpcRoundVariables, order), fdp, opt.maxRiceOrder);
 			if (temp.sizeEstimate < result.sizeEstimate)
 				result = temp;
 		}
@@ -114,11 +114,12 @@ abstract class SubframeEncoder {
 		public final int minLpcOrder;
 		public final int maxLpcOrder;
 		public final int lpcRoundVariables;
+		public final int maxRiceOrder;
 		
 		
 		/*-- Constructors --*/
 		
-		public SearchOptions(int minFixedOrder, int maxFixedOrder, int minLpcOrder, int maxLpcOrder, int lpcRoundVars) {
+		public SearchOptions(int minFixedOrder, int maxFixedOrder, int minLpcOrder, int maxLpcOrder, int lpcRoundVars, int maxRiceOrder) {
 			if ((minFixedOrder != -1 || maxFixedOrder != -1) &&
 					!(0 <= minFixedOrder && minFixedOrder <= maxFixedOrder && maxFixedOrder <= 4))
 				throw new IllegalArgumentException();
@@ -127,23 +128,26 @@ abstract class SubframeEncoder {
 				throw new IllegalArgumentException();
 			if (lpcRoundVars < 0 || lpcRoundVars > 30)
 				throw new IllegalArgumentException();
+			if (maxRiceOrder < 0 || maxRiceOrder > 15)
+				throw new IllegalArgumentException();
 			this.minFixedOrder = minFixedOrder;
 			this.maxFixedOrder = maxFixedOrder;
 			this.minLpcOrder = minLpcOrder;
 			this.maxLpcOrder = maxLpcOrder;
 			this.lpcRoundVariables = lpcRoundVars;
+			this.maxRiceOrder = maxRiceOrder;
 		}
 		
 		
 		/*-- Constants for recommended defaults --*/
 		
 		// These search ranges conform to the FLAC subset.
-		public static final SearchOptions SUBSET_ONLY_FIXED = new SearchOptions(0, 4, -1, -1, 0);
-		public static final SearchOptions SUBSET_BEST = new SearchOptions(0, 1, 2, 12, 0);
+		public static final SearchOptions SUBSET_ONLY_FIXED = new SearchOptions(0, 4, -1, -1, 0, 8);
+		public static final SearchOptions SUBSET_BEST = new SearchOptions(0, 1, 2, 12, 0, 8);
 		
 		// These search ranges do conform to the FLAC subset (i.e. they are lax).
-		public static final SearchOptions LAX_MEDIUM = new SearchOptions(0, 1, 2, 22, 0);
-		public static final SearchOptions LAX_BEST = new SearchOptions(0, 1, 2, 32, 0);
+		public static final SearchOptions LAX_MEDIUM = new SearchOptions(0, 1, 2, 22, 0, 15);
+		public static final SearchOptions LAX_BEST = new SearchOptions(0, 1, 2, 32, 0, 15);
 		
 	}
 	

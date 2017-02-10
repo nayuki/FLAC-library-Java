@@ -12,13 +12,13 @@ import java.util.Objects;
 
 final class FixedPredictionEncoder extends SubframeEncoder {
 	
-	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth, int order) {
+	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth, int order, int maxRiceOrder) {
 		FixedPredictionEncoder enc = new FixedPredictionEncoder(data, shift, depth, order);
 		data = data.clone();
 		for (int i = 0; i < data.length; i++)
 			data[i] >>= shift;
 		applyLpc(data, COEFFICIENTS[order], 0);
-		long temp = RiceEncoder.computeBestSizeAndOrder(data, order);
+		long temp = RiceEncoder.computeBestSizeAndOrder(data, order, maxRiceOrder);
 		enc.riceOrder = (int)(temp & 0xF);
 		long size = 1 + 6 + 1 + shift + order * depth + (temp >>> 4);
 		return new SizeEstimate<SubframeEncoder>(size, enc);

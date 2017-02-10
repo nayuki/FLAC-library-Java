@@ -14,13 +14,15 @@ final class RiceEncoder {
 	/*---- Functions for size calculation ---*/
 	
 	// Calculates the number of bits needed to encode the sequence of values data[warmup : data.length].
-	public static long computeBestSizeAndOrder(long[] data, int warmup) {
+	public static long computeBestSizeAndOrder(long[] data, int warmup, int maxPartOrder) {
+		if (maxPartOrder < 0 || maxPartOrder > 15)
+			throw new IllegalArgumentException();
 		long bestSize = Integer.MAX_VALUE;
 		int bestOrder = -1;
 		
 		int[] escapeBits = null;
 		int[] bitsAtParam = null;
-		for (int order = 15; order >= 0; order--) {
+		for (int order = maxPartOrder; order >= 0; order--) {
 			int partSize = data.length >>> order;
 			if ((partSize << order) != data.length || partSize < warmup)
 				continue;
