@@ -16,32 +16,43 @@ public final class BitInputStream implements AutoCloseable {
 	
 	/*---- Fields ----*/
 	
+	// The underlying byte-based input stream to read from.
 	private InputStream in;
+	
+	// Data from the underlying stream is first stored into this byte buffer before further processing.
 	private byte[] byteBuffer;
 	private int byteBufferLen;
 	private int byteBufferIndex;
-	private int crcStartIndex;
-	private long bitBuffer;
-	private int bitBufferLen;
-	private int crc8;
-	private int crc16;
+	
+	// The buffer of next bits to return to a reader. Note that byteBufferIndex is incremented when byte
+	// values are put into the bit buffer, but they might not have been consumed by the ultimate reader yet.
+	private long bitBuffer;  // Only the bottom bitBufferLen bits are valid; the top bits are garbage.
+	private int bitBufferLen;  // Always in the range [0, 64].
+	
+	// Current state of the CRC calculations.
+	private int crc8;  // Always a uint8 value.
+	private int crc16;  // Always a uint16 value.
+	private int crcStartIndex;  // In the range [0, byteBufferLen], unless byteBufferLen = -1.
 	
 	
 	
 	/*---- Constructors ----*/
 	
-	// Constructs a FLAC-oriented bit inputstream from the given byte-based input stream.
+	// Constructs a FLAC-oriented bit input stream from the given byte-based input stream.
 	public BitInputStream(InputStream in) {
 		Objects.requireNonNull(in);
 		this.in = in;
+		
 		byteBuffer = new byte[4096];
 		byteBufferLen = 0;
 		byteBufferIndex = 0;
-		crcStartIndex = 0;
+		
 		bitBuffer = 0;
 		bitBufferLen = 0;
+		
 		crc8  = 0;
 		crc16 = 0;
+		crcStartIndex = 0;
 	}
 	
 	
@@ -138,6 +149,8 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Returns the number of bits in the current byte that have been consumed.
+	// This starts at 0, increments for each bit consumed, topping out at 7, then wraps around and repeats.
 	public int getBitPosition() {
 		return (-bitBufferLen) & 7;
 	}
@@ -165,6 +178,7 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Updates the two CRC values with data in byteBuffer[crcStartIndex : byteBufferIndex - unusedTrailingBytes].
 	private void updateCrcs(int unusedTrailingBytes) {
 		int end = byteBufferIndex - unusedTrailingBytes;
 		for (int i = crcStartIndex; i < end; i++) {
@@ -178,6 +192,7 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Marks the current position (which must be byte-aligned) as the start of both CRC calculations.
 	public void resetCrcs() {
 		if (bitBufferLen % 8 != 0)
 			throw new IllegalStateException();
@@ -220,6 +235,7 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Reads a byte from the byte buffer (if available) or from the underlying stream, returning either a uint8 or -1.
 	private int readUnderlying() throws IOException {
 		if (byteBufferIndex >= byteBufferLen) {
 			if (byteBufferLen == -1)
@@ -238,6 +254,7 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Either returns silently or throws an exception.
 	private void checkByteAligned() {
 		if (bitBufferLen % 8 != 0)
 			throw new IllegalStateException("Not at a byte boundary");
@@ -247,11 +264,13 @@ public final class BitInputStream implements AutoCloseable {
 	
 	/*---- Tables of constants ----*/
 	
-	private static final int RICE_DECODING_TABLE_BITS = 13;  // Must be positive
+	// For rice decoding
+	
+	private static final int RICE_DECODING_TABLE_BITS = 13;  // Configurable, must be positive
 	private static final int RICE_DECODING_TABLE_MASK = (1 << RICE_DECODING_TABLE_BITS) - 1;
 	private static final byte[][] RICE_DECODING_CONSUMED_TABLES = new byte[31][1 << RICE_DECODING_TABLE_BITS];
 	private static final int[][] RICE_DECODING_VALUE_TABLES = new int[31][1 << RICE_DECODING_TABLE_BITS];
-	private static final int RICE_DECODING_CHUNK = 4;  // Requires RICE_DECODING_CHUNK > 0 && RICE_DECODING_CHUNK * RICE_DECODING_TABLE_BITS <= 64
+	private static final int RICE_DECODING_CHUNK = 4;  // Configurable, must be positive, and RICE_DECODING_CHUNK * RICE_DECODING_TABLE_BITS <= 64
 	
 	static {
 		for (int param = 0; param < RICE_DECODING_CONSUMED_TABLES.length; param++) {
@@ -273,6 +292,8 @@ public final class BitInputStream implements AutoCloseable {
 		}
 	}
 	
+	
+	// For CRC calculations
 	
 	private static byte[] CRC8_TABLE  = new byte[256];
 	private static char[] CRC16_TABLE = new char[256];
