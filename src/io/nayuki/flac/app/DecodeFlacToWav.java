@@ -13,13 +13,13 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.zip.DataFormatException;
+import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.decode.FlacDecoder;
 
 
 public final class DecodeFlacToWav {
 	
-	public static void main(String[] args) throws IOException, DataFormatException {
+	public static void main(String[] args) throws IOException {
 		if (args.length != 2) {
 			System.err.println("Usage: java DecodeFlacToWav InFile.flac OutFile.wav");
 			System.exit(1);

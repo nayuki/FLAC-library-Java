@@ -8,7 +8,6 @@ package io.nayuki.flac.decode;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.zip.DataFormatException;
 
 
 // Note: Objects are stateful and not thread-safe, because of the bit input stream field and private temporary arrays.
@@ -49,7 +48,7 @@ public final class FrameDecoder {
 	// decodes a frame and returns a new metadata object, or throws an appropriate exception. A frame
 	// may have up to 8 channels and 65536 samples, so the output arrays need to be sized appropriately.
 	public FrameMetadata readFrame(int[][] outSamples, int outOffset)
-			throws IOException, DataFormatException {
+			throws IOException {
 		
 		// Preliminaries
 		in.resetCrcs();
@@ -120,7 +119,7 @@ public final class FrameDecoder {
 	
 	// Reads between 1 and 7 bytes of input, and returns a uint36 value.
 	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
-	private long readUtf8Integer() throws IOException, DataFormatException {
+	private long readUtf8Integer() throws IOException {
 		int temp = in.readUint(8);
 		int n = Integer.numberOfLeadingZeros(~(temp << 24));  // Number of leading 1s in the byte
 		if (n < 0 || n > 8)
@@ -145,7 +144,7 @@ public final class FrameDecoder {
 	
 	
 	// Argument is uint4, return value is in the range [1, FRAME_MAX_SAMPLES], may read 2 bytes of input.
-	private int decodeBlockSamples(int code) throws IOException, DataFormatException {
+	private int decodeBlockSamples(int code) throws IOException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
 		else if (code == 0)
@@ -166,7 +165,7 @@ public final class FrameDecoder {
 	
 	
 	// Argument is uint4, may read 2 bytes of input.
-	private int decodeSampleRate(int code) throws IOException, DataFormatException {
+	private int decodeSampleRate(int code) throws IOException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
 		else if (code == 0)
@@ -189,7 +188,7 @@ public final class FrameDecoder {
 	
 	
 	// Argument is uint3, return value is in the range [-1, 32], performs no I/O.
-	private static int decodeSampleDepth(int code) throws DataFormatException {
+	private static int decodeSampleDepth(int code) {
 		if ((code >>> 3) != 0)
 			throw new IllegalArgumentException();
 		else if (code == 0)
@@ -207,7 +206,7 @@ public final class FrameDecoder {
 	/*---- Sub-frame audio data decoding methods ----*/
 	
 	private void decodeSubframes(int sampleDepth, int chanAsgn, int[][] outSamples, int outOffset)
-			throws IOException, DataFormatException {
+			throws IOException {
 		if ((chanAsgn >>> 4) != 0)
 			throw new IllegalArgumentException();
 		
@@ -250,7 +249,7 @@ public final class FrameDecoder {
 	}
 	
 	
-	private void decodeSubframe(int sampleDepth, long[] result) throws IOException, DataFormatException {
+	private void decodeSubframe(int sampleDepth, long[] result) throws IOException {
 		if (in.readUint(1) != 0)
 			throw new DataFormatException("Invalid padding bit");
 		int type = in.readUint(6);
@@ -283,7 +282,7 @@ public final class FrameDecoder {
 	
 	
 	private void decodeFixedPrediction(int order, int sampleDepth, long[] result)
-			throws IOException, DataFormatException {
+			throws IOException {
 		if (order < 0 || order > 4)
 			throw new IllegalArgumentException();
 		
@@ -304,7 +303,7 @@ public final class FrameDecoder {
 	
 	
 	private void decodeLinearPredictiveCoding(int order, int sampleDepth, long[] result)
-			throws IOException, DataFormatException {
+			throws IOException {
 		if (order < 1 || order > 32)
 			throw new IllegalArgumentException();
 		
@@ -339,7 +338,7 @@ public final class FrameDecoder {
 	
 	
 	// Reads metadata and Rice-coded numbers from the input stream, storing them in result[warmup : currentBlockSize].
-	private void readResiduals(int warmup, long[] result) throws IOException, DataFormatException {
+	private void readResiduals(int warmup, long[] result) throws IOException {
 		int method = in.readUint(2);
 		if (method == 0 || method == 1) {
 			int partitionOrder = in.readUint(4);

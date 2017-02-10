@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.zip.DataFormatException;
 import io.nayuki.flac.common.Md5Hasher;
 
 
@@ -34,7 +33,7 @@ public final class FlacDecoder {
 	
 	// Constructs a FLAC decoder from the given input stream, and immediately
 	// performs full decoding of the data until the end of stream is reached.
-	public FlacDecoder(InputStream in) throws IOException, DataFormatException {
+	public FlacDecoder(InputStream in) throws IOException {
 		// Initialize some fields
 		Objects.requireNonNull(in);
 		this.in = new BitInputStream(in);
@@ -69,7 +68,7 @@ public final class FlacDecoder {
 	
 	/*---- Private methods ----*/
 	
-	private boolean handleMetadataBlock() throws IOException, DataFormatException {
+	private boolean handleMetadataBlock() throws IOException {
 		boolean last = in.readUint(1) != 0;
 		int type = in.readUint(7);
 		int length = in.readUint(24);
@@ -83,7 +82,7 @@ public final class FlacDecoder {
 	}
 	
 	
-	private void parseStreamInfoData() throws IOException, DataFormatException {
+	private void parseStreamInfoData() throws IOException {
 		if (steamInfoSeen)
 			throw new DataFormatException("Duplicate stream info block");
 		steamInfoSeen = true;
@@ -108,7 +107,7 @@ public final class FlacDecoder {
 	
 	// Examines the values in the given frame metadata to check if they match the other arguments
 	// and the current object state, either returning silently or throwing an exception.
-	private void checkFrame(FrameMetadata meta, int frameIndex, long sampleOffset) throws DataFormatException {
+	private void checkFrame(FrameMetadata meta, int frameIndex, long sampleOffset) {
 		if (meta.numChannels != this.numChannels)
 			throw new DataFormatException("Channel count mismatch");
 		if (meta.sampleRate != -1 && meta.sampleRate != this.sampleRate)
