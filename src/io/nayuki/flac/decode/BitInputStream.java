@@ -118,11 +118,9 @@ public final class BitInputStream implements AutoCloseable {
 	// Discards any partial bits, then either returns an unsigned byte value or -1 for EOF.
 	public int readByte() throws IOException {
 		bitBufferLen &= ~7;  // Align to byte (discards between 0 to 7 bits)
-		if (bitBufferLen >= 8) {
-			int result = (int)(bitBuffer >>> (bitBufferLen - 8)) & 0xFF;
-			bitBufferLen -= 8;
-			return result;
-		} else {
+		if (bitBufferLen >= 8)
+			return readUint(8);
+		else {
 			bitBufferLen = 0;
 			return readUnderlying();
 		}
@@ -184,6 +182,9 @@ public final class BitInputStream implements AutoCloseable {
 	public void close() throws IOException {
 		in.close();
 		in = null;
+		byteBuffer = null;
+		byteBufferLen = 0;
+		byteBufferIndex = 0;
 		bitBuffer = 0;
 		bitBufferLen = 0;
 	}

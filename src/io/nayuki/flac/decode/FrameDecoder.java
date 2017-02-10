@@ -139,7 +139,7 @@ public final class FrameDecoder {
 		else if (n == 1 || n == 8)
 			throw new DataFormatException("Invalid UTF-8 coded number");
 		else {
-			long result = temp & ((1 << (7 - n)) - 1);
+			long result = temp & (0x7F >>> n);
 			for (int i = 0; i < n - 1; i++) {
 				temp = in.readUint(8);
 				if ((temp & 0xC0) != 0x80)
@@ -205,7 +205,7 @@ public final class FrameDecoder {
 			return SAMPLE_DEPTHS[code];
 	}
 	
-	private static final int[] SAMPLE_DEPTHS = {-1, 8, 12, -1, 16, 20, 24, -1};
+	private static final int[] SAMPLE_DEPTHS = {-1, 8, 12, -2, 16, 20, 24, -2};
 	
 	
 	
