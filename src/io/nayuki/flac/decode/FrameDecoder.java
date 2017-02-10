@@ -171,20 +171,14 @@ public final class FrameDecoder {
 	private int decodeSampleRate(int code) throws IOException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
-		else if (code == 0)
-			return -1;  // Caller should obtain value from stream info metadata block
-		else if (code < SAMPLE_RATES.length)
-			return SAMPLE_RATES[code];
-		else if (code == 12)
-			return in.readUint(8);
-		else if (code == 13)
-			return in.readUint(16);
-		else if (code == 14)
-			return in.readUint(16) * 10;
-		else if (code == 15)
-			throw new DataFormatException("Invalid sample rate");
-		else
-			throw new AssertionError();
+		switch (code) {
+			case  0:  return -1;  // Caller should obtain value from stream info metadata block
+			case 12:  return in.readUint(8);
+			case 13:  return in.readUint(16);
+			case 14:  return in.readUint(16) * 10;
+			case 15:  throw new DataFormatException("Invalid sample rate");
+			default:  return SAMPLE_RATES[code];  // 1 <= code <= 11
+		}
 	}
 	
 	private static final int[] SAMPLE_RATES = {-1, 88200, 176400, 192000, 8000, 16000, 22050, 24000, 32000, 44100, 48000, 96000};
