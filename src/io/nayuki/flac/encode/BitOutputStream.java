@@ -98,6 +98,7 @@ public final class BitOutputStream implements AutoCloseable {
 			}
 		}
 		assert 0 <= bitBufferLen && bitBufferLen <= 64;
+		out.flush();
 	}
 	
 	
