@@ -158,8 +158,8 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
-	private void updateCrcs(int delta) {
-		int end = byteBufferIndex - delta;
+	private void updateCrcs(int unusedTrailingBytes) {
+		int end = byteBufferIndex - unusedTrailingBytes;
 		for (int i = crcStartIndex; i < end; i++) {
 			int b = byteBuffer[i] & 0xFF;
 			crc8 = CRC8_TABLE[crc8 ^ b] & 0xFF;

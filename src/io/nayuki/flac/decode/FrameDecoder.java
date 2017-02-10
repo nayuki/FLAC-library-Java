@@ -288,15 +288,15 @@ public final class FrameDecoder {
 	
 	
 	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
-	private void decodeFixedPrediction(int order, int sampleDepth, long[] result) throws IOException {
-		if (order < 0 || order > 4)
+	private void decodeFixedPrediction(int predOrder, int sampleDepth, long[] result) throws IOException {
+		if (predOrder < 0 || predOrder > 4)
 			throw new IllegalArgumentException();
 		
-		for (int i = 0; i < order; i++)
+		for (int i = 0; i < predOrder; i++)
 			result[i] = in.readSignedInt(sampleDepth);
 		
-		readResiduals(order, result);
-		restoreLpc(result, FIXED_PREDICTION_COEFFICIENTS[order], 0);
+		readResiduals(predOrder, result);
+		restoreLpc(result, FIXED_PREDICTION_COEFFICIENTS[predOrder], 0);
 	}
 	
 	private static final int[][] FIXED_PREDICTION_COEFFICIENTS = {
@@ -309,11 +309,11 @@ public final class FrameDecoder {
 	
 	
 	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
-	private void decodeLinearPredictiveCoding(int order, int sampleDepth, long[] result) throws IOException {
-		if (order < 1 || order > 32)
+	private void decodeLinearPredictiveCoding(int lpcOrder, int sampleDepth, long[] result) throws IOException {
+		if (lpcOrder < 1 || lpcOrder > 32)
 			throw new IllegalArgumentException();
 		
-		for (int i = 0; i < order; i++)
+		for (int i = 0; i < lpcOrder; i++)
 			result[i] = in.readSignedInt(sampleDepth);
 		
 		int precision = in.readUint(4) + 1;
@@ -323,11 +323,11 @@ public final class FrameDecoder {
 		if (shift < 0)
 			throw new DataFormatException("Invalid LPC shift");
 		
-		int[] coefs = new int[order];
+		int[] coefs = new int[lpcOrder];
 		for (int i = 0; i < coefs.length; i++)
 			coefs[i] = in.readSignedInt(precision);
 		
-		readResiduals(order, result);
+		readResiduals(lpcOrder, result);
 		restoreLpc(result, coefs, shift);
 	}
 	
