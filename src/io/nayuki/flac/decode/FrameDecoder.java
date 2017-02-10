@@ -15,6 +15,7 @@ public final class FrameDecoder {
 	
 	/*---- Fields ----*/
 	
+	// Can be changed when there is no active call of readFrame(). Must be not null when readFrame() is called.
 	public BitInputStream in;
 	
 	// Temporary arrays to hold two decoded audio channels. The maximum possible block size is either
@@ -32,6 +33,7 @@ public final class FrameDecoder {
 	
 	/*---- Constructors ----*/
 	
+	// Constructs a frame decoder that initially uses the given stream.
 	public FrameDecoder(BitInputStream in) {
 		this.in = in;
 		temp0 = new long[65536];
@@ -117,7 +119,7 @@ public final class FrameDecoder {
 	}
 	
 	
-	// Reads between 1 and 7 bytes of input, and returns a uint36 value.
+	// Reads 1 to 7 bytes from the input stream. Return value is a uint36.
 	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
 	private long readUtf8Integer() throws IOException {
 		int temp = in.readUint(8);
@@ -143,7 +145,8 @@ public final class FrameDecoder {
 	}
 	
 	
-	// Argument is uint4, return value is in the range [1, FRAME_MAX_SAMPLES], may read 2 bytes of input.
+	// Argument is a uint4 value. Reads 0 to 2 bytes from the input stream.
+	// Return value is in the range [1, 65536].
 	private int decodeBlockSamples(int code) throws IOException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
@@ -164,12 +167,13 @@ public final class FrameDecoder {
 	}
 	
 	
-	// Argument is uint4, may read 2 bytes of input.
+	// Argument is a uint4 value. Reads 0 to 2 bytes from the input stream.
+	// Return value is in the range [-1, 655350].
 	private int decodeSampleRate(int code) throws IOException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
 		else if (code == 0)
-			return -1;
+			return -1;  // Caller should obtain value from stream info metadata block
 		else if (code < SAMPLE_RATES.length)
 			return SAMPLE_RATES[code];
 		else if (code == 12)
@@ -187,12 +191,12 @@ public final class FrameDecoder {
 	private static final int[] SAMPLE_RATES = {-1, 88200, 176400, 192000, 8000, 16000, 22050, 24000, 32000, 44100, 48000, 96000};
 	
 	
-	// Argument is uint3, return value is in the range [-1, 32], performs no I/O.
+	// Argument is a uint3 value. Pure function and performs no I/O. Return value is in the range [-1, 24].
 	private static int decodeSampleDepth(int code) {
 		if ((code >>> 3) != 0)
 			throw new IllegalArgumentException();
 		else if (code == 0)
-			return -1;
+			return -1;  // Caller should obtain value from stream info metadata block
 		else if (SAMPLE_DEPTHS[code] < 0)
 			throw new DataFormatException("Reserved bit depth");
 		else
@@ -205,6 +209,9 @@ public final class FrameDecoder {
 	
 	/*---- Sub-frame audio data decoding methods ----*/
 	
+	// Based on the two audio parameters, this method reads and decodes each subframe, decodes stereo if necessary, and writes
+	// the final uncompressed audio data to the array range outSamples[0 : numChannels][outOffset : outOffset + currentBlockSize].
+	// Note that this method uses the private temporary arrays and passes them into sub-method calls.
 	private void decodeSubframes(int sampleDepth, int chanAsgn, int[][] outSamples, int outOffset)
 			throws IOException {
 		if ((chanAsgn >>> 4) != 0)
@@ -249,6 +256,7 @@ public final class FrameDecoder {
 	}
 	
 	
+	// Writes to result[0 : currentBlockSize].
 	private void decodeSubframe(int sampleDepth, long[] result) throws IOException {
 		if (in.readUint(1) != 0)
 			throw new DataFormatException("Invalid padding bit");
@@ -260,9 +268,9 @@ public final class FrameDecoder {
 		}
 		sampleDepth -= shift;
 		
-		if (type == 0) {
+		if (type == 0) {  // Constant coding
 			Arrays.fill(result, 0, currentBlockSize, in.readSignedInt(sampleDepth));
-		} else if (type == 1) {
+		} else if (type == 1) {  // Verbatim coding
 			for (int i = 0; i < currentBlockSize; i++)
 				result[i] = in.readSignedInt(sampleDepth);
 		} else if (type < 8)
@@ -281,6 +289,7 @@ public final class FrameDecoder {
 	}
 	
 	
+	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
 	private void decodeFixedPrediction(int order, int sampleDepth, long[] result)
 			throws IOException {
 		if (order < 0 || order > 4)
@@ -302,6 +311,7 @@ public final class FrameDecoder {
 	};
 	
 	
+	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
 	private void decodeLinearPredictiveCoding(int order, int sampleDepth, long[] result)
 			throws IOException {
 		if (order < 1 || order > 32)
@@ -327,6 +337,7 @@ public final class FrameDecoder {
 	
 	
 	// Updates the values of block[coefs.length : currentBlockSize] according to linear predictive coding.
+	// This method reads all the arguments and the field currentBlockSize, only writes to result, and has no other side effects.
 	private void restoreLpc(long[] result, int[] coefs, int shift) {
 		for (int i = coefs.length; i < currentBlockSize; i++) {
 			long sum = 0;

@@ -30,6 +30,7 @@ public final class BitInputStream implements AutoCloseable {
 	
 	/*---- Constructors ----*/
 	
+	// Constructs a FLAC-oriented bit inputstream from the given byte-based input stream.
 	public BitInputStream(InputStream in) {
 		Objects.requireNonNull(in);
 		this.in = in;
@@ -74,8 +75,11 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Reads and decodes the next Rice-coded signed integer. This might read a large number of bits
+	// from the underlying stream (but not in practice because it would be a very inefficient encoding).
 	public int readRiceSignedInt(int param) throws IOException {
 		while (true) {  // Simulate goto
+			// Check or fill enough bits in the buffer
 			if (bitBufferLen < RICE_DECODING_TABLE_BITS) {
 				if (((byteBufferLen - byteBufferIndex) << 3) >= RICE_DECODING_TABLE_BITS) {
 					fillBitBuffer();
@@ -130,6 +134,8 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Returns the CRC-8 hash of all the data seen since the last call to resetCrcs()
+	// (or from the beginning of stream if reset was never called).
 	public int getCrc8() {
 		if (bitBufferLen % 8 != 0)
 			throw new IllegalStateException();
@@ -140,6 +146,8 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Returns the CRC-16 hash of all the data seen since the last call to resetCrcs()
+	// (or from the beginning of stream if reset was never called).
 	public int getCrc16() {
 		if (bitBufferLen % 8 != 0)
 			throw new IllegalStateException();
@@ -172,6 +180,7 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Discards all buffers and closes the underlying input stream.
 	public void close() throws IOException {
 		in.close();
 		in = null;
@@ -180,6 +189,7 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
+	// Appends at least 8 bits to the bit buffer, or throws EOFException.
 	private void fillBitBuffer() throws IOException {
 		int i = byteBufferIndex;
 		int n = Math.min((64 - bitBufferLen) >>> 3, byteBufferLen - i);
