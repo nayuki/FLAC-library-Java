@@ -11,13 +11,23 @@ import java.util.Arrays;
 import java.util.zip.DataFormatException;
 
 
+// Note: Objects are stateful and not thread-safe, because of the bit input stream field and private temporary arrays.
 public final class FrameDecoder {
 	
 	public BitInputStream in;
 	
+	// Temporary arrays to hold two decoded audio channels. The maximum possible block size is either
+	// 65536 from the frame header logic, or 65535 from a strict reading of the FLAC specification.
+	// Two buffers are needed due to stereo techniques like mid-side processing, but not more than
+	// two buffers because all other multi-channel audio is processed independently per channel.
+	private long[] temp0;
+	private long[] temp1;
+	
 	
 	public FrameDecoder(BitInputStream in) {
 		this.in = in;
+		temp0 = new long[65536];
+		temp1 = new long[65536];
 	}
 	
 	
@@ -184,8 +194,6 @@ public final class FrameDecoder {
 			throws IOException, DataFormatException {
 		if ((chanAsgn >>> 4) != 0)
 			throw new IllegalArgumentException();
-		long[] temp0 = new long[blockSamples];
-		long[] temp1 = new long[blockSamples];
 		
 		if (0 <= chanAsgn && chanAsgn <= 7) {  // Independent channels
 			int numChannels = chanAsgn + 1;
