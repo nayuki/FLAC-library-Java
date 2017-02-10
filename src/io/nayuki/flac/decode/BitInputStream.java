@@ -204,17 +204,7 @@ public final class BitInputStream implements AutoCloseable {
 		int i = byteBufferIndex;
 		int n = Math.min((64 - bitBufferLen) >>> 3, byteBufferLen - i);
 		byte[] b = byteBuffer;
-		if (n == 6) {
-			bitBuffer <<= 48;
-			bitBuffer |= ((long)((b[i] & 0xFF) << 8 | (b[i + 1] & 0xFF)) << 32)
-				| ((b[i + 2] << 24 | (b[i + 3] & 0xFF) << 16 | (b[i + 4] & 0xFF) << 8 | (b[i + 5] & 0xFF)) & 0xFFFFFFFFL);
-			bitBufferLen += 48;
-		} else if (n == 7) {
-			bitBuffer <<= 56;
-			bitBuffer |= ((long)((b[i] & 0xFF) << 16 | (b[i + 1] & 0xFF) << 8 | (b[i + 2] & 0xFF)) << 32)
-				| ((b[i + 3] << 24 | (b[i + 4] & 0xFF) << 16 | (b[i + 5] & 0xFF) << 8 | (b[i + 6] & 0xFF)) & 0xFFFFFFFFL);
-			bitBufferLen += 56;
-		} else if (n > 0) {
+		if (n > 0) {
 			for (int j = 0; j < n; j++, i++)
 				bitBuffer = (bitBuffer << 8) | (b[i] & 0xFF);
 			bitBufferLen += n << 3;
