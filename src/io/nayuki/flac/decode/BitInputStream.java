@@ -79,34 +79,41 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
-	// Reads and decodes the next Rice-coded signed integer. This might read a large number of bits
-	// from the underlying stream (but not in practice because it would be a very inefficient encoding).
-	public int readRiceSignedInt(int param) throws IOException {
-		while (true) {  // Simulate goto
-			// Check or fill enough bits in the buffer
-			if (bitBufferLen < RICE_DECODING_TABLE_BITS) {
-				if (((byteBufferLen - byteBufferIndex) << 3) >= RICE_DECODING_TABLE_BITS) {
-					fillBitBuffer();
-					assert bitBufferLen >= RICE_DECODING_TABLE_BITS;
-				} else
-					break;
+	// Reads and decodes the next batch of Rice-coded signed integers. Note that any Rice-coded integer might read a large
+	// number of bits from the underlying stream (but not in practice because it would be a very inefficient encoding).
+	public void readRiceSignedInts(int param, long[] result, int start, int end) throws IOException {
+		byte[] consumeTable = RICE_DECODING_CONSUMED_TABLES[param];
+		int[] valueTable = RICE_DECODING_VALUE_TABLES[param];
+		while (true) {
+			middle:
+			while (start <= end - RICE_DECODING_CHUNK) {
+				if (bitBufferLen < RICE_DECODING_CHUNK * RICE_DECODING_TABLE_BITS) {
+					if (byteBufferIndex <= byteBufferLen - 8) {
+						fillBitBuffer();
+					} else
+						break;
+				}
+				for (int i = 0; i < RICE_DECODING_CHUNK; i++, start++) {
+					// Fast decoder
+					int extractedBits = (int)(bitBuffer >>> (bitBufferLen - RICE_DECODING_TABLE_BITS)) & RICE_DECODING_TABLE_MASK;
+					int consumed = consumeTable[extractedBits];
+					if (consumed == 0)
+						break middle;
+					bitBufferLen -= consumed;
+					result[start] = valueTable[extractedBits];
+				}
 			}
 			
-			// Fast decoder
-			int extractedBits = (int)(bitBuffer >>> (bitBufferLen - RICE_DECODING_TABLE_BITS)) & RICE_DECODING_TABLE_MASK;
-			int consumed = RICE_DECODING_CONSUMED_TABLES[param][extractedBits];
-			if (consumed == 0)
+			// Slow decoder
+			if (start >= end)
 				break;
-			bitBufferLen -= consumed;
-			return RICE_DECODING_VALUE_TABLES[param][extractedBits];
+			int val = 0;
+			while (readUint(1) == 0)
+				val++;
+			val = (val << param) | readUint(param);
+			result[start] = (val >>> 1) ^ (-(val & 1));
+			start++;
 		}
-		
-		// Slow decoder
-		int result = 0;
-		while (readUint(1) == 0)
-			result++;
-		result = (result << param) | readUint(param);
-		return (result >>> 1) ^ (-(result & 1));
 	}
 	
 	
@@ -254,6 +261,7 @@ public final class BitInputStream implements AutoCloseable {
 	private static final int RICE_DECODING_TABLE_MASK = (1 << RICE_DECODING_TABLE_BITS) - 1;
 	private static final byte[][] RICE_DECODING_CONSUMED_TABLES = new byte[31][1 << RICE_DECODING_TABLE_BITS];
 	private static final int[][] RICE_DECODING_VALUE_TABLES = new int[31][1 << RICE_DECODING_TABLE_BITS];
+	private static final int RICE_DECODING_CHUNK = 4;  // Requires RICE_DECODING_CHUNK > 0 && RICE_DECODING_CHUNK * RICE_DECODING_TABLE_BITS <= 64
 	
 	static {
 		for (int param = 0; param < RICE_DECODING_CONSUMED_TABLES.length; param++) {

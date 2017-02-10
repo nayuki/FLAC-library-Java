@@ -387,8 +387,8 @@ public final class FrameDecoder {
 				for (; resultIndex < partEnd; resultIndex++)
 					result[resultIndex] = in.readSignedInt(numBits);
 			} else {
-				for (; resultIndex < partEnd; resultIndex++)
-					result[resultIndex] = in.readRiceSignedInt(param);
+				in.readRiceSignedInts(param, result, resultIndex, partEnd);
+				resultIndex = partEnd;
 			}
 		}
 	}
