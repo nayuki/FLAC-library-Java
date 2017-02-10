@@ -258,7 +258,12 @@ public final class BitInputStream implements AutoCloseable {
 	
 	/*-- Miscellaneous --*/
 	
-	// Discards all buffers and closes the underlying input stream.
+	// Discards all buffers and closes the underlying input stream. This bit input stream becomes invalid
+	// for any future operation. Note that a BitInputStream only uses memory but does not have native resources.
+	// It is okay to simply let a BitInputStream be garbage collected without calling close(), but the parent is still responsible
+	// for calling close() on the underlying input stream if it uses native resources (such as FileInputStream or SocketInputStream).
+	// For example if the underlying stream supports seeking, then it is okay to discard an existing BitInputStream,
+	// call seek on the underlying stream, and wrap a new BitInputStream over the underlying stream after seeking.
 	public void close() throws IOException {
 		in.close();
 		in = null;
