@@ -18,14 +18,16 @@ final class FixedPredictionEncoder extends SubframeEncoder {
 		for (int i = 0; i < data.length; i++)
 			data[i] >>= shift;
 		applyLpc(data, COEFFICIENTS[order], 0);
-		int temp = (int)(RiceEncoder.computeBestSizeAndOrder(data, order) >>> 4);
-		long size = 1 + 6 + 1 + shift + order * depth + temp;
+		long temp = RiceEncoder.computeBestSizeAndOrder(data, order);
+		enc.riceOrder = (int)(temp & 0xF);
+		long size = 1 + 6 + 1 + shift + order * depth + (temp >>> 4);
 		return new SizeEstimate<SubframeEncoder>(size, enc);
 	}
 	
 	
 	
 	private final int order;
+	public int riceOrder;
 	
 	
 	public FixedPredictionEncoder(long[] data, int shift, int depth, int order) {
@@ -50,7 +52,7 @@ final class FixedPredictionEncoder extends SubframeEncoder {
 		for (int i = 0; i < order; i++)  // Warmup
 			out.writeInt(sampleDepth, (int)data[i]);
 		applyLpc(data, COEFFICIENTS[order], 0);
-		RiceEncoder.encode(data, order, out);
+		RiceEncoder.encode(data, order, riceOrder, out);
 	}
 	
 	

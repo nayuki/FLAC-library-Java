@@ -108,9 +108,10 @@ final class RiceEncoder {
 	/*---- Functions for encoding data ---*/
 	
 	// Encodes the sequence of values data[warmup : data.length] with an appropriately chosen order and Rice parameters.
-	public static void encode(long[] data, int warmup, BitOutputStream out) throws IOException {
+	public static void encode(long[] data, int warmup, int order, BitOutputStream out) throws IOException {
+		if (order < 0 || order > 15)
+			throw new IllegalArgumentException();
 		out.writeInt(2, 0);
-		int order = (int)computeBestSizeAndOrder(data, warmup) & 0xF;
 		out.writeInt(4, order);
 		int numPartitions = 1 << order;
 		int start = warmup;

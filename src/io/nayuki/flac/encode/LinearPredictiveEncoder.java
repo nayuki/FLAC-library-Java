@@ -56,11 +56,12 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 			
 			long[] newData = roundVars > 0 ? data.clone() : data;
 			applyLpc(newData, enc.coefficients, enc.coefShift);
-			int temp = (int)(RiceEncoder.computeBestSizeAndOrder(newData, order) >>> 4);
-			long size = 1 + 6 + 1 + shift + order * depth + temp;
+			long temp = RiceEncoder.computeBestSizeAndOrder(newData, order);
+			long size = 1 + 6 + 1 + shift + order * depth + (temp >>> 4);
 			if (size < bestSize) {
 				bestSize = size;
 				bestCoefs = enc.coefficients.clone();
+				enc.riceOrder = (int)(temp & 0xF);
 			}
 		}
 		enc.coefficients = bestCoefs;
@@ -74,6 +75,7 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	private int[] coefficients;
 	private final int coefDepth;
 	private final int coefShift;
+	public int riceOrder;
 	
 	
 	public LinearPredictiveEncoder(long[] data, int shift, int depth, int order, FastDotProduct fdp) {
@@ -188,7 +190,7 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 		for (int x : coefficients)
 			out.writeInt(coefDepth, x);
 		applyLpc(data, coefficients, coefShift);
-		RiceEncoder.encode(data, order, out);
+		RiceEncoder.encode(data, order, riceOrder, out);
 	}
 	
 	
