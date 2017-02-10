@@ -226,7 +226,7 @@ public final class FrameDecoder {
 				decodeSubframe(sampleDepth, temp0);
 				int[] outChan = outSamples[ch];
 				for (int i = 0; i < currentBlockSize; i++)
-					outChan[outOffset + i] = (int)temp0[i];
+					outChan[outOffset + i] = checkBitDepth(temp0[i], sampleDepth);
 			}
 			
 		} else if (8 <= chanAsgn && chanAsgn <= 10) {  // Side-coded stereo methods
@@ -251,11 +251,20 @@ public final class FrameDecoder {
 			int[] outLeft  = outSamples[0];
 			int[] outRight = outSamples[1];
 			for (int i = 0; i < currentBlockSize; i++) {
-				outLeft [outOffset + i] = (int)temp0[i];
-				outRight[outOffset + i] = (int)temp1[i];
+				outLeft [outOffset + i] = checkBitDepth(temp0[i], sampleDepth);
+				outRight[outOffset + i] = checkBitDepth(temp1[i], sampleDepth);
 			}
 		} else  // 11 <= channelAssignment <= 15
 			throw new DataFormatException("Reserved channel assignment");
+	}
+	
+	
+	private static int checkBitDepth(long val, int depth) {
+		assert 1 <= depth && depth <= 32;
+		if ((-(val >> (depth - 1)) | 1) != 1)  // Or equivalently: (val >> (depth - 1)) == 0 || (val >> (depth - 1)) == -1
+			throw new IllegalArgumentException(val + " is not a signed " + depth + "-bit value");
+		else
+			return (int)val;
 	}
 	
 	
