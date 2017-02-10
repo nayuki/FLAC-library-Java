@@ -347,28 +347,29 @@ public final class FrameDecoder {
 	// Reads metadata and Rice-coded numbers from the input stream, storing them in result[warmup : currentBlockSize].
 	private void readResiduals(int warmup, long[] result) throws IOException {
 		int method = in.readUint(2);
-		if (method == 0 || method == 1) {
-			int partitionOrder = in.readUint(4);
-			int numPartitions = 1 << partitionOrder;
-			if (currentBlockSize % numPartitions != 0)
-				throw new DataFormatException("Block size not divisible by number of Rice partitions");
-			int paramBits = method == 0 ? 4 : 5;
-			int escapeParam = method == 0 ? 0xF : 0x1F;
-			for (int inc = currentBlockSize >>> partitionOrder, partEnd = inc, resultIndex = warmup;
-					partEnd <= currentBlockSize; partEnd += inc) {
-				
-				int param = in.readUint(paramBits);
-				if (param == escapeParam) {
-					int numBits = in.readUint(5);
-					for (; resultIndex < partEnd; resultIndex++)
-						result[resultIndex] = in.readSignedInt(numBits);
-				} else {
-					for (; resultIndex < partEnd; resultIndex++)
-						result[resultIndex] = in.readRiceSignedInt(param);
-				}
-			}
-		} else  // method == 2, 3
+		if (method >= 2)
 			throw new DataFormatException("Reserved residual coding method");
+		assert method == 0 || method == 1;
+		int paramBits = method == 0 ? 4 : 5;
+		int escapeParam = method == 0 ? 0xF : 0x1F;
+		
+		int partitionOrder = in.readUint(4);
+		int numPartitions = 1 << partitionOrder;
+		if (currentBlockSize % numPartitions != 0)
+			throw new DataFormatException("Block size not divisible by number of Rice partitions");
+		for (int inc = currentBlockSize >>> partitionOrder, partEnd = inc, resultIndex = warmup;
+				partEnd <= currentBlockSize; partEnd += inc) {
+			
+			int param = in.readUint(paramBits);
+			if (param == escapeParam) {
+				int numBits = in.readUint(5);
+				for (; resultIndex < partEnd; resultIndex++)
+					result[resultIndex] = in.readSignedInt(numBits);
+			} else {
+				for (; resultIndex < partEnd; resultIndex++)
+					result[resultIndex] = in.readRiceSignedInt(param);
+			}
+		}
 	}
 	
 }
