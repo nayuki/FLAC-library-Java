@@ -17,7 +17,7 @@ public final class FrameMetadata {
 	public long sampleOffset;  // Either -1 or a uint36.
 	
 	public int numChannels;  // In the range [1, 8].
-	public int numSamples;   // For this frame/block (not the whole stream), in the range [1, 65536].
+	public int blockSize;    // Number of samples per channel, in the range [1, 65536].
 	public int sampleRate;   // Either -1 if not encoded in the frame, or in the range [1, 655350].
 	public int sampleDepth;  // Either -1 if not encoded in the frame, or in the range [8, 24].
 	public int frameSize;    // Number of bytes, at least 10.

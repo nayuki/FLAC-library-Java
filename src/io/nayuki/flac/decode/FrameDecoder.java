@@ -107,7 +107,7 @@ public final class FrameDecoder {
 		currentBlockSize = decodeBlockSamples(blockSamplesCode);  // Reads 0 to 2 bytes
 		if (outOffset > outSamples[0].length - currentBlockSize)
 			throw new IndexOutOfBoundsException();
-		result.numSamples = currentBlockSize;
+		result.blockSize = currentBlockSize;
 		result.sampleRate = decodeSampleRate(sampleRateCode);  // Reads 0 to 2 bytes
 		int computedCrc8 = in.getCrc8();
 		if (in.readUint(8) != computedCrc8)

@@ -60,7 +60,7 @@ public final class FlacDecoder {
 			if (maxFrameSize != 0 && meta.frameSize > maxFrameSize)
 				throw new DataFormatException("Frame size smaller than indicated maximum");
 			checkFrame(meta, i, sampleOffset);
-			sampleOffset += meta.numSamples;
+			sampleOffset += meta.blockSize;
 		}
 		
 		// Check audio data against hash
@@ -130,7 +130,7 @@ public final class FlacDecoder {
 			throw new DataFormatException("Frame index mismatch");
 		if (meta.sampleOffset != -1 && meta.sampleOffset != sampleOffset)
 			throw new DataFormatException("Sample offset mismatch");
-		if (meta.numSamples > maxBlockSize)
+		if (meta.blockSize > maxBlockSize)
 			throw new DataFormatException("Block size exceeds maximum");
 		// Note: If minBlockSize == maxBlockSize, then the final block
 		// in the stream is allowed to be smaller than minBlockSize
