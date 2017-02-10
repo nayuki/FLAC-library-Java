@@ -45,6 +45,8 @@ public final class EncodeRawToFlac {
 		// Encode to FLAC and write output file
 		File outFile = new File(args[args.length - 1]);
 		try (RandomAccessFile raf = new RandomAccessFile(outFile, "rw")) {
+			raf.setLength(0);  // Truncate an existing file
+			
 			// Encode all frames
 			BitOutputStream out = new BitOutputStream(
 				new BufferedOutputStream(new RandomAccessFileOutputStream(raf)));
