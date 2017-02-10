@@ -125,7 +125,7 @@ public final class BitInputStream implements AutoCloseable {
 		if (bitBufferLen >= 8)
 			return readUint(8);
 		else {
-			bitBufferLen = 0;
+			assert bitBufferLen == 0;
 			return readUnderlying();
 		}
 	}

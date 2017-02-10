@@ -132,9 +132,8 @@ public final class FrameDecoder {
 	private long readUtf8Integer() throws IOException {
 		int temp = in.readUint(8);
 		int n = Integer.numberOfLeadingZeros(~(temp << 24));  // Number of leading 1s in the byte
-		if (n < 0 || n > 8)
-			throw new AssertionError();
-		else if (n == 0)
+		assert 0 <= n && n <= 8;
+		if (n == 0)
 			return temp;
 		else if (n == 1 || n == 8)
 			throw new DataFormatException("Invalid UTF-8 coded number");
@@ -146,8 +145,7 @@ public final class FrameDecoder {
 					throw new DataFormatException("Invalid UTF-8 coded number");
 				result = (result << 6) | (temp & 0x3F);
 			}
-			if ((result >>> 36) != 0)
-				throw new AssertionError();
+			assert (result >>> 36) == 0;
 			return result;
 		}
 	}
