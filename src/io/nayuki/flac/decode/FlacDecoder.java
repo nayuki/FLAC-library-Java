@@ -90,6 +90,10 @@ public final class FlacDecoder {
 		int maxBlockSamples = in.readUint(16);
 		int minFrameBytes = in.readUint(24);
 		int maxFrameBytes = in.readUint(24);
+		if (minBlockSamples < 16)
+			throw new DataFormatException("Minimum block size less than 16");
+		if (maxBlockSamples > 65535)
+			throw new DataFormatException("Maximum block size greater than 65535");
 		if (maxBlockSamples < minBlockSamples)
 			throw new DataFormatException("Maximum block size less than minimum block size");
 		if (minFrameBytes != 0 && maxFrameBytes != 0 && maxFrameBytes < minFrameBytes)

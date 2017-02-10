@@ -268,8 +268,11 @@ public final class FrameDecoder {
 		int type = in.readUint(6);
 		int shift = in.readUint(1);  // Also known as "wasted bits-per-sample"
 		if (shift == 1) {
-			while (in.readUint(1) == 0)  // Unary coding
+			while (in.readUint(1) == 0) {  // Unary coding
+				if (shift >= sampleDepth)
+					throw new DataFormatException("Waste-bits-per-sample exceeds sample depth");
 				shift++;
+			}
 		}
 		sampleDepth -= shift;
 		
