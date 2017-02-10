@@ -213,8 +213,7 @@ public final class BitInputStream implements AutoCloseable {
 	
 	// Marks the current position (which must be byte-aligned) as the start of both CRC calculations.
 	public void resetCrcs() {
-		if (bitBufferLen % 8 != 0)
-			throw new IllegalStateException();
+		checkByteAligned();
 		crcStartIndex = byteBufferIndex - bitBufferLen / 8;
 		crc8 = 0;
 		crc16 = 0;
@@ -264,10 +263,13 @@ public final class BitInputStream implements AutoCloseable {
 		in.close();
 		in = null;
 		byteBuffer = null;
-		byteBufferLen = 0;
-		byteBufferIndex = 0;
+		byteBufferLen = -1;
+		byteBufferIndex = -1;
 		bitBuffer = 0;
-		bitBufferLen = 0;
+		bitBufferLen = -1;
+		crc8 = -1;
+		crc16 = -1;
+		crcStartIndex = -1;
 	}
 	
 	
