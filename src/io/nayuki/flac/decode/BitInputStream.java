@@ -59,6 +59,24 @@ public final class BitInputStream implements AutoCloseable {
 	
 	/*---- Methods ----*/
 	
+	/*-- Bit position --*/
+	
+	// Returns the number of bits in the current byte that have been consumed.
+	// This starts at 0, increments for each bit consumed, topping out at 7, then wraps around and repeats.
+	public int getBitPosition() {
+		return (-bitBufferLen) & 7;
+	}
+	
+	
+	// Either returns silently or throws an exception.
+	private void checkByteAligned() {
+		if (bitBufferLen % 8 != 0)
+			throw new IllegalStateException("Not at a byte boundary");
+	}
+	
+	
+	/*-- Reading bitwise integers --*/
+	
 	// Reads the next given number of bits as an unsigned integer (i.e. zero-extended to int32).
 	// Note that when n = 32, the result will be always a signed integer.
 	public int readUint(int n) throws IOException {
@@ -128,14 +146,28 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
-	// Discards any partial bits, then reads the given array fully or throws EOFEOxception.
-	public void readFully(byte[] b) throws IOException {
-		Objects.requireNonNull(b);
-		checkByteAligned();
-		for (int i = 0; i < b.length; i++)
-			b[i] = (byte)readUint(8);
+	// Appends at least 8 bits to the bit buffer, or throws EOFException.
+	private void fillBitBuffer() throws IOException {
+		int i = byteBufferIndex;
+		int n = Math.min((64 - bitBufferLen) >>> 3, byteBufferLen - i);
+		byte[] b = byteBuffer;
+		if (n > 0) {
+			for (int j = 0; j < n; j++, i++)
+				bitBuffer = (bitBuffer << 8) | (b[i] & 0xFF);
+			bitBufferLen += n << 3;
+		} else if (bitBufferLen <= 56) {
+			int temp = readUnderlying();
+			if (temp == -1)
+				throw new EOFException();
+			bitBuffer = (bitBuffer << 8) | temp;
+			bitBufferLen += 8;
+		}
+		assert 8 <= bitBufferLen && bitBufferLen <= 64;
+		byteBufferIndex += n;
 	}
 	
+	
+	/*-- Reading bytes --*/
 	
 	// Discards any partial bits, then either returns an unsigned byte value or -1 for EOF.
 	public int readByte() throws IOException {
@@ -149,10 +181,43 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
-	// Returns the number of bits in the current byte that have been consumed.
-	// This starts at 0, increments for each bit consumed, topping out at 7, then wraps around and repeats.
-	public int getBitPosition() {
-		return (-bitBufferLen) & 7;
+	// Discards any partial bits, then reads the given array fully or throws EOFEOxception.
+	public void readFully(byte[] b) throws IOException {
+		Objects.requireNonNull(b);
+		checkByteAligned();
+		for (int i = 0; i < b.length; i++)
+			b[i] = (byte)readUint(8);
+	}
+	
+	
+	// Reads a byte from the byte buffer (if available) or from the underlying stream, returning either a uint8 or -1.
+	private int readUnderlying() throws IOException {
+		if (byteBufferIndex >= byteBufferLen) {
+			if (byteBufferLen == -1)
+				return -1;
+			updateCrcs(0);
+			byteBufferLen = in.read(byteBuffer);
+			crcStartIndex = 0;
+			if (byteBufferLen <= 0)
+				return -1;
+			byteBufferIndex = 0;
+		}
+		assert byteBufferIndex < byteBufferLen;
+		int temp = byteBuffer[byteBufferIndex] & 0xFF;
+		byteBufferIndex++;
+		return temp;
+	}
+	
+	
+	/*-- CRC calculations --*/
+	
+	// Marks the current position (which must be byte-aligned) as the start of both CRC calculations.
+	public void resetCrcs() {
+		if (bitBufferLen % 8 != 0)
+			throw new IllegalStateException();
+		crcStartIndex = byteBufferIndex - bitBufferLen / 8;
+		crc8 = 0;
+		crc16 = 0;
 	}
 	
 	
@@ -192,15 +257,7 @@ public final class BitInputStream implements AutoCloseable {
 	}
 	
 	
-	// Marks the current position (which must be byte-aligned) as the start of both CRC calculations.
-	public void resetCrcs() {
-		if (bitBufferLen % 8 != 0)
-			throw new IllegalStateException();
-		crcStartIndex = byteBufferIndex - bitBufferLen / 8;
-		crc8 = 0;
-		crc16 = 0;
-	}
-	
+	/*-- Miscellaneous --*/
 	
 	// Discards all buffers and closes the underlying input stream.
 	public void close() throws IOException {
@@ -211,53 +268,6 @@ public final class BitInputStream implements AutoCloseable {
 		byteBufferIndex = 0;
 		bitBuffer = 0;
 		bitBufferLen = 0;
-	}
-	
-	
-	// Appends at least 8 bits to the bit buffer, or throws EOFException.
-	private void fillBitBuffer() throws IOException {
-		int i = byteBufferIndex;
-		int n = Math.min((64 - bitBufferLen) >>> 3, byteBufferLen - i);
-		byte[] b = byteBuffer;
-		if (n > 0) {
-			for (int j = 0; j < n; j++, i++)
-				bitBuffer = (bitBuffer << 8) | (b[i] & 0xFF);
-			bitBufferLen += n << 3;
-		} else if (bitBufferLen <= 56) {
-			int temp = readUnderlying();
-			if (temp == -1)
-				throw new EOFException();
-			bitBuffer = (bitBuffer << 8) | temp;
-			bitBufferLen += 8;
-		}
-		assert 8 <= bitBufferLen && bitBufferLen <= 64;
-		byteBufferIndex += n;
-	}
-	
-	
-	// Reads a byte from the byte buffer (if available) or from the underlying stream, returning either a uint8 or -1.
-	private int readUnderlying() throws IOException {
-		if (byteBufferIndex >= byteBufferLen) {
-			if (byteBufferLen == -1)
-				return -1;
-			updateCrcs(0);
-			byteBufferLen = in.read(byteBuffer);
-			crcStartIndex = 0;
-			if (byteBufferLen <= 0)
-				return -1;
-			byteBufferIndex = 0;
-		}
-		assert byteBufferIndex < byteBufferLen;
-		int temp = byteBuffer[byteBufferIndex] & 0xFF;
-		byteBufferIndex++;
-		return temp;
-	}
-	
-	
-	// Either returns silently or throws an exception.
-	private void checkByteAligned() {
-		if (bitBufferLen % 8 != 0)
-			throw new IllegalStateException("Not at a byte boundary");
 	}
 	
 	
