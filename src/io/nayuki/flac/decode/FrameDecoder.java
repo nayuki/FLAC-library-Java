@@ -41,6 +41,7 @@ public final class FrameDecoder {
 		this.in = in;
 		temp0 = new long[65536];
 		temp1 = new long[65536];
+		currentBlockSize = -1;
 	}
 	
 	
@@ -131,6 +132,7 @@ public final class FrameDecoder {
 		if ((int)frameSize != frameSize)
 			throw new DataFormatException("Frame size too large");
 		result.frameSize = (int)frameSize;
+		currentBlockSize = -1;
 		return result;
 	}
 	
@@ -309,20 +311,22 @@ public final class FrameDecoder {
 		else if (type == 1) {  // Verbatim coding
 			for (int i = 0; i < currentBlockSize; i++)
 				result[i] = in.readSignedInt(sampleDepth);
-		} else if (type < 8)
+		} else if (2 <= type && type <= 7)
 			throw new DataFormatException("Reserved subframe type");
-		else if (type <= 12)
+		else if (8 <= type && type <= 12)
 			decodeFixedPredictionSubframe(type - 8, sampleDepth, result);
-		else if (type < 32)
+		else if (13 <= type && type <= 31)
 			throw new DataFormatException("Reserved subframe type");
-		else if (type < 64)
+		else if (32 <= type && type <= 63)
 			decodeLinearPredictiveCodingSubframe(type - 31, sampleDepth, result);
 		else
 			throw new AssertionError();
 		
 		// Add back the trailing zeros to each sample
-		for (int i = 0; i < currentBlockSize; i++)
-			result[i] <<= shift;
+		if (shift > 0) {
+			for (int i = 0; i < currentBlockSize; i++)
+				result[i] <<= shift;
+		}
 	}
 	
 	
