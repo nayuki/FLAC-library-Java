@@ -117,9 +117,13 @@ public final class BitInputStream implements AutoCloseable {
 	
 	// Reads and decodes the next batch of Rice-coded signed integers. Note that any Rice-coded integer might read a large
 	// number of bits from the underlying stream (but not in practice because it would be a very inefficient encoding).
+	// Every new value stored into the array is guaranteed to fit into a signed int54 - see FrameDecoder.restoreLpc()
+	// for an explanation of why this is a necessary (but not sufficient) bound on the range of decoded values.
 	public void readRiceSignedInts(int param, long[] result, int start, int end) throws IOException {
 		if (param < 0 || param > 31)
 			throw new IllegalArgumentException();
+		long unaryLimit = 1L << (54 - param);
+		
 		byte[] consumeTable = RICE_DECODING_CONSUMED_TABLES[param];
 		int[] valueTable = RICE_DECODING_VALUE_TABLES[param];
 		while (true) {
@@ -146,10 +150,21 @@ public final class BitInputStream implements AutoCloseable {
 			if (start >= end)
 				break;
 			long val = 0;
-			while (readUint(1) == 0)
+			while (readUint(1) == 0) {
+				if (val >= unaryLimit) {
+					// At this point, the final decoded value would be so large that the result of the
+					// downstream restoreLpc() calculation would not fit in the output sample's bit depth -
+					// hence why we stop early and throw an exception. However, this check is conservative
+					// and doesn't catch all the cases where the post-LPC result wouldn't fit.
+					throw new DataFormatException("Residual value too large");
+				}
 				val++;
+			}
 			val = (val << param) | readUint(param);  // Note: Long masking unnecessary because param <= 31
-			result[start] = (val >>> 1) ^ (-(val & 1));
+			assert (val >>> 54) == 0;  // Must fit a uint54 by design
+			val = (val >>> 1) ^ (-(val & 1));
+			assert (val >> 53) == 0 || (val >> 53) == -1;  // Must fit a signed int54 by design
+			result[start] = val;
 			start++;
 		}
 	}

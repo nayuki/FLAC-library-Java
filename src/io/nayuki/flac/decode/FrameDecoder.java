@@ -391,6 +391,17 @@ public final class FrameDecoder {
 	
 	// Updates the values of block[coefs.length : currentBlockSize] according to linear predictive coding.
 	// This method reads all the arguments and the field currentBlockSize, only writes to result, and has no other side effects.
+	// 
+	// Note that at each outer loop iteration, before the sum is right shifted, its maximum absolute value is 2^52.
+	// This is because each element of the result fits in a signed int33 (thus max abs of 2^32), each coefficient fits in a
+	// signed int15 (max abs of 2^15), and the maximum number of coefficients (the order) is 32 (thus max multiplier of 2^5).
+	// Putting all these aspects together, the maximum possible absolute value of sum after all the multiply-accumulate
+	// is 2^(32+15+5) = 2^52, which fits in a signed 54-bit integer. Furthermore, the initial value of each result[i]
+	// (except the warmup prefix) is a Rice-coded residual, but afterwards the value result[i] += (sum >> shift)
+	// must fit in a signed integer of width 'sampleDepth' (max 33). This means that if the LPC was as far as possible
+	// from the desired value (e.g. prediction = 2^52, desired = -(2^32), residual = -(2^52 + 2^32)), then the residual
+	// still fits in a signed 54-bit integer. Hence if the Rice-decoding procedure encounters a number that is too large
+	// to fit in a signed int54, then the output sample value will necessarily overflow the indicated sample depth.
 	private void restoreLpc(long[] result, int[] coefs, int sampleDepth, int shift) {
 		// Check and handle arguments
 		if (sampleDepth < 1 || sampleDepth > 33)
@@ -404,6 +415,7 @@ public final class FrameDecoder {
 			long sum = 0;
 			for (int j = 0; j < coefs.length; j++)
 				sum += result[i - 1 - j] * coefs[j];
+			assert (sum >> 53) == 0 || (sum >> 53) == -1;  // Fits in signed int54
 			sum = result[i] + (sum >> shift);
 			// Check that sum fits in a sampleDepth-bit signed integer,
 			// i.e. -(2^(sampleDepth-1)) <= sum < 2^(sampleDepth-1)
@@ -415,6 +427,7 @@ public final class FrameDecoder {
 	
 	
 	// Reads metadata and Rice-coded numbers from the input stream, storing them in result[warmup : currentBlockSize].
+	// The stored numbers are guaranteed to fit in a signed int54 - see the explanation in restoreLpc().
 	private void readResiduals(int warmup, long[] result) throws IOException {
 		if (warmup < 0)
 			throw new IllegalArgumentException();
