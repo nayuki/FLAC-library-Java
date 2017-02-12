@@ -337,6 +337,8 @@ public final class FrameDecoder {
 			throw new IllegalArgumentException();
 		if (predOrder < 0 || predOrder > 4)
 			throw new IllegalArgumentException();
+		if (predOrder < currentBlockSize)
+			throw new DataFormatException("Fixed prediction order exceeds block size");
 		
 		// Read and compute various values
 		for (int i = 0; i < predOrder; i++)  // Unpredicted warm-up samples
@@ -362,6 +364,8 @@ public final class FrameDecoder {
 			throw new IllegalArgumentException();
 		if (lpcOrder < 1 || lpcOrder > 32)
 			throw new IllegalArgumentException();
+		if (lpcOrder < currentBlockSize)
+			throw new DataFormatException("LPC order exceeds block size");
 		
 		for (int i = 0; i < lpcOrder; i++)  // Unpredicted warm-up samples
 			result[i] = in.readSignedInt(sampleDepth);
@@ -389,6 +393,8 @@ public final class FrameDecoder {
 	// This method reads all the arguments and the field currentBlockSize, only writes to result, and has no other side effects.
 	private void restoreLpc(long[] result, int[] coefs, int shift) {
 		// Check and handle arguments
+		if (shift < 0 || shift > 63)
+			throw new IllegalArgumentException();
 		for (int i = coefs.length; i < currentBlockSize; i++) {
 			long sum = 0;
 			for (int j = 0; j < coefs.length; j++)
@@ -400,6 +406,8 @@ public final class FrameDecoder {
 	
 	// Reads metadata and Rice-coded numbers from the input stream, storing them in result[warmup : currentBlockSize].
 	private void readResiduals(int warmup, long[] result) throws IOException {
+		if (warmup < 0)
+			throw new IllegalArgumentException();
 		int method = in.readUint(2);
 		if (method >= 2)
 			throw new DataFormatException("Reserved residual coding method");
