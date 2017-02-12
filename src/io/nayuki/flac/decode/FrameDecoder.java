@@ -11,7 +11,8 @@ import java.util.Arrays;
 import java.util.Objects;
 
 
-// Note: Objects are stateful and not thread-safe, because of the bit input stream field and private temporary arrays.
+// Decodes a FLAC frame from an input stream into raw audio samples. Note that these objects are
+// stateful and not thread-safe, because of the bit input stream field, private temporary arrays, etc.
 public final class FrameDecoder {
 	
 	/*---- Fields ----*/
@@ -28,6 +29,7 @@ public final class FrameDecoder {
 	
 	// The number of samples (per channel) in the current block/frame being processed.
 	// This value is only valid while the method readFrame() is on the call stack.
+	// When readFrame() is active, this value is in the range [1, 65536].
 	private int currentBlockSize;
 	
 	
@@ -45,7 +47,8 @@ public final class FrameDecoder {
 	
 	/*---- Frame header decoding methods ----*/
 	
-	// Reads and decodes the next FLAC frame, storing output samples and returning metadata.
+	// Reads the next frame of FLAC data from the current bit input stream, decodes it,
+	// and stores output samples into the given array, and returns a new metadata object.
 	// The bit input stream must be initially aligned at a byte boundary. If EOF is encountered before
 	// any actual bytes were read, then this returns null. Otherwise this function either successfully
 	// decodes a frame and returns a new metadata object, or throws an appropriate exception. A frame
@@ -89,7 +92,7 @@ public final class FrameDecoder {
 			throw new DataFormatException("Reserved bit");
 		
 		// Read and check the frame/sample position field
-		long position = readUtf8Integer();
+		long position = readUtf8Integer();  // Reads 1 to 7 bytes
 		if (blockStrategy == 0) {
 			if ((position >>> 31) != 0)
 				throw new DataFormatException("Frame index too large");
@@ -216,16 +219,19 @@ public final class FrameDecoder {
 	
 	/*---- Sub-frame audio data decoding methods ----*/
 	
-	// Based on the two audio parameters, this method reads and decodes each subframe, decodes stereo if necessary, and writes
-	// the final uncompressed audio data to the array range outSamples[0 : numChannels][outOffset : outOffset + currentBlockSize].
+	// Based on the current bit input stream and the two given arguments, this method reads and decodes
+	// each subframe, performs stereo decoding if applicable, and writes the final uncompressed audio data
+	// to the array range outSamples[0 : numChannels][outOffset : outOffset + currentBlockSize].
 	// Note that this method uses the private temporary arrays and passes them into sub-method calls.
 	private void decodeSubframes(int sampleDepth, int chanAsgn, int[][] outSamples, int outOffset) throws IOException {
+		// Check arguments
 		if (sampleDepth < 1 || sampleDepth > 32)
 			throw new IllegalArgumentException();
 		if ((chanAsgn >>> 4) != 0)
 			throw new IllegalArgumentException();
 		
-		if (0 <= chanAsgn && chanAsgn <= 7) {  // Independent channels
+		if (0 <= chanAsgn && chanAsgn <= 7) {
+			// Handle 1 to 8 independently coded channels
 			int numChannels = chanAsgn + 1;
 			for (int ch = 0; ch < numChannels; ch++) {
 				decodeSubframe(sampleDepth, temp0);
@@ -234,7 +240,8 @@ public final class FrameDecoder {
 					outChan[outOffset + i] = checkBitDepth(temp0[i], sampleDepth);
 			}
 			
-		} else if (8 <= chanAsgn && chanAsgn <= 10) {  // Side-coded stereo methods
+		} else if (8 <= chanAsgn && chanAsgn <= 10) {
+			// Handle one of the side-coded stereo methods
 			decodeSubframe(sampleDepth + (chanAsgn == 9 ? 1 : 0), temp0);
 			decodeSubframe(sampleDepth + (chanAsgn == 9 ? 0 : 1), temp1);
 			
@@ -253,6 +260,7 @@ public final class FrameDecoder {
 				}
 			}
 			
+			// Copy data from temporary to output arrays, and convert from long to int
 			int[] outLeft  = outSamples[0];
 			int[] outRight = outSamples[1];
 			for (int i = 0; i < currentBlockSize; i++) {
@@ -264,6 +272,10 @@ public final class FrameDecoder {
 	}
 	
 	
+	// Checks that 'val' is a signed 'depth'-bit integer, and either returns the
+	// value downcasted to an int or throws an exception if it's out of range.
+	// Note that depth must be in the range [1, 32] because the return value is an int.
+	// For example when depth = 16, the range of valid values is [-32768, 32767].
 	private static int checkBitDepth(long val, int depth) {
 		assert 1 <= depth && depth <= 32;
 		if ((-(val >> (depth - 1)) | 1) != 1)  // Or equivalently: (val >> (depth - 1)) == 0 || (val >> (depth - 1)) == -1
@@ -273,7 +285,7 @@ public final class FrameDecoder {
 	}
 	
 	
-	// Writes to result[0 : currentBlockSize].
+	// Reads one subframe from the bit input stream, decodes it, and writes to result[0 : currentBlockSize].
 	private void decodeSubframe(int sampleDepth, long[] result) throws IOException {
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
@@ -306,6 +318,7 @@ public final class FrameDecoder {
 		else
 			throw new AssertionError();
 		
+		// Add back the trailing zeros to each sample
 		for (int i = 0; i < currentBlockSize; i++)
 			result[i] <<= shift;
 	}
@@ -313,12 +326,14 @@ public final class FrameDecoder {
 	
 	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
 	private void decodeFixedPrediction(int predOrder, int sampleDepth, long[] result) throws IOException {
+		// Check arguments
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
 		if (predOrder < 0 || predOrder > 4)
 			throw new IllegalArgumentException();
 		
-		for (int i = 0; i < predOrder; i++)
+		// Read and compute various values
+		for (int i = 0; i < predOrder; i++)  // Unpredicted warm-up samples
 			result[i] = in.readSignedInt(sampleDepth);
 		
 		readResiduals(predOrder, result);
@@ -336,14 +351,16 @@ public final class FrameDecoder {
 	
 	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
 	private void decodeLinearPredictiveCoding(int lpcOrder, int sampleDepth, long[] result) throws IOException {
+		// Check arguments
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
 		if (lpcOrder < 1 || lpcOrder > 32)
 			throw new IllegalArgumentException();
 		
-		for (int i = 0; i < lpcOrder; i++)
+		for (int i = 0; i < lpcOrder; i++)  // Unpredicted warm-up samples
 			result[i] = in.readSignedInt(sampleDepth);
 		
+		// Read parameters for the LPC coefficients
 		int precision = in.readUint(4) + 1;
 		if (precision == 16)
 			throw new DataFormatException("Invalid LPC precision");
@@ -351,10 +368,12 @@ public final class FrameDecoder {
 		if (shift < 0)
 			throw new DataFormatException("Invalid LPC shift");
 		
+		// Read the coefficients themselves
 		int[] coefs = new int[lpcOrder];
 		for (int i = 0; i < coefs.length; i++)
 			coefs[i] = in.readSignedInt(precision);
 		
+		// Perform the main LPC decoding
 		readResiduals(lpcOrder, result);
 		restoreLpc(result, coefs, shift);
 	}
@@ -363,6 +382,7 @@ public final class FrameDecoder {
 	// Updates the values of block[coefs.length : currentBlockSize] according to linear predictive coding.
 	// This method reads all the arguments and the field currentBlockSize, only writes to result, and has no other side effects.
 	private void restoreLpc(long[] result, int[] coefs, int shift) {
+		// Check and handle arguments
 		for (int i = coefs.length; i < currentBlockSize; i++) {
 			long sum = 0;
 			for (int j = 0; j < coefs.length; j++)

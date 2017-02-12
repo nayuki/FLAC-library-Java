@@ -39,7 +39,7 @@ public final class StreamInfo {
 	
 	
 	// Constructs a stream info structure by reading 34 bytes from the given input
-	// stream to a FLAC file. This throws DataFormatException if values are invalid.
+	// stream of a FLAC file. This throws DataFormatException if values are invalid.
 	public StreamInfo(BitInputStream in) throws IOException {
 		this();
 		minBlockSize = in.readUint(16);

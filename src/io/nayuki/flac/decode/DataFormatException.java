@@ -7,8 +7,11 @@
 package io.nayuki.flac.decode;
 
 
+// Thrown when data being read violates the FLAC file format.
 @SuppressWarnings("serial")
 public class DataFormatException extends RuntimeException {
+	
+	/*---- Constructors ----*/
 	
 	public DataFormatException() {
 		super();
