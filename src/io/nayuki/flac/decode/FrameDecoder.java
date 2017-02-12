@@ -345,7 +345,7 @@ public final class FrameDecoder {
 			result[i] = in.readSignedInt(sampleDepth);
 		
 		readResiduals(predOrder, result);
-		restoreLpc(result, FIXED_PREDICTION_COEFFICIENTS[predOrder], 0);
+		restoreLpc(result, FIXED_PREDICTION_COEFFICIENTS[predOrder], sampleDepth, 0);
 	}
 	
 	private static final int[][] FIXED_PREDICTION_COEFFICIENTS = {
@@ -385,21 +385,31 @@ public final class FrameDecoder {
 		
 		// Perform the main LPC decoding
 		readResiduals(lpcOrder, result);
-		restoreLpc(result, coefs, shift);
+		restoreLpc(result, coefs, sampleDepth, shift);
 	}
 	
 	
 	// Updates the values of block[coefs.length : currentBlockSize] according to linear predictive coding.
 	// This method reads all the arguments and the field currentBlockSize, only writes to result, and has no other side effects.
-	private void restoreLpc(long[] result, int[] coefs, int shift) {
+	private void restoreLpc(long[] result, int[] coefs, int sampleDepth, int shift) {
 		// Check and handle arguments
+		if (sampleDepth < 1 || sampleDepth > 33)
+			throw new IllegalArgumentException();
 		if (shift < 0 || shift > 63)
 			throw new IllegalArgumentException();
+		long lowerBound = (-1) << (sampleDepth - 1);
+		long upperBound = -(lowerBound + 1);
+		
 		for (int i = coefs.length; i < currentBlockSize; i++) {
 			long sum = 0;
 			for (int j = 0; j < coefs.length; j++)
 				sum += result[i - 1 - j] * coefs[j];
-			result[i] += sum >> shift;
+			sum = result[i] + (sum >> shift);
+			// Check that sum fits in a sampleDepth-bit signed integer,
+			// i.e. -(2^(sampleDepth-1)) <= sum < 2^(sampleDepth-1)
+			if (sum < lowerBound || sum > upperBound)
+				throw new DataFormatException("Post-LPC result exceeds bit depth");
+			result[i] = sum;
 		}
 	}
 	
