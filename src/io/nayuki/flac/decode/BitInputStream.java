@@ -118,6 +118,8 @@ public final class BitInputStream implements AutoCloseable {
 	// Reads and decodes the next batch of Rice-coded signed integers. Note that any Rice-coded integer might read a large
 	// number of bits from the underlying stream (but not in practice because it would be a very inefficient encoding).
 	public void readRiceSignedInts(int param, long[] result, int start, int end) throws IOException {
+		if (param < 0 || param > 31)
+			throw new IllegalArgumentException();
 		byte[] consumeTable = RICE_DECODING_CONSUMED_TABLES[param];
 		int[] valueTable = RICE_DECODING_VALUE_TABLES[param];
 		while (true) {
@@ -143,10 +145,10 @@ public final class BitInputStream implements AutoCloseable {
 			// Slow decoder
 			if (start >= end)
 				break;
-			int val = 0;
+			long val = 0;
 			while (readUint(1) == 0)
 				val++;
-			val = (val << param) | readUint(param);
+			val = (val << param) | readUint(param);  // Note: Long masking unnecessary because param <= 31
 			result[start] = (val >>> 1) ^ (-(val & 1));
 			start++;
 		}
