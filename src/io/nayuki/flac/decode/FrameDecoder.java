@@ -140,17 +140,17 @@ public final class FrameDecoder {
 	// Reads 1 to 7 bytes from the input stream. Return value is a uint36.
 	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
 	private long readUtf8Integer() throws IOException {
-		int temp = in.readUint(8);
-		int n = Integer.numberOfLeadingZeros(~(temp << 24));  // Number of leading 1s in the byte
+		int head = in.readUint(8);
+		int n = Integer.numberOfLeadingZeros(~(head << 24));  // Number of leading 1s in the byte
 		assert 0 <= n && n <= 8;
 		if (n == 0)
-			return temp;
+			return head;
 		else if (n == 1 || n == 8)
 			throw new DataFormatException("Invalid UTF-8 coded number");
 		else {
-			long result = temp & (0x7F >>> n);
+			long result = head & (0x7F >>> n);
 			for (int i = 0; i < n - 1; i++) {
-				temp = in.readUint(8);
+				int temp = in.readUint(8);
 				if ((temp & 0xC0) != 0x80)
 					throw new DataFormatException("Invalid UTF-8 coded number");
 				result = (result << 6) | (temp & 0x3F);
