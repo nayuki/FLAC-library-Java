@@ -76,7 +76,7 @@ public final class FrameDecoder {
 		if (in.readUint(1) != 0)
 			throw new DataFormatException("Reserved bit");
 		int blockStrategy     = in.readUint(1);
-		int blockSamplesCode  = in.readUint(4);
+		int blockSizeCode     = in.readUint(4);
 		int sampleRateCode    = in.readUint(4);
 		int channelAssignment = in.readUint(4);
 		if (channelAssignment < 8)
@@ -107,7 +107,7 @@ public final class FrameDecoder {
 			throw new AssertionError();
 		
 		// Read variable-length data for some fields
-		currentBlockSize = decodeBlockSamples(blockSamplesCode);  // Reads 0 to 2 bytes
+		currentBlockSize = decodeBlockSize(blockSizeCode);  // Reads 0 to 2 bytes
 		if (outOffset > outSamples[0].length - currentBlockSize)
 			throw new IndexOutOfBoundsException();
 		result.blockSize = currentBlockSize;
@@ -163,7 +163,7 @@ public final class FrameDecoder {
 	
 	// Argument is a uint4 value. Reads 0 to 2 bytes from the input stream.
 	// Return value is in the range [1, 65536].
-	private int decodeBlockSamples(int code) throws IOException {
+	private int decodeBlockSize(int code) throws IOException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
 		else if (code == 0)
@@ -310,11 +310,11 @@ public final class FrameDecoder {
 		} else if (type < 8)
 			throw new DataFormatException("Reserved subframe type");
 		else if (type <= 12)
-			decodeFixedPrediction(type - 8, sampleDepth, result);
+			decodeFixedPredictionSubframe(type - 8, sampleDepth, result);
 		else if (type < 32)
 			throw new DataFormatException("Reserved subframe type");
 		else if (type < 64)
-			decodeLinearPredictiveCoding(type - 31, sampleDepth, result);
+			decodeLinearPredictiveCodingSubframe(type - 31, sampleDepth, result);
 		else
 			throw new AssertionError();
 		
@@ -325,7 +325,7 @@ public final class FrameDecoder {
 	
 	
 	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
-	private void decodeFixedPrediction(int predOrder, int sampleDepth, long[] result) throws IOException {
+	private void decodeFixedPredictionSubframe(int predOrder, int sampleDepth, long[] result) throws IOException {
 		// Check arguments
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
@@ -350,7 +350,7 @@ public final class FrameDecoder {
 	
 	
 	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
-	private void decodeLinearPredictiveCoding(int lpcOrder, int sampleDepth, long[] result) throws IOException {
+	private void decodeLinearPredictiveCodingSubframe(int lpcOrder, int sampleDepth, long[] result) throws IOException {
 		// Check arguments
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
