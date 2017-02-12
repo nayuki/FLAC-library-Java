@@ -99,8 +99,6 @@ public final class FrameDecoder {
 			result.frameIndex = (int)position;
 			result.sampleOffset = -1;
 		} else if (blockStrategy == 1) {
-			if ((position >>> 36) != 0)
-				throw new AssertionError();
 			result.sampleOffset = position;
 			result.frameIndex = -1;
 		} else
@@ -155,7 +153,8 @@ public final class FrameDecoder {
 					throw new DataFormatException("Invalid UTF-8 coded number");
 				result = (result << 6) | (temp & 0x3F);
 			}
-			assert (result >>> 36) == 0;
+			if ((result >>> 36) != 0)
+				throw new AssertionError();
 			return result;
 		}
 	}
@@ -258,7 +257,8 @@ public final class FrameDecoder {
 					temp0[i] = (m + s) >> 1;
 					temp1[i] = (m - s) >> 1;
 				}
-			}
+			} else
+				throw new AssertionError();
 			
 			// Copy data from temporary to output arrays, and convert from long to int
 			int[] outLeft  = outSamples[0];
@@ -300,6 +300,8 @@ public final class FrameDecoder {
 				shift++;
 			}
 		}
+		if (!(0 <= shift && shift <= sampleDepth))
+			throw new AssertionError();
 		sampleDepth -= shift;
 		
 		if (type == 0)  // Constant coding
