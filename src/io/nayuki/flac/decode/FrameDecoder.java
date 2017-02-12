@@ -337,13 +337,12 @@ public final class FrameDecoder {
 			throw new IllegalArgumentException();
 		if (predOrder < 0 || predOrder > 4)
 			throw new IllegalArgumentException();
-		if (predOrder < currentBlockSize)
+		if (predOrder > currentBlockSize)
 			throw new DataFormatException("Fixed prediction order exceeds block size");
 		
 		// Read and compute various values
 		for (int i = 0; i < predOrder; i++)  // Unpredicted warm-up samples
 			result[i] = in.readSignedInt(sampleDepth);
-		
 		readResiduals(predOrder, result);
 		restoreLpc(result, FIXED_PREDICTION_COEFFICIENTS[predOrder], sampleDepth, 0);
 	}
@@ -364,7 +363,7 @@ public final class FrameDecoder {
 			throw new IllegalArgumentException();
 		if (lpcOrder < 1 || lpcOrder > 32)
 			throw new IllegalArgumentException();
-		if (lpcOrder < currentBlockSize)
+		if (lpcOrder > currentBlockSize)
 			throw new DataFormatException("LPC order exceeds block size");
 		
 		for (int i = 0; i < lpcOrder; i++)  // Unpredicted warm-up samples
