@@ -34,6 +34,16 @@ public final class RandomAccessFileInputStream extends InputStream {
 	
 	/*---- Methods ----*/
 	
+	public long getPosition() throws IOException {
+		return in.getFilePointer();
+	}
+	
+	
+	public void seek(long pos) throws IOException {
+		in.seek(pos);
+	}
+	
+	
 	public int read() throws IOException {
 		return in.read();
 	}

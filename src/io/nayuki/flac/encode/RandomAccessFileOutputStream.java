@@ -34,6 +34,16 @@ public final class RandomAccessFileOutputStream extends OutputStream {
 	
 	/*---- Methods ----*/
 	
+	public long getPosition() throws IOException {
+		return out.getFilePointer();
+	}
+	
+	
+	public void seek(long pos) throws IOException {
+		out.seek(pos);
+	}
+	
+	
 	public void write(int b) throws IOException {
 		out.write(b);
 	}
