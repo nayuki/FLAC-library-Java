@@ -19,8 +19,6 @@ public final class AdvancedFlacEncoder {
 		StreamInfo info = new StreamInfo();
 		info.minBlockSize = 256;
 		info.maxBlockSize = 32768;
-		info.minFrameSize = 0;
-		info.maxFrameSize = 0;
 		info.sampleRate = sampleRate;
 		info.numChannels = samples.length;
 		info.sampleDepth = sampleDepth;

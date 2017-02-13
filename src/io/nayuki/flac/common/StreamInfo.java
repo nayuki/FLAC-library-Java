@@ -28,17 +28,26 @@ public final class StreamInfo {
 	public int sampleDepth;  // In bits per sample, in the range [4, 32].
 	public long numSamples;  // Total number of samples (per channel) in the audio clip. 0 signifies unknown.
 	
-	// Always 16 bytes long. Can be all zeros to signify
-	// that the encoder did not compute the MD5 hash.
+	// Always 16 bytes long. Can be all zeros to signify that the encoder did not
+	// compute the MD5 hash. It is okay to replace this array with a different object.
 	public byte[] md5Hash;
 	
 	
 	
 	/*---- Constructors ----*/
 	
-	// Constructs a blank stream info structure.
+	// Constructs a blank stream info structure with certain default values.
 	public StreamInfo() {
+		// Set these fields to legal unknown values
+		minFrameSize = 0;
+		maxFrameSize = 0;
+		numSamples = 0;
 		md5Hash = new byte[16];
+		
+		// Set these fields to invalid (not reserved) values
+		minBlockSize = 0;
+		maxBlockSize = 0;
+		sampleRate = 0;
 	}
 	
 	
