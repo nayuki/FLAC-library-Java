@@ -42,8 +42,8 @@ public final class DecodeFlacToWav {
 		else if (dec.hashCheck == 2)
 			throw new DataFormatException("MD5 hash check failed");
 		StreamInfo streamInfo = dec.streamInfo;
-		if (streamInfo.sampleDepth != 16)
-			throw new UnsupportedOperationException("Only 16-bit sample depth supported");
+		if (streamInfo.sampleDepth % 8 != 0)
+			throw new UnsupportedOperationException("Only whole-byte sample depth supported");
 		int bytesPerSample = streamInfo.sampleDepth / 8;
 		
 		// Start writing WAV output file
@@ -72,8 +72,15 @@ public final class DecodeFlacToWav {
 			out.writeInt(0x64617461);  // "data"
 			writeLittleInt32(sampleDataLen);
 			for (int i = 0; i < samples[0].length; i++) {
-				for (int j = 0; j < samples.length; j++)
-					writeLittleInt16(samples[j][i]);
+				for (int j = 0; j < samples.length; j++) {
+					int val = samples[j][i];
+					if (bytesPerSample == 1)
+						out.write(val + 128);  // Convert to unsigned, as per WAV PCM conventions
+					else {  // 2 <= bytesPerSample <= 4
+						for (int k = 0; k < bytesPerSample; k++)
+							out.write(val >>> (k * 8));  // Little endian
+					}
+				}
 			}
 		}
 	}
