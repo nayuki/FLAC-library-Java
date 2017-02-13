@@ -18,9 +18,6 @@ public final class FlacEncoder {
 	
 	
 	public FlacEncoder(int[][] samples, int sampleDepth, int sampleRate, BitOutputStream out) throws IOException {
-		minFrameSize = Integer.MAX_VALUE;
-		maxFrameSize = 0;
-		
 		out.writeInt(32, 0x664C6143);
 		StreamInfo info = new StreamInfo();
 		info.minBlockSize = 256;
@@ -34,6 +31,8 @@ public final class FlacEncoder {
 		info.md5Hash = Md5Hasher.getHash(samples, sampleDepth);
 		info.write(true, out);
 		
+		minFrameSize = -1;
+		maxFrameSize = -1;
 		for (int i = 0, pos = 0; pos < samples[0].length; i++) {
 			System.err.printf("frame=%d  position=%d  %.2f%%%n", i, pos, 100.0 * pos / samples[0].length);
 			int n = Math.min(samples[0].length - pos, 4096);
