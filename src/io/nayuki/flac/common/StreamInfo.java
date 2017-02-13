@@ -10,6 +10,7 @@ import java.io.IOException;
 import io.nayuki.flac.decode.BitInputStream;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.decode.FrameMetadata;
+import io.nayuki.flac.encode.BitOutputStream;
 
 
 // A mutable structure holding all fields of the stream info metadata block.
@@ -91,6 +92,30 @@ public final class StreamInfo {
 			throw new DataFormatException("Frame size less than minimum");
 		if (maxFrameSize != 0 && meta.frameSize > maxFrameSize)
 			throw new DataFormatException("Frame size exceeds maximum");
+	}
+	
+	
+	// Writes this stream info metadata block to the given output stream, including the
+	// metadata block header. This writes exactly 38 bytes. The output stream should
+	// initially be aligned to a byte boundary, and will finish at a byte boundary.
+	public void write(boolean last, BitOutputStream out) throws IOException {
+		// Metadata block header
+		out.writeInt(1, last ? 1 : 0);
+		out.writeInt(7, 0);  // Type
+		out.writeInt(24, 34);  // Length
+		
+		// Stream info block fields
+		out.writeInt(16, minBlockSize);
+		out.writeInt(16, maxBlockSize);
+		out.writeInt(24, minFrameSize);
+		out.writeInt(24, maxFrameSize);
+		out.writeInt(20, sampleRate);
+		out.writeInt(3, numChannels - 1);
+		out.writeInt(5, sampleDepth - 1);
+		out.writeInt(18, (int)(numSamples >>> 18));
+		out.writeInt(18, (int)(numSamples >>>  0));
+		for (byte b : md5Hash)
+			out.writeInt(8, b);
 	}
 	
 }
