@@ -7,6 +7,7 @@
 package io.nayuki.flac.common;
 
 import java.io.IOException;
+import java.util.Objects;
 import io.nayuki.flac.decode.BitInputStream;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.decode.FrameMetadata;
@@ -80,6 +81,30 @@ public final class StreamInfo {
 	
 	/*---- Methods ----*/
 	
+	// Either returns silently or throws IllegalStateException or NullPointerException.
+	public void checkValues() {
+		if ((minBlockSize >>> 16) != 0)
+			throw new IllegalStateException("Invalid minimum block size");
+		if ((maxBlockSize >>> 16) != 0)
+			throw new IllegalStateException("Invalid maximum block size");
+		if ((minFrameSize >>> 24) != 0)
+			throw new IllegalStateException("Invalid minimum frame size");
+		if ((maxFrameSize >>> 24) != 0)
+			throw new IllegalStateException("Invalid maximum frame size");
+		if (sampleRate == 0 || (sampleRate >>> 20) != 0)
+			throw new IllegalStateException("Invalid sample rate");
+		if (numChannels < 1 || numChannels > 8)
+			throw new IllegalStateException("Invalid number of channels");
+		if (sampleDepth < 4 || sampleDepth > 32)
+			throw new IllegalStateException("Invalid sample depth");
+		if ((numSamples >>> 36) != 0)
+			throw new IllegalStateException("Invalid number of samples");
+		Objects.requireNonNull(md5Hash);
+		if (md5Hash.length != 16)
+			throw new IllegalStateException("Invalid MD5 hash length");
+	}
+	
+	
 	// Checks whether the given frame metadata is consistent with this stream info object.
 	// This method either returns silently or throws an exception.
 	public void checkFrame(FrameMetadata meta) {
@@ -108,6 +133,9 @@ public final class StreamInfo {
 	// metadata block header. This writes exactly 38 bytes. The output stream should
 	// initially be aligned to a byte boundary, and will finish at a byte boundary.
 	public void write(boolean last, BitOutputStream out) throws IOException {
+		// Abort if anything is wrong
+		checkValues();
+		
 		// Metadata block header
 		out.writeInt(1, last ? 1 : 0);
 		out.writeInt(7, 0);  // Type
