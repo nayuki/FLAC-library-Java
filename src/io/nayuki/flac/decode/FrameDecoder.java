@@ -129,10 +129,10 @@ public final class FrameDecoder {
 					temp0[i] += temp1[i];
 			} else if (chanAsgn == 10) {  // Mid-side stereo
 				for (int i = 0; i < currentBlockSize; i++) {
-					long s = temp1[i];
-					long m = (temp0[i] << 1) | (s & 1);
-					temp0[i] = (m + s) >> 1;
-					temp1[i] = (m - s) >> 1;
+					long side = temp1[i];
+					long right = temp0[i] - (side >> 1);
+					temp1[i] = right;
+					temp0[i] = right + side;
 				}
 			} else
 				throw new AssertionError();
