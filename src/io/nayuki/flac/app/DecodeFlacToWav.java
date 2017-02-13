@@ -44,6 +44,7 @@ public final class DecodeFlacToWav {
 		StreamInfo streamInfo = dec.streamInfo;
 		if (streamInfo.sampleDepth != 16)
 			throw new UnsupportedOperationException("Only 16-bit sample depth supported");
+		int bytesPerSample = streamInfo.sampleDepth / 8;
 		
 		// Start writing WAV output file
 		try (DataOutputStream out = new DataOutputStream(
@@ -52,7 +53,7 @@ public final class DecodeFlacToWav {
 			
 			// Header chunk
 			int[][] samples = dec.samples;
-			int sampleDataLen = samples[0].length * streamInfo.numChannels * streamInfo.sampleDepth / 8;
+			int sampleDataLen = samples[0].length * streamInfo.numChannels * bytesPerSample;
 			out.writeInt(0x52494646);  // "RIFF"
 			writeLittleInt32(sampleDataLen + 36);
 			out.writeInt(0x57415645);  // "WAVE"
@@ -63,8 +64,8 @@ public final class DecodeFlacToWav {
 			writeLittleInt16(0x0001);
 			writeLittleInt16(streamInfo.numChannels);
 			writeLittleInt32(streamInfo.sampleRate);
-			writeLittleInt32(streamInfo.sampleRate * streamInfo.numChannels * streamInfo.sampleDepth / 8);
-			writeLittleInt16(streamInfo.numChannels * streamInfo.sampleDepth / 8);
+			writeLittleInt32(streamInfo.sampleRate * streamInfo.numChannels * bytesPerSample);
+			writeLittleInt16(streamInfo.numChannels * bytesPerSample);
 			writeLittleInt16(streamInfo.sampleDepth);
 			
 			// Audio data chunk ("data")
