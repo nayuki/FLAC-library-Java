@@ -46,7 +46,7 @@ public final class FrameDecoder {
 	
 	
 	
-	/*---- Frame header decoding methods ----*/
+	/*---- Methods ----*/
 	
 	// Reads the next frame of FLAC data from the current bit input stream, decodes it,
 	// and stores output samples into the given array, and returns a new metadata object.
@@ -55,68 +55,24 @@ public final class FrameDecoder {
 	// decodes a frame and returns a new metadata object, or throws an appropriate exception. A frame
 	// may have up to 8 channels and 65536 samples, so the output arrays need to be sized appropriately.
 	public FrameMetadata readFrame(int[][] outSamples, int outOffset) throws IOException {
-		// Some argument checks (plus more later)
+		// Parse the frame header to see if one is available
+		long startByte = in.getByteCount();
+		FrameMetadata meta = FrameMetadata.readFrame(in);
+		if (meta == null)  // EOF occurred cleanly
+			return null;
+		
+		// Check arguments and read frame header
+		currentBlockSize = meta.blockSize;
 		Objects.requireNonNull(outSamples);
 		if (outOffset < 0 || outOffset > outSamples[0].length)
 			throw new IndexOutOfBoundsException();
-		
-		// Preliminaries
-		long startByte = in.getByteCount();
-		in.resetCrcs();
-		int temp = in.readByte();
-		if (temp == -1)
-			return null;
-		FrameMetadata result = new FrameMetadata();
-		
-		// Read sync bits
-		int sync = temp << 6 | in.readUint(6);  // Uint14
-		if (sync != 0x3FFE)
-			throw new DataFormatException("Sync code expected");
-		
-		// Read various simple fields
-		if (in.readUint(1) != 0)
-			throw new DataFormatException("Reserved bit");
-		int blockStrategy     = in.readUint(1);
-		int blockSizeCode     = in.readUint(4);
-		int sampleRateCode    = in.readUint(4);
-		int channelAssignment = in.readUint(4);
-		if (channelAssignment < 8)
-			result.numChannels = channelAssignment + 1;
-		else if (8 <= channelAssignment && channelAssignment <= 10)
-			result.numChannels = 2;
-		else
-			throw new DataFormatException("Reserved channel assignment");
-		if (outSamples.length < result.numChannels)
+		if (outSamples.length < meta.numChannels)
 			throw new IllegalArgumentException("Output array too small for number of channels");
-		result.sampleDepth = decodeSampleDepth(in.readUint(3));
-		if (in.readUint(1) != 0)
-			throw new DataFormatException("Reserved bit");
-		
-		// Read and check the frame/sample position field
-		long position = readUtf8Integer();  // Reads 1 to 7 bytes
-		if (blockStrategy == 0) {
-			if ((position >>> 31) != 0)
-				throw new DataFormatException("Frame index too large");
-			result.frameIndex = (int)position;
-			result.sampleOffset = -1;
-		} else if (blockStrategy == 1) {
-			result.sampleOffset = position;
-			result.frameIndex = -1;
-		} else
-			throw new AssertionError();
-		
-		// Read variable-length data for some fields
-		currentBlockSize = decodeBlockSize(blockSizeCode);  // Reads 0 to 2 bytes
 		if (outOffset > outSamples[0].length - currentBlockSize)
 			throw new IndexOutOfBoundsException();
-		result.blockSize = currentBlockSize;
-		result.sampleRate = decodeSampleRate(sampleRateCode);  // Reads 0 to 2 bytes
-		int computedCrc8 = in.getCrc8();
-		if (in.readUint(8) != computedCrc8)
-			throw new DataFormatException("CRC-8 mismatch");
 		
 		// Do the hard work
-		decodeSubframes(result.sampleDepth, channelAssignment, outSamples, outOffset);
+		decodeSubframes(meta.sampleDepth, meta.channelAssignment, outSamples, outOffset);
 		
 		// Read padding and footer
 		while (in.getBitPosition() != 0) {
@@ -126,99 +82,18 @@ public final class FrameDecoder {
 		int computedCrc16 = in.getCrc16();
 		if (in.readUint(16) != computedCrc16)
 			throw new DataFormatException("CRC-16 mismatch");
+		
+		// Handle frame size and miscellaneous
 		long frameSize = in.getByteCount() - startByte;
 		if (frameSize < 10)
 			throw new AssertionError();
 		if ((int)frameSize != frameSize)
 			throw new DataFormatException("Frame size too large");
-		result.frameSize = (int)frameSize;
+		meta.frameSize = (int)frameSize;
 		currentBlockSize = -1;
-		return result;
+		return meta;
 	}
 	
-	
-	// Reads 1 to 7 bytes from the input stream. Return value is a uint36.
-	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
-	private long readUtf8Integer() throws IOException {
-		int head = in.readUint(8);
-		int n = Integer.numberOfLeadingZeros(~(head << 24));  // Number of leading 1s in the byte
-		assert 0 <= n && n <= 8;
-		if (n == 0)
-			return head;
-		else if (n == 1 || n == 8)
-			throw new DataFormatException("Invalid UTF-8 coded number");
-		else {
-			long result = head & (0x7F >>> n);
-			for (int i = 0; i < n - 1; i++) {
-				int temp = in.readUint(8);
-				if ((temp & 0xC0) != 0x80)
-					throw new DataFormatException("Invalid UTF-8 coded number");
-				result = (result << 6) | (temp & 0x3F);
-			}
-			if ((result >>> 36) != 0)
-				throw new AssertionError();
-			return result;
-		}
-	}
-	
-	
-	// Argument is a uint4 value. Reads 0 to 2 bytes from the input stream.
-	// Return value is in the range [1, 65536].
-	private int decodeBlockSize(int code) throws IOException {
-		if ((code >>> 4) != 0)
-			throw new IllegalArgumentException();
-		else if (code == 0)
-			throw new DataFormatException("Reserved block size");
-		else if (code == 1)
-			return 192;
-		else if (2 <= code && code <= 5)
-			return 576 << (code - 2);
-		else if (code == 6)
-			return in.readUint(8) + 1;
-		else if (code == 7)
-			return in.readUint(16) + 1;
-		else if (8 <= code && code <= 15)
-			return 256 << (code - 8);
-		else
-			throw new AssertionError();
-	}
-	
-	
-	// Argument is a uint4 value. Reads 0 to 2 bytes from the input stream.
-	// Return value is in the range [-1, 655350].
-	private int decodeSampleRate(int code) throws IOException {
-		if ((code >>> 4) != 0)
-			throw new IllegalArgumentException();
-		switch (code) {
-			case  0:  return -1;  // Caller should obtain value from stream info metadata block
-			case 12:  return in.readUint(8);
-			case 13:  return in.readUint(16);
-			case 14:  return in.readUint(16) * 10;
-			case 15:  throw new DataFormatException("Invalid sample rate");
-			default:  return SAMPLE_RATES[code];  // 1 <= code <= 11
-		}
-	}
-	
-	private static final int[] SAMPLE_RATES = {-1, 88200, 176400, 192000, 8000, 16000, 22050, 24000, 32000, 44100, 48000, 96000};
-	
-	
-	// Argument is a uint3 value. Pure function and performs no I/O. Return value is in the range [-1, 24].
-	private static int decodeSampleDepth(int code) {
-		if ((code >>> 3) != 0)
-			throw new IllegalArgumentException();
-		else if (code == 0)
-			return -1;  // Caller should obtain value from stream info metadata block
-		else if (SAMPLE_DEPTHS[code] < 0)
-			throw new DataFormatException("Reserved bit depth");
-		else
-			return SAMPLE_DEPTHS[code];
-	}
-	
-	private static final int[] SAMPLE_DEPTHS = {-1, 8, 12, -2, 16, 20, 24, -2};
-	
-	
-	
-	/*---- Sub-frame audio data decoding methods ----*/
 	
 	// Based on the current bit input stream and the two given arguments, this method reads and decodes
 	// each subframe, performs stereo decoding if applicable, and writes the final uncompressed audio data
