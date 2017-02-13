@@ -15,6 +15,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
+import io.nayuki.flac.common.Md5Hasher;
+import io.nayuki.flac.common.StreamInfo;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.encode.BitOutputStream;
 import io.nayuki.flac.encode.FlacEncoder;
@@ -93,18 +95,27 @@ public final class EncodeWavToFlac {
 		// Open output file and encode samples to FLAC
 		try (RandomAccessFile raf = new RandomAccessFile(outFile, "rw")) {
 			raf.setLength(0);  // Truncate an existing file
-			
-			// Encode all frames
 			BitOutputStream out = new BitOutputStream(
 				new BufferedOutputStream(new RandomAccessFileOutputStream(raf)));
-			FlacEncoder enc = new FlacEncoder(samples, sampleDepth, sampleRate, out);
+			out.writeInt(32, 0x664C6143);
+			
+			// Populate and write the stream info structure
+			StreamInfo info = new StreamInfo();
+			info.sampleRate = sampleRate;
+			info.numChannels = samples.length;
+			info.sampleDepth = sampleDepth;
+			info.numSamples = samples[0].length;
+			info.md5Hash = Md5Hasher.getHash(samples, sampleDepth);
+			info.write(true, out);
+			
+			// Encode all frames
+			new FlacEncoder(info, samples, 4096, out);
 			out.flush();
 			
-			// Rewrite parts of the stream info metadata block, which
-			// is located at a fixed offset in the file by definition
-			raf.seek(4 + 1 + 3 + 2 + 2);
-			out.writeInt(24, enc.minFrameSize);
-			out.writeInt(24, enc.maxFrameSize);
+			// Rewrite the stream info metadata block, which is
+			// located at a fixed offset in the file by definition
+			raf.seek(4);
+			info.write(true, out);
 			out.flush();
 		}
 	}

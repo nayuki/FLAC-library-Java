@@ -12,24 +12,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import io.nayuki.flac.common.Md5Hasher;
 import io.nayuki.flac.common.StreamInfo;
 
 
 public final class AdvancedFlacEncoder {
 	
-	public AdvancedFlacEncoder(int[][] samples, int sampleDepth, int sampleRate, BitOutputStream out) throws IOException {
-		out.writeInt(32, 0x664C6143);
-		StreamInfo info = new StreamInfo();
-		info.minBlockSize = 256;
-		info.maxBlockSize = 32768;
-		info.sampleRate = sampleRate;
-		info.numChannels = samples.length;
-		info.sampleDepth = sampleDepth;
-		info.numSamples = samples[0].length;
-		info.md5Hash = Md5Hasher.getHash(samples, sampleDepth);
-		info.write(true, out);
-		
+	public AdvancedFlacEncoder(StreamInfo info, int[][] samples, BitOutputStream out) throws IOException {
 		int numSamples = samples[0].length;
 		int baseSize = 1024;
 		int[] sizeMultiples = {3, 4, 5, 6};
@@ -47,7 +35,7 @@ public final class AdvancedFlacEncoder {
 			for (int j = 0; j < encoderInfo.length; j++) {
 				int n = Math.min(sizeMultiples[j] * baseSize, numSamples - pos);
 				long[][] subsamples = getRange(samples, pos, n);
-				encoderInfo[j][i] = FrameEncoder.computeBest(pos, subsamples, sampleDepth, sampleRate, SubframeEncoder.SearchOptions.SUBSET_BEST);
+				encoderInfo[j][i] = FrameEncoder.computeBest(pos, subsamples, info.sampleDepth, info.sampleRate, SubframeEncoder.SearchOptions.SUBSET_BEST);
 			}
 		}
 		System.err.println();
@@ -72,15 +60,32 @@ public final class AdvancedFlacEncoder {
 		}
 		
 		// Do the actual encoding and writing
+		info.minBlockSize = 0;
+		info.maxBlockSize = 0;
+		info.minFrameSize = 0;
+		info.maxFrameSize = 0;
 		List<Integer> blockSizes = new ArrayList<>();
 		for (int i = 0; i < bestEncoders.length; ) {
 			FrameEncoder enc = bestEncoders[i];
 			int pos = i * baseSize;
 			int n = Math.min(enc.blockSize, numSamples - pos);
 			blockSizes.add(n);
+			if (info.minBlockSize == 0 || n < info.minBlockSize)
+				info.minBlockSize = Math.max(n, 16);
+			info.maxBlockSize = Math.max(n, info.maxBlockSize);
+			
 			long[][] subsamples = getRange(samples, pos, n);
+			long startByte = out.getByteCount();
 			bestEncoders[i].encode(subsamples, out);
 			i += (n + baseSize - 1) / baseSize;
+			
+			long frameSize = out.getByteCount() - startByte;
+			if (frameSize < 0 || (int)frameSize != frameSize)
+				throw new AssertionError();
+			if (info.minFrameSize == 0 || frameSize < info.minFrameSize)
+				info.minFrameSize = (int)frameSize;
+			if (frameSize > info.maxFrameSize)
+				info.maxFrameSize = (int)frameSize;
 		}
 		
 		// Print a pretty histogram of block sizes used
