@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Objects;
 import io.nayuki.flac.common.Md5Hasher;
+import io.nayuki.flac.common.StreamInfo;
 
 
 public final class FlacDecoder {

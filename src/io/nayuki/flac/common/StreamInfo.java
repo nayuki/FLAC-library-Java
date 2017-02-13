@@ -4,9 +4,12 @@
  * https://www.nayuki.io/
  */
 
-package io.nayuki.flac.decode;
+package io.nayuki.flac.common;
 
 import java.io.IOException;
+import io.nayuki.flac.decode.BitInputStream;
+import io.nayuki.flac.decode.DataFormatException;
+import io.nayuki.flac.decode.FrameMetadata;
 
 
 // A mutable structure holding all fields of the stream info metadata block.

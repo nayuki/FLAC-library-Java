@@ -13,9 +13,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import io.nayuki.flac.common.StreamInfo;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.decode.FlacDecoder;
-import io.nayuki.flac.decode.StreamInfo;
 
 
 public final class DecodeFlacToWav {
