@@ -13,19 +13,11 @@ import io.nayuki.flac.common.StreamInfo;
 
 public final class FlacEncoder {
 	
-	private int[][] samples;
-	private final int sampleDepth;
-	private final int sampleRate;
-	private BitOutputStream out;
 	public int minFrameSize;  // In bytes, or -1 if no frames encoded
 	public int maxFrameSize;  // In bytes, or -1 if no frames encoded
 	
 	
 	public FlacEncoder(int[][] samples, int sampleDepth, int sampleRate, BitOutputStream out) throws IOException {
-		this.samples = samples;
-		this.sampleDepth = sampleDepth;
-		this.sampleRate = sampleRate;
-		this.out = out;
 		minFrameSize = Integer.MAX_VALUE;
 		maxFrameSize = 0;
 		

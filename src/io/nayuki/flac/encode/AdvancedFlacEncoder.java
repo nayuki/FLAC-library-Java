@@ -14,18 +14,7 @@ import io.nayuki.flac.common.StreamInfo;
 
 public final class AdvancedFlacEncoder {
 	
-	private int[][] samples;
-	private final int sampleDepth;
-	private final int sampleRate;
-	private BitOutputStream out;
-	
-	
 	public AdvancedFlacEncoder(int[][] samples, int sampleDepth, int sampleRate, BitOutputStream out) throws IOException {
-		this.samples = samples;
-		this.sampleDepth = sampleDepth;
-		this.sampleRate = sampleRate;
-		this.out = out;
-		
 		out.writeInt(32, 0x664C6143);
 		StreamInfo info = new StreamInfo();
 		info.minBlockSize = 256;
