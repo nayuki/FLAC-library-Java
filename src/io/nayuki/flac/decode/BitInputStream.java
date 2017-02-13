@@ -162,7 +162,7 @@ public final class BitInputStream implements AutoCloseable {
 			}
 			val = (val << param) | readUint(param);  // Note: Long masking unnecessary because param <= 31
 			assert (val >>> 54) == 0;  // Must fit a uint54 by design
-			val = (val >>> 1) ^ (-(val & 1));
+			val = (val >>> 1) ^ -(val & 1);
 			assert (val >> 53) == 0 || (val >> 53) == -1;  // Must fit a signed int54 by design
 			result[start] = val;
 			start++;
@@ -272,7 +272,7 @@ public final class BitInputStream implements AutoCloseable {
 		for (int i = crcStartIndex; i < end; i++) {
 			int b = byteBuffer[i] & 0xFF;
 			crc8 = CRC8_TABLE[crc8 ^ b] & 0xFF;
-			crc16 = CRC16_TABLE[crc16 >>> 8 ^ b] ^ ((crc16 & 0xFF) << 8);
+			crc16 = CRC16_TABLE[(crc16 >>> 8) ^ b] ^ ((crc16 & 0xFF) << 8);
 			assert (crc8 >>> 8) == 0;
 			assert (crc16 >>> 16) == 0;
 			byteCount++;
@@ -333,7 +333,7 @@ public final class BitInputStream implements AutoCloseable {
 				int shift = RICE_DECODING_TABLE_BITS - numBits;
 				for (int j = 0; j < (1 << shift); j++) {
 					consumed[(bits << shift) | j] = (byte)numBits;
-					values[(bits << shift) | j] = (i >>> 1) ^ (-(i & 1));
+					values[(bits << shift) | j] = (i >>> 1) ^ -(i & 1);
 				}
 			}
 			if (consumed[0] != 0)
