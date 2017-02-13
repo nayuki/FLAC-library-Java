@@ -7,7 +7,11 @@
 package io.nayuki.flac.encode;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import io.nayuki.flac.common.Md5Hasher;
 import io.nayuki.flac.common.StreamInfo;
 
@@ -46,6 +50,8 @@ public final class AdvancedFlacEncoder {
 				encoderInfo[j][i] = FrameEncoder.computeBest(pos, subsamples, sampleDepth, sampleRate, SubframeEncoder.SearchOptions.SUBSET_BEST);
 			}
 		}
+		System.err.println();
+		System.err.println();
 		
 		// Initialize arrays to prepare for dynamic programming
 		FrameEncoder[] bestEncoders = new FrameEncoder[encoderInfo[0].length];
@@ -66,18 +72,35 @@ public final class AdvancedFlacEncoder {
 		}
 		
 		// Do the actual encoding and writing
-		for (int i = 0, numBlocks = 0; i < bestEncoders.length; numBlocks++) {
+		List<Integer> blockSizes = new ArrayList<>();
+		for (int i = 0; i < bestEncoders.length; ) {
 			FrameEncoder enc = bestEncoders[i];
 			int pos = i * baseSize;
 			int n = Math.min(enc.blockSize, numSamples - pos);
-			if (numBlocks % 20 == 0)
-				System.err.println();
-			else
-				System.err.print(" ");
-			System.err.print(n);
+			blockSizes.add(n);
 			long[][] subsamples = getRange(samples, pos, n);
 			bestEncoders[i].encode(subsamples, out);
 			i += (n + baseSize - 1) / baseSize;
+		}
+		
+		// Print a pretty histogram of block sizes used
+		Map<Integer,Integer> blockSizeCounts = new TreeMap<>();
+		int maxCount = 1;  // To avoid division by zero
+		for (int bs : blockSizes) {
+			if (!blockSizeCounts.containsKey(bs))
+				blockSizeCounts.put(bs, 0);
+			int count = blockSizeCounts.get(bs) + 1;
+			blockSizeCounts.put(bs, count);
+			maxCount = Math.max(count, maxCount);
+		}
+		System.err.println("Block sizes used:");
+		final double maxBarWidth = 60;
+		for (Map.Entry<Integer,Integer> entry : blockSizeCounts.entrySet()) {
+			int blockSize = entry.getKey();
+			int count = entry.getValue();
+			char[] bar = new char[(int)Math.round(maxBarWidth * count / maxCount)];
+			Arrays.fill(bar, '*');
+			System.err.printf("%5d: %s (%d)%n", blockSize, new String(bar), count);
 		}
 	}
 	
