@@ -194,7 +194,7 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	}
 	
 	
-	private static void applyLpc(long[] data, int[] coefs, int shift) {
+	static void applyLpc(long[] data, int[] coefs, int shift) {
 		for (int i = data.length - 1; i >= coefs.length; i--) {
 			long sum = 0;
 			for (int j = 0; j < coefs.length; j++)
