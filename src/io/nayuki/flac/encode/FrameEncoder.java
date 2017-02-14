@@ -9,7 +9,7 @@ package io.nayuki.flac.encode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Objects;
-import io.nayuki.flac.decode.FrameMetadata;
+import io.nayuki.flac.common.FrameMetadata;
 
 
 /* 

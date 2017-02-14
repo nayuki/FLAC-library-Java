@@ -4,9 +4,11 @@
  * https://www.nayuki.io/
  */
 
-package io.nayuki.flac.decode;
+package io.nayuki.flac.common;
 
 import java.io.IOException;
+import io.nayuki.flac.decode.BitInputStream;
+import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.encode.BitOutputStream;
 
 

@@ -9,6 +9,7 @@ package io.nayuki.flac.decode;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import io.nayuki.flac.common.FrameMetadata;
 
 
 // Decodes a FLAC frame from an input stream into raw audio samples. Note that these objects are

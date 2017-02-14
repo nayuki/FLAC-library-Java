@@ -12,7 +12,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 import io.nayuki.flac.decode.BitInputStream;
 import io.nayuki.flac.decode.DataFormatException;
-import io.nayuki.flac.decode.FrameMetadata;
 import io.nayuki.flac.encode.BitOutputStream;
 
 

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Objects;
+import io.nayuki.flac.common.FrameMetadata;
 import io.nayuki.flac.common.StreamInfo;
 
 
