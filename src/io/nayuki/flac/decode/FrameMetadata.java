@@ -32,7 +32,12 @@ public final class FrameMetadata {
 	/*---- Constructors ----*/
 	
 	// Constructs a blank frame metadata structure.
-	public FrameMetadata() {}
+	public FrameMetadata() {
+		frameIndex   = -1;
+		sampleOffset = -1;
+		sampleRate   = -1;
+		sampleDepth  = -1;
+	}
 	
 	
 	
@@ -260,7 +265,7 @@ public final class FrameMetadata {
 	
 	// Returns a uint4 value representing the given sample rate. Pure function.
 	private static int getSampleRateCode(int sampleRate) {
-		if (sampleRate <= 0)
+		if (sampleRate == 0 || sampleRate < -1)
 			throw new IllegalArgumentException();
 		int result = searchFirst(SAMPLE_RATE_CODES, sampleRate);
 		if (result != -1);  // Already done
@@ -281,6 +286,8 @@ public final class FrameMetadata {
 	
 	// Returns a uint3 value representing the given sample depth. Pure function.
 	private static int getSampleDepthCode(int sampleDepth) {
+		if (sampleDepth != -1 && (sampleDepth < 1 || sampleDepth > 32))
+			throw new IllegalArgumentException();
 		int result = searchFirst(SAMPLE_DEPTH_CODES, sampleDepth);
 		if (result == -1)
 			result = 0;
