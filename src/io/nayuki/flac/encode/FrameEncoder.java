@@ -88,8 +88,8 @@ final class FrameEncoder {
 		}
 		
 		// Count padding and footer
-		size = (size + 7) / 8 * 8;  // Round up to nearest byte
-		size += 16;  // CRC-16
+		size = (size + 7) / 8;  // Round up to nearest byte
+		size += 2;  // CRC-16
 		return new SizeEstimate<>(size, enc);
 	}
 	

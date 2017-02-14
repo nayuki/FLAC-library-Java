@@ -43,12 +43,12 @@ public final class AdvancedFlacEncoder {
 		// Initialize arrays to prepare for dynamic programming
 		FrameEncoder[] bestEncoders = new FrameEncoder[encoderInfo[0].length];
 		long[] bestSizes = new long[bestEncoders.length];
-		Arrays.fill(bestSizes, Integer.MAX_VALUE);
+		Arrays.fill(bestSizes, Long.MAX_VALUE);
 		
 		// Use dynamic programming to calculate optimum block size switching
 		for (int i = 0; i < encoderInfo.length; i++) {
 			for (int j = bestSizes.length - 1; j >= 0; j--) {
-				int size = (int)encoderInfo[i][j].sizeEstimate;
+				long size = encoderInfo[i][j].sizeEstimate;
 				if (j + sizeMultiples[i] < bestSizes.length)
 					size += bestSizes[j + sizeMultiples[i]];
 				if (size < bestSizes[j]) {
