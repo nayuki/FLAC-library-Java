@@ -26,7 +26,7 @@ final class FrameEncoder {
 		@SuppressWarnings("unchecked")
 		SizeEstimate<SubframeEncoder>[] encoderInfo = new SizeEstimate[numChannels];
 		if (numChannels != 2) {
-			enc.channelAssignment = numChannels - 1;
+			enc.metadata.channelAssignment = numChannels - 1;
 			for (int i = 0; i < encoderInfo.length; i++)
 				encoderInfo[i] = SubframeEncoder.computeBest(data[i], sampleDepth, opt);
 		} else {  // Explore the 4 stereo encoding modes
@@ -48,19 +48,19 @@ final class FrameEncoder {
 			long mode10Size = midInfo.sizeEstimate + sideInfo.sizeEstimate;
 			long minimum = Math.min(Math.min(mode1Size, mode8Size), Math.min(mode9Size, mode10Size));
 			if (mode1Size == minimum) {
-				enc.channelAssignment = 1;
+				enc.metadata.channelAssignment = 1;
 				encoderInfo[0] = leftInfo;
 				encoderInfo[1] = rightInfo;
 			} else if (mode8Size == minimum) {
-				enc.channelAssignment = 8;
+				enc.metadata.channelAssignment = 8;
 				encoderInfo[0] = leftInfo;
 				encoderInfo[1] = sideInfo;
 			} else if (mode9Size == minimum) {
-				enc.channelAssignment = 9;
+				enc.metadata.channelAssignment = 9;
 				encoderInfo[0] = sideInfo;
 				encoderInfo[1] = rightInfo;
 			} else if (mode10Size == minimum) {
-				enc.channelAssignment = 10;
+				enc.metadata.channelAssignment = 10;
 				encoderInfo[0] = midInfo;
 				encoderInfo[1] = sideInfo;
 			} else
@@ -79,7 +79,7 @@ final class FrameEncoder {
 		try {
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
 			try (BitOutputStream bitout = new BitOutputStream(bout)) {
-				enc.encodeHeader(bitout);
+				enc.metadata.writeHeader(bitout);
 			}
 			bout.close();
 			size += bout.toByteArray().length * 8;
@@ -97,11 +97,7 @@ final class FrameEncoder {
 	
 	/*---- Fields ----*/
 	
-	private final int sampleOffset;
-	private final int sampleDepth;
-	private final int sampleRate;
-	public final int blockSize;
-	private int channelAssignment;
+	public FrameMetadata metadata;
 	private SubframeEncoder[] subEncoders;
 	
 	
@@ -109,12 +105,12 @@ final class FrameEncoder {
 	/*---- Constructors ----*/
 	
 	public FrameEncoder(int sampleOffset, long[][] data, int sampleDepth, int sampleRate) {
-		// Set fields
-		this.sampleOffset = sampleOffset;
-		this.sampleDepth = sampleDepth;
-		this.sampleRate = sampleRate;
-		this.blockSize = data[0].length;
-		channelAssignment = data.length - 1;
+		metadata = new FrameMetadata();
+		metadata.sampleOffset = sampleOffset;
+		metadata.sampleDepth = sampleDepth;
+		metadata.sampleRate = sampleRate;
+		metadata.blockSize = data[0].length;
+		metadata.channelAssignment = data.length - 1;
 	}
 	
 	
@@ -125,21 +121,21 @@ final class FrameEncoder {
 		// Check arguments
 		Objects.requireNonNull(data);
 		Objects.requireNonNull(out);
-		if (data[0].length != blockSize)
+		if (data[0].length != metadata.blockSize)
 			throw new IllegalArgumentException();
 		
-		encodeHeader(out);
+		metadata.writeHeader(out);
 		
-		int chanAsgn = channelAssignment;
+		int chanAsgn = metadata.channelAssignment;
 		if (0 <= chanAsgn && chanAsgn <= 7) {
 			for (int i = 0; i < data.length; i++)
 				subEncoders[i].encode(data[i], out);
 		} else if (8 <= chanAsgn || chanAsgn <= 10) {
 			long[] left  = data[0];
 			long[] right = data[1];
-			long[] mid  = new long[blockSize];
-			long[] side = new long[blockSize];
-			for (int i = 0; i < blockSize; i++) {
+			long[] mid  = new long[metadata.blockSize];
+			long[] side = new long[metadata.blockSize];
+			for (int i = 0; i < metadata.blockSize; i++) {
 				mid[i] = (left[i] + right[i]) >> 1;
 				side[i] = left[i] - right[i];
 			}
@@ -158,18 +154,6 @@ final class FrameEncoder {
 			throw new AssertionError();
 		out.alignToByte();
 		out.writeInt(16, out.getCrc16());
-	}
-	
-	
-	private void encodeHeader(BitOutputStream out) throws IOException {
-		FrameMetadata meta = new FrameMetadata();
-		meta.frameIndex = -1;
-		meta.sampleOffset = sampleOffset;
-		meta.channelAssignment = channelAssignment;
-		meta.blockSize = blockSize;
-		meta.sampleRate = sampleRate;
-		meta.sampleDepth = sampleDepth;
-		meta.writeHeader(out);
 	}
 	
 }

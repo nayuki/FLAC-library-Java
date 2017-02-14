@@ -67,7 +67,7 @@ public final class AdvancedFlacEncoder {
 		for (int i = 0; i < bestEncoders.length; ) {
 			FrameEncoder enc = bestEncoders[i];
 			int pos = i * baseSize;
-			int n = Math.min(enc.blockSize, numSamples - pos);
+			int n = Math.min(enc.metadata.blockSize, numSamples - pos);
 			blockSizes.add(n);
 			if (info.minBlockSize == 0 || n < info.minBlockSize)
 				info.minBlockSize = Math.max(n, 16);
