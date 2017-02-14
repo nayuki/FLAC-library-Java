@@ -130,10 +130,11 @@ final class FrameEncoder {
 		
 		encodeHeader(out);
 		
-		if (0 <= channelAssignment && channelAssignment <= 7) {
+		int chanAsgn = channelAssignment;
+		if (0 <= chanAsgn && chanAsgn <= 7) {
 			for (int i = 0; i < data.length; i++)
 				subEncoders[i].encode(data[i], out);
-		} else if (8 <= channelAssignment || channelAssignment <= 10) {
+		} else if (8 <= chanAsgn || chanAsgn <= 10) {
 			long[] left  = data[0];
 			long[] right = data[1];
 			long[] mid  = new long[blockSize];
@@ -142,13 +143,13 @@ final class FrameEncoder {
 				mid[i] = (left[i] + right[i]) >> 1;
 				side[i] = left[i] - right[i];
 			}
-			if (channelAssignment == 8) {
+			if (chanAsgn == 8) {
 				subEncoders[0].encode(left, out);
 				subEncoders[1].encode(side, out);
-			} else if (channelAssignment == 9) {
+			} else if (chanAsgn == 9) {
 				subEncoders[0].encode(side, out);
 				subEncoders[1].encode(right, out);
-			} else if (channelAssignment == 10) {
+			} else if (chanAsgn == 10) {
 				subEncoders[0].encode(mid, out);
 				subEncoders[1].encode(side, out);
 			} else
