@@ -7,6 +7,8 @@
 package io.nayuki.flac.common;
 
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 import io.nayuki.flac.decode.BitInputStream;
 import io.nayuki.flac.decode.DataFormatException;
@@ -153,6 +155,42 @@ public final class StreamInfo {
 		out.writeInt(18, (int)(numSamples >>>  0));
 		for (byte b : md5Hash)
 			out.writeInt(8, b);
+	}
+	
+	
+	
+	/*---- Static functions ----*/
+	
+	// Returns the MD5 hash of the given raw audio sample data at the given bit depth.
+	// The bit depth must be a multiple of 8 from 8 to 32. The returned array is a new object of length 16.
+	public static byte[] getMd5Hash(int[][] samples, int depth) {
+		// Check arguments
+		Objects.requireNonNull(samples);
+		if (depth < 0 || depth > 32 || depth % 8 != 0)
+			throw new IllegalArgumentException();
+		
+		MessageDigest hasher;
+		try {
+			hasher = MessageDigest.getInstance("MD5");
+		} catch (NoSuchAlgorithmException e) {
+			throw new AssertionError(e);
+		}
+		int numChannels = samples.length;
+		int numSamples = samples[0].length;
+		int numBytes = depth / 8;
+		byte[] buf = new byte[numChannels * numBytes * Math.min(numSamples, 2048)];
+		for (int i = 0, l = 0; i < numSamples; i++) {
+			for (int j = 0; j < numChannels; j++) {
+				int val = samples[j][i];
+				for (int k = 0; k < numBytes; k++, l++)
+					buf[l] = (byte)(val >>> (k << 3));
+			}
+			if (l == buf.length || i == numSamples - 1) {
+				hasher.update(buf, 0, l);
+				l = 0;
+			}
+		}
+		return hasher.digest();
 	}
 	
 }

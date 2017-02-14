@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Objects;
-import io.nayuki.flac.common.Md5Hasher;
 import io.nayuki.flac.common.StreamInfo;
 
 
@@ -59,7 +58,7 @@ public final class FlacDecoder {
 		// Check audio data against hash
 		if (Arrays.equals(streamInfo.md5Hash, new byte[16]))
 			hashCheck = 0;
-		else if (Arrays.equals(Md5Hasher.getHash(samples, streamInfo.sampleDepth), streamInfo.md5Hash))
+		else if (Arrays.equals(StreamInfo.getMd5Hash(samples, streamInfo.sampleDepth), streamInfo.md5Hash))
 			hashCheck = 1;
 		else
 			hashCheck = 2;  // Hash check failed!

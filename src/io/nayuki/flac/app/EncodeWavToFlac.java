@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
-import io.nayuki.flac.common.Md5Hasher;
 import io.nayuki.flac.common.StreamInfo;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.encode.BitOutputStream;
@@ -105,7 +104,7 @@ public final class EncodeWavToFlac {
 			info.numChannels = samples.length;
 			info.sampleDepth = sampleDepth;
 			info.numSamples = samples[0].length;
-			info.md5Hash = Md5Hasher.getHash(samples, sampleDepth);
+			info.md5Hash = StreamInfo.getMd5Hash(samples, sampleDepth);
 			info.write(true, out);
 			
 			// Encode all frames
