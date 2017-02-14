@@ -39,7 +39,6 @@ public final class AdvancedFlacEncoder {
 			}
 		}
 		System.err.println();
-		System.err.println();
 		
 		// Initialize arrays to prepare for dynamic programming
 		FrameEncoder[] bestEncoders = new FrameEncoder[encoderInfo[0].length];
@@ -88,6 +87,7 @@ public final class AdvancedFlacEncoder {
 				info.maxFrameSize = (int)frameSize;
 		}
 		
+		System.err.println();
 		printBlockSizeStats(blockSizes);
 	}
 	

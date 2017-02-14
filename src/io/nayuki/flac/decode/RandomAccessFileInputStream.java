@@ -59,6 +59,7 @@ public final class RandomAccessFileInputStream extends InputStream {
 	
 	public void close() throws IOException {
 		in.close();
+		in = null;
 	}
 	
 }

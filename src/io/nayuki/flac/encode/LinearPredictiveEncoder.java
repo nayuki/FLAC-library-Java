@@ -131,7 +131,7 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	
 	// Solves an n * (n+1) augmented matrix (which modifies its values as a side effect),
 	// returning a new solution vector of length n.
-	private double[] solveMatrix(double[][] mat) {
+	private static double[] solveMatrix(double[][] mat) {
 		// Gauss-Jordan elimination algorithm
 		int rows = mat.length;
 		int cols = mat[0].length;

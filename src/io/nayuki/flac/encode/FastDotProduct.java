@@ -63,6 +63,7 @@ final class FastDotProduct {
 		// Check arguments
 		if (off0 < 0 || off1 < 0 || len < 0 || data.length - len < off1)
 			throw new IndexOutOfBoundsException();
+		assert off0 <= off1;
 		int delta = off1 - off0;
 		if (delta > precomputed.length)
 			throw new IllegalArgumentException();
