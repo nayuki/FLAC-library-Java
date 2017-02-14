@@ -101,11 +101,10 @@ public final class AdvancedFlacEncoder {
 		System.err.println("Block sizes used:");
 		final double maxBarWidth = 60;
 		for (Map.Entry<Integer,Integer> entry : blockSizeCounts.entrySet()) {
-			int blockSize = entry.getKey();
 			int count = entry.getValue();
-			char[] bar = new char[(int)Math.round(maxBarWidth * count / maxCount)];
-			Arrays.fill(bar, '*');
-			System.err.printf("%5d: %s (%d)%n", blockSize, new String(bar), count);
+			int barWidth = (int)Math.round(maxBarWidth * count / maxCount);
+			String bar = new String(new char[barWidth]).replace((char)0, '*');
+			System.err.printf("%5d: %s (%d)%n", entry.getKey(), bar, count);
 		}
 	}
 	
