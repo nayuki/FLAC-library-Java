@@ -89,6 +89,11 @@ public final class AdvancedFlacEncoder {
 		}
 		
 		// Print a pretty histogram of block sizes used
+		printBlockSizeStats(blockSizes);
+	}
+	
+	
+	private static void printBlockSizeStats(List<Integer> blockSizes) {
 		Map<Integer,Integer> blockSizeCounts = new TreeMap<>();
 		int maxCount = 1;  // To avoid division by zero
 		for (int bs : blockSizes) {
