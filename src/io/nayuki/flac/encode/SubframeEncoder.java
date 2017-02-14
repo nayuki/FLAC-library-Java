@@ -55,8 +55,8 @@ abstract class SubframeEncoder {
 	
 	private static int computeWastedBits(long[] data) {
 		long accumulator = 0;
-		for (int i = 0; i < data.length; i++)
-			accumulator |= data[i];
+		for (long x : data)
+			accumulator |= x;
 		return Long.numberOfTrailingZeros(accumulator);
 	}
 	

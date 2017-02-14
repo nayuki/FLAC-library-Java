@@ -40,8 +40,8 @@ final class ConstantEncoder extends SubframeEncoder {
 		if (data.length == 0)
 			return false;
 		long val = data[0];
-		for (int i = 1; i < data.length; i++) {
-			if (data[i] != val)
+		for (long x : data) {
+			if (x != val)
 				return false;
 		}
 		return true;
