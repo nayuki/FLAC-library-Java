@@ -58,12 +58,22 @@ abstract class SubframeEncoder {
 	}
 	
 	
+	// Looks at each value in the array and computes the minimum number of trailing binary zeros
+	// among all the elements. For example, computedwastedBits({0b10, 0b10010, 0b1100}) = 1.
+	// If there are no elements or every value is zero (the former actually implies the latter), then
+	// the return value is 0. This is because every zero value has an infinite number of trailing zeros.
 	private static int computeWastedBits(long[] data) {
 		Objects.requireNonNull(data);
 		long accumulator = 0;
 		for (long x : data)
 			accumulator |= x;
-		return Long.numberOfTrailingZeros(accumulator);
+		if (accumulator == 0)
+			return 0;
+		else {
+			int result = Long.numberOfTrailingZeros(accumulator);
+			assert 0 <= result && result <= 63;
+			return result;
+		}
 	}
 	
 	
