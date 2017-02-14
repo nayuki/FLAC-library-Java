@@ -9,12 +9,19 @@ package io.nayuki.flac.encode;
 import java.util.Objects;
 
 
-// A mutable structure.
+/* 
+ * A mutable structure that pairs an integer with an arbitrary object.
+ */
 final class SizeEstimate<E> {
 	
-	public long sizeEstimate;
-	public E encoder;
+	/*---- Fields ----*/
 	
+	public long sizeEstimate;  // Should be non-negative
+	public E encoder;  // Should be not null
+	
+	
+	
+	/*---- Constructors ----*/
 	
 	public SizeEstimate(long size, E enc) {
 		if (size < 0)

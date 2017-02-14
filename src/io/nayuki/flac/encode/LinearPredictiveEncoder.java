@@ -12,13 +12,23 @@ import java.util.Comparator;
 import java.util.Objects;
 
 
+/* 
+ * Under the linear predictive coding (LPC) mode of some order, this provides size estimates on and bitstream encoding of audio sample data.
+ */
 final class LinearPredictiveEncoder extends SubframeEncoder {
 	
+	// Computes a good way to encode the given values under the linear predictive coding (LPC) mode of the given order,
+	// returning a size plus a new encoder object associated with the input arguments. This process of minimizing the size
+	// has an enormous search space, and it is impossible to guarantee the absolute optimal solution. The maxRiceOrder argument
+	// is used by the Rice encoder to estimate the size of coding the residual signal. The roundVars argument controls
+	// how many different coefficients are tested rounding both up and down, resulting in exponential time behavior.
 	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth, int order, int roundVars, FastDotProduct fdp, int maxRiceOrder) {
+		// Check arguments
 		if (order < 1 || order > 32)
 			throw new IllegalArgumentException();
 		if (roundVars < 0 || roundVars > order || roundVars > 30)
 			throw new IllegalArgumentException();
+		
 		LinearPredictiveEncoder enc = new LinearPredictiveEncoder(data, shift, depth, order, fdp);
 		data = data.clone();
 		for (int i = 0; i < data.length; i++)
@@ -119,6 +129,8 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	}
 	
 	
+	// Solves an n * (n+1) augmented matrix (which modifies its values as a side effect),
+	// returning a new solution vector of length n.
 	private double[] solveMatrix(double[][] mat) {
 		// Gauss-Jordan elimination algorithm
 		int rows = mat.length;
@@ -196,6 +208,10 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	}
 	
 	
+	// Applies linear prediction to data[coefs.length : data.length] so that newdata[i] =
+	// data[i] - ((data[i-1]*coefs[0] + data[i-2]*coefs[1] + ... + data[i-coefs.length]*coefs[coefs.length]) >> shift).
+	// By FLAC parameters, this function requires each data[i] to fit in a signed 33-bit integer and coefs.length <= 32.
+	// Meeting the preconditions will guarantee the lack of arithmetic overflow in the computation and results.
 	static void applyLpc(long[] data, int[] coefs, int shift) {
 		if (shift < 0 || shift > 63)
 			throw new IllegalArgumentException();

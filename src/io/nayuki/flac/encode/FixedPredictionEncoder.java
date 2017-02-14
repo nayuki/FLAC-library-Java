@@ -10,8 +10,14 @@ import java.io.IOException;
 import java.util.Objects;
 
 
+/* 
+ * Under the fixed prediction coding mode of some order, this provides size calculations on and bitstream encoding of audio sample data.
+ */
 final class FixedPredictionEncoder extends SubframeEncoder {
 	
+	// Computes the best way to encode the given values under the fixed prediction coding mode of the given order,
+	// returning a size plus a new encoder object associated with the input arguments. The maxRiceOrder argument
+	// is used by the Rice encoder to estimate the size of coding the residual signal.
 	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth, int order, int maxRiceOrder) {
 		FixedPredictionEncoder enc = new FixedPredictionEncoder(data, shift, depth, order);
 		data = data.clone();
@@ -56,6 +62,7 @@ final class FixedPredictionEncoder extends SubframeEncoder {
 	}
 	
 	
+	// The linear predictive coding (LPC) coefficients for fixed prediction of orders 0 to 4 (inclusive).
 	private static final int[][] COEFFICIENTS = {
 		{},
 		{1},

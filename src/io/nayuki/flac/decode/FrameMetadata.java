@@ -10,6 +10,7 @@ import java.io.IOException;
 
 
 // A mutable structure holding key pieces of information from decoding a frame header.
+// A frame size field is also included, although it is computed long after the header ends.
 public final class FrameMetadata {
 	
 	/*---- Fields ----*/
@@ -18,7 +19,7 @@ public final class FrameMetadata {
 	public int frameIndex;     // Either -1 or a uint31.
 	public long sampleOffset;  // Either -1 or a uint36.
 	
-	public int numChannels;  // In the range [1, 8].
+	public int numChannels;  // In the range [1, 8]. Determined by channelAssignment.
 	public int channelAssignment;  // In the range [0, 15].
 	public int blockSize;    // Number of samples per channel, in the range [1, 65536].
 	public int sampleRate;   // Either -1 if not encoded in the frame, or in the range [1, 655350].

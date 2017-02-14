@@ -13,6 +13,10 @@ import java.util.Map;
 import java.util.Objects;
 
 
+/* 
+ * Calculates/estimates the encoded size of a frame of audio sample data
+ * (including the frame header), and also performs the encoding to an output stream.
+ */
 final class FrameEncoder {
 	
 	/*---- Static functions ----*/
@@ -177,13 +181,13 @@ final class FrameEncoder {
 		// Variable-length: 1 to 7 bytes
 		writeUtf8Integer(sampleOffset, out);  // Sample position
 		
-		// Variable-length: 0/8/16 bits
+		// Variable-length: 0 to 2 bytes
 		if (blockSizeCode == 6)
 			out.writeInt(8, blockSize - 1);
 		else if (blockSizeCode == 7)
 			out.writeInt(16, blockSize - 1);
 		
-		// Variable-length: 0/8/16 bits
+		// Variable-length: 0 to 2 bytes
 		if (sampleRateCode == 12)
 			out.writeInt(8, sampleRate);
 		else if (sampleRateCode == 13)
@@ -195,6 +199,7 @@ final class FrameEncoder {
 	}
 	
 	
+	// Given a uint36 value, this writes 1 to 7 whole bytes to the given output stream.
 	private static void writeUtf8Integer(long val, BitOutputStream out) throws IOException {
 		if (val < 0 || val >= (1L << 36))
 			throw new IllegalArgumentException();
@@ -213,8 +218,9 @@ final class FrameEncoder {
 	
 	/*---- Private helper integer pure functions ----*/
 	
+	// Returns a uint4 value representing the given block size.
 	private static int getBlockSizeCode(int blockSize) {
-		int result;  // Uint4
+		int result;
 		if (BLOCK_SIZE_CODES.containsKey(blockSize))
 			result = BLOCK_SIZE_CODES.get(blockSize);
 		else if (1 <= blockSize && blockSize <= 256)
@@ -230,10 +236,11 @@ final class FrameEncoder {
 	}
 	
 	
+	// Returns a uint4 value representing the given sample rate.
 	private static int getSampleRateCode(int sampleRate) {
 		if (sampleRate <= 0)
 			throw new IllegalArgumentException();
-		int result;  // Uint4
+		int result;
 		if (SAMPLE_RATE_CODES.containsKey(sampleRate))
 			result = SAMPLE_RATE_CODES.get(sampleRate);
 		else if (0 <= sampleRate && sampleRate < 256)
@@ -254,6 +261,7 @@ final class FrameEncoder {
 	
 	/*---- Tables of constants ----*/
 	
+	// Maps some integer values to unique uint4 values.
 	private static final Map<Integer,Integer> BLOCK_SIZE_CODES = new HashMap<>();
 	static {
 		BLOCK_SIZE_CODES.put(  192,  1);
@@ -272,6 +280,7 @@ final class FrameEncoder {
 	}
 	
 	
+	// Maps each integer in the range [1, 32] to either 0 or a unique uint3 value.
 	private static final Map<Integer,Integer> SAMPLE_DEPTH_CODES = new HashMap<>();
 	static {
 		for (int i = 1; i <= 32; i++)
@@ -284,6 +293,7 @@ final class FrameEncoder {
 	}
 	
 	
+	// Maps some integer values to unique uint4 values.
 	private static final Map<Integer,Integer> SAMPLE_RATE_CODES = new HashMap<>();
 	static {
 		SAMPLE_RATE_CODES.put( 88200,  1);

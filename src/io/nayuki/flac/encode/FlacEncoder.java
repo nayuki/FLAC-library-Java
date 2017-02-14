@@ -37,6 +37,7 @@ public final class FlacEncoder {
 	}
 	
 	
+	// Returns the subrange array[ : ][off : off + len] upcasted to long.
 	private static long[][] getRange(int[][] array, int off, int len) {
 		long[][] result = new long[array.length][len];
 		for (int i = 0; i < array.length; i++) {

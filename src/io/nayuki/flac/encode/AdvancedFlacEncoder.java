@@ -88,14 +88,14 @@ public final class AdvancedFlacEncoder {
 				info.maxFrameSize = (int)frameSize;
 		}
 		
-		// Print a pretty histogram of block sizes used
 		printBlockSizeStats(blockSizes);
 	}
 	
 	
 	private static void printBlockSizeStats(List<Integer> blockSizes) {
+		// Count how many times each block size occurred
 		Map<Integer,Integer> blockSizeCounts = new TreeMap<>();
-		int maxCount = 1;  // To avoid division by zero
+		int maxCount = 1;  // This avoids division by zero
 		for (int bs : blockSizes) {
 			if (!blockSizeCounts.containsKey(bs))
 				blockSizeCounts.put(bs, 0);
@@ -103,6 +103,8 @@ public final class AdvancedFlacEncoder {
 			blockSizeCounts.put(bs, count);
 			maxCount = Math.max(count, maxCount);
 		}
+		
+		// Print a histogram bar chart
 		System.err.println("Block sizes used:");
 		final double maxBarWidth = 60;
 		for (Map.Entry<Integer,Integer> entry : blockSizeCounts.entrySet()) {
@@ -114,6 +116,7 @@ public final class AdvancedFlacEncoder {
 	}
 	
 	
+	// Returns the subrange array[ : ][off : off + len] upcasted to long.
 	private static long[][] getRange(int[][] array, int off, int len) {
 		long[][] result = new long[array.length][len];
 		for (int i = 0; i < array.length; i++) {

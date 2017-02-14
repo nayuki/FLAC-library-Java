@@ -13,9 +13,10 @@ import java.util.Objects;
 
 
 /* 
- * An adapter from RandomAccessFile to InputStream. Objects of this class have no direct
- * native resources - so it is safe to discard a RandomAccessFileInputStream object without
- * closing it, as long as other code will close() the underlying RandomAccessFile object.
+ * A bare adapter from RandomAccessFile to InputStream. These objects have no buffer, so any seek()
+ * on the underlying RAF is visible on the next read(). Also, objects of this class have no direct
+ * native resources - so it is safe to discard a RandomAccessFileInputStream object without closing it,
+ * as long as other code will close() the underlying RandomAccessFile object.
  */
 public final class RandomAccessFileInputStream extends InputStream {
 	

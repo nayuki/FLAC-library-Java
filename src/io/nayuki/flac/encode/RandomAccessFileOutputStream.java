@@ -13,7 +13,8 @@ import java.util.Objects;
 
 
 /* 
- * An adapter from RandomAccessFile to OutputStream. Objects of this class have no direct
+ * An adapter from RandomAccessFile to OutputStream. These objects have no buffer, so seek()
+ * and write() can be safely interleaved. Also, objects of this class have no direct
  * native resources - so it is safe to discard a RandomAccessFileOutputStream object without
  * closing it, as long as other code will close() the underlying RandomAccessFile object.
  */
