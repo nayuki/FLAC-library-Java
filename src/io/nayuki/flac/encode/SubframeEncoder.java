@@ -41,16 +41,14 @@ abstract class SubframeEncoder {
 		// Try fixed prediction encoding
 		for (int order = opt.minFixedOrder; order <= opt.maxFixedOrder; order++) {
 			SizeEstimate<SubframeEncoder> temp = FixedPredictionEncoder.computeBest(data, shift, sampleDepth, order, opt.maxRiceOrder);
-			if (temp.sizeEstimate < result.sizeEstimate)
-				result = temp;
+			result = result.minimum(temp);
 		}
 		
 		// Try linear predictive coding
 		FastDotProduct fdp = new FastDotProduct(data, 32);
 		for (int order = opt.minLpcOrder; order <= opt.maxLpcOrder; order++) {
 			SizeEstimate<SubframeEncoder> temp = LinearPredictiveEncoder.computeBest(data, shift, sampleDepth, order, Math.min(opt.lpcRoundVariables, order), fdp, opt.maxRiceOrder);
-			if (temp.sizeEstimate < result.sizeEstimate)
-				result = temp;
+			result = result.minimum(temp);
 		}
 		
 		// Return the encoder found with the lowest bit length

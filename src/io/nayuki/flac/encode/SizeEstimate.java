@@ -31,4 +31,17 @@ final class SizeEstimate<E> {
 		encoder = enc;
 	}
 	
+	
+	
+	/*---- Methods ----*/
+	
+	// Returns this object if the size is less than or equal to the other object, otherwise returns other.
+	public SizeEstimate<E> minimum(SizeEstimate<E> other) {
+		Objects.requireNonNull(other);
+		if (sizeEstimate <= other.sizeEstimate)
+			return this;
+		else
+			return other;
+	}
+	
 }
