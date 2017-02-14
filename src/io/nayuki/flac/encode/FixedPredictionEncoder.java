@@ -50,7 +50,7 @@ final class FixedPredictionEncoder extends SubframeEncoder {
 			data[i] >>= sampleShift;
 		
 		for (int i = 0; i < order; i++)  // Warmup
-			out.writeInt(sampleDepth, (int)data[i]);
+			out.writeInt(sampleDepth - sampleShift, (int)data[i]);
 		LinearPredictiveEncoder.applyLpc(data, COEFFICIENTS[order], 0);
 		RiceEncoder.encode(data, order, riceOrder, out);
 	}
