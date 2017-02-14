@@ -22,9 +22,8 @@ abstract class SubframeEncoder {
 		
 		// Encode with constant if possible
 		SizeEstimate<SubframeEncoder> result = ConstantEncoder.computeBest(data, 0, sampleDepth);
-		if (result != null) {
+		if (result != null)
 			return result;
-		}
 		
 		// Detect number of trailing zero bits
 		int shift = computeWastedBits(data);
@@ -154,13 +153,13 @@ abstract class SubframeEncoder {
 		
 		// These search ranges conform to the FLAC subset format.
 		public static final SearchOptions SUBSET_ONLY_FIXED = new SearchOptions(0, 4, -1, -1, 0, 8);
-		public static final SearchOptions SUBSET_MEDIUM = new SearchOptions(0, 1, 2, 8, 0, 5);
-		public static final SearchOptions SUBSET_BEST = new SearchOptions(0, 1, 2, 12, 0, 8);
-		public static final SearchOptions SUBSET_INSANE = new SearchOptions(0, 4, 1, 12, 4, 8);
+		public static final SearchOptions SUBSET_MEDIUM     = new SearchOptions(0, 1,  2,  8, 0, 5);
+		public static final SearchOptions SUBSET_BEST       = new SearchOptions(0, 1,  2, 12, 0, 8);
+		public static final SearchOptions SUBSET_INSANE     = new SearchOptions(0, 4,  1, 12, 4, 8);
 		
 		// These cannot guarantee that an encoded file conforms to the FLAC subset (i.e. they are lax).
 		public static final SearchOptions LAX_MEDIUM = new SearchOptions(0, 1, 2, 22, 0, 15);
-		public static final SearchOptions LAX_BEST = new SearchOptions(0, 1, 2, 32, 0, 15);
+		public static final SearchOptions LAX_BEST   = new SearchOptions(0, 1, 2, 32, 0, 15);
 		public static final SearchOptions LAX_INSANE = new SearchOptions(0, 1, 2, 32, 4, 15);
 		
 	}
