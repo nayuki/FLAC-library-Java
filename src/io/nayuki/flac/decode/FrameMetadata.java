@@ -132,20 +132,16 @@ public final class FrameMetadata {
 	private static int decodeBlockSize(int code, BitInputStream in) throws IOException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
-		else if (code == 0)
-			throw new DataFormatException("Reserved block size");
-		else if (code == 1)
-			return 192;
-		else if (2 <= code && code <= 5)
-			return 576 << (code - 2);
-		else if (code == 6)
-			return in.readUint(8) + 1;
-		else if (code == 7)
-			return in.readUint(16) + 1;
-		else if (8 <= code && code <= 15)
-			return 256 << (code - 8);
-		else
-			throw new AssertionError();
+		switch (code) {
+			case 0:  throw new DataFormatException("Reserved block size");
+			case 6:  return in.readUint(8) + 1;
+			case 7:  return in.readUint(16) + 1;
+			default:
+				int result = searchSecond(BLOCK_SIZE_CODES, code);
+				if (result < 1 || result > 65536)
+					throw new AssertionError();
+				return result;
+		}
 	}
 	
 	
@@ -160,11 +156,13 @@ public final class FrameMetadata {
 			case 13:  return in.readUint(16);
 			case 14:  return in.readUint(16) * 10;
 			case 15:  throw new DataFormatException("Invalid sample rate");
-			default:  return SAMPLE_RATES[code];  // 1 <= code <= 11
+			default:
+				int result = searchSecond(SAMPLE_RATE_CODES, code);
+				if (result < 1 || result > 655350)
+					throw new AssertionError();
+				return result;
 		}
 	}
-	
-	private static final int[] SAMPLE_RATES = {-1, 88200, 176400, 192000, 8000, 16000, 22050, 24000, 32000, 44100, 48000, 96000};
 	
 	
 	// Argument is a uint3 value. Pure function and performs no I/O. Return value is in the range [-1, 24].
@@ -173,12 +171,67 @@ public final class FrameMetadata {
 			throw new IllegalArgumentException();
 		else if (code == 0)
 			return -1;  // Caller should obtain value from stream info metadata block
-		else if (SAMPLE_DEPTHS[code] < 0)
-			throw new DataFormatException("Reserved bit depth");
-		else
-			return SAMPLE_DEPTHS[code];
+		else {
+			int result = searchSecond(SAMPLE_DEPTH_CODES, code);
+			if (result == -1)
+				throw new DataFormatException("Reserved bit depth");
+			if (result < 1 || result > 32)
+				throw new AssertionError();
+			return result;
+		}
 	}
 	
-	private static final int[] SAMPLE_DEPTHS = {-1, 8, 12, -2, 16, 20, 24, -2};
+	
+	
+	/*---- Tables of constants and search functions ----*/
+	
+	private static final int searchSecond(int[][] table, int key) {
+		for (int[] pair : table) {
+			if (pair[1] == key)
+				return pair[0];
+		}
+		return -1;
+	}
+	
+	
+	private static final int[][] BLOCK_SIZE_CODES = {
+		{  192,  1},
+		{  576,  2},
+		{ 1152,  3},
+		{ 2304,  4},
+		{ 4608,  5},
+		{  256,  8},
+		{  512,  9},
+		{ 1024, 10},
+		{ 2048, 11},
+		{ 4096, 12},
+		{ 8192, 13},
+		{16384, 14},
+		{32768, 15},
+	};
+	
+	
+	private static final int[][] SAMPLE_DEPTH_CODES = {
+		{ 8, 1},
+		{12, 2},
+		{16, 4},
+		{20, 5},
+		{24, 6},
+	};
+	
+	
+	private static final int[][] SAMPLE_RATE_CODES = {
+		{ 88200,  1},
+		{176400,  2},
+		{192000,  3},
+		{  8000,  4},
+		{ 16000,  5},
+		{ 22050,  6},
+		{ 24000,  7},
+		{ 32000,  8},
+		{ 44100,  9},
+		{ 48000, 10},
+		{ 96000, 11},
+	};
 	
 }
