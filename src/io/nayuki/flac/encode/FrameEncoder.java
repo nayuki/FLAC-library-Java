@@ -231,6 +231,8 @@ final class FrameEncoder {
 	
 	
 	private static int getSampleRateCode(int sampleRate) {
+		if (sampleRate <= 0)
+			throw new IllegalArgumentException();
 		int result;  // Uint4
 		if (SAMPLE_RATE_CODES.containsKey(sampleRate))
 			result = SAMPLE_RATE_CODES.get(sampleRate);

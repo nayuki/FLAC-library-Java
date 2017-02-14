@@ -19,6 +19,7 @@ abstract class SubframeEncoder {
 		Objects.requireNonNull(data);
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
+		Objects.requireNonNull(opt);
 		
 		// Encode with constant if possible
 		SizeEstimate<SubframeEncoder> result = ConstantEncoder.computeBest(data, 0, sampleDepth);
@@ -53,6 +54,7 @@ abstract class SubframeEncoder {
 	
 	
 	private static int computeWastedBits(long[] data) {
+		Objects.requireNonNull(data);
 		long accumulator = 0;
 		for (long x : data)
 			accumulator |= x;
@@ -68,7 +70,7 @@ abstract class SubframeEncoder {
 	
 	
 	protected SubframeEncoder(int shift, int depth) {
-		if (shift < 0 || depth < 1 || depth > 33)
+		if (depth < 1 || depth > 33 || shift < 0 || shift > depth)
 			throw new IllegalArgumentException();
 		sampleShift = shift;
 		sampleDepth = depth;
@@ -80,9 +82,9 @@ abstract class SubframeEncoder {
 	
 	protected final void writeTypeAndShift(int type, BitOutputStream out) throws IOException {
 		// Check arguments
-		Objects.requireNonNull(out);
 		if ((type >>> 6) != 0)
 			throw new IllegalArgumentException();
+		Objects.requireNonNull(out);
 		
 		// Write some fields
 		out.writeInt(1, 0);

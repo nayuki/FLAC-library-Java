@@ -15,7 +15,9 @@ import java.util.Objects;
 final class LinearPredictiveEncoder extends SubframeEncoder {
 	
 	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth, int order, int roundVars, FastDotProduct fdp, int maxRiceOrder) {
-		if (roundVars < 0 || roundVars > order)
+		if (order < 1 || order > 32)
+			throw new IllegalArgumentException();
+		if (roundVars < 0 || roundVars > order || roundVars > 30)
 			throw new IllegalArgumentException();
 		LinearPredictiveEncoder enc = new LinearPredictiveEncoder(data, shift, depth, order, fdp);
 		data = data.clone();
@@ -195,6 +197,8 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	
 	
 	static void applyLpc(long[] data, int[] coefs, int shift) {
+		if (shift < 0 || shift > 63)
+			throw new IllegalArgumentException();
 		for (int i = data.length - 1; i >= coefs.length; i--) {
 			long sum = 0;
 			for (int j = 0; j < coefs.length; j++)

@@ -9,6 +9,7 @@ package io.nayuki.flac.decode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.util.Objects;
 
 
 /* 
@@ -27,6 +28,7 @@ public final class RandomAccessFileInputStream extends InputStream {
 	/*---- Constructors ----*/
 	
 	public RandomAccessFileInputStream(RandomAccessFile raf) {
+		Objects.requireNonNull(raf);
 		this.in = raf;
 	}
 	
