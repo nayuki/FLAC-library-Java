@@ -8,9 +8,8 @@ package io.nayuki.flac.encode;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
+import io.nayuki.flac.decode.FrameMetadata;
 
 
 /* 
@@ -80,7 +79,7 @@ final class FrameEncoder {
 		try {
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
 			try (BitOutputStream bitout = new BitOutputStream(bout)) {
-				enc.encodeHeader(data, bitout);
+				enc.encodeHeader(bitout);
 			}
 			bout.close();
 			size += bout.toByteArray().length * 8;
@@ -129,7 +128,8 @@ final class FrameEncoder {
 		if (data[0].length != blockSize)
 			throw new IllegalArgumentException();
 		
-		encodeHeader(data, out);
+		encodeHeader(out);
+		
 		if (0 <= channelAssignment && channelAssignment <= 7) {
 			for (int i = 0; i < data.length; i++)
 				subEncoders[i].encode(data[i], out);
@@ -160,153 +160,15 @@ final class FrameEncoder {
 	}
 	
 	
-	
-	/*---- Private I/O methods ----*/
-	
-	private void encodeHeader(long[][] data, BitOutputStream out) throws IOException {
-		out.resetCrcs();
-		out.writeInt(14, 0x3FFE);  // Sync
-		out.writeInt(1, 0);  // Reserved
-		out.writeInt(1, 1);  // Blocking strategy
-		
-		int blockSizeCode = getBlockSizeCode(blockSize);
-		out.writeInt(4, blockSizeCode);
-		int sampleRateCode = getSampleRateCode(sampleRate);
-		out.writeInt(4, sampleRateCode);
-		
-		out.writeInt(4, channelAssignment);
-		out.writeInt(3, SAMPLE_DEPTH_CODES.get(sampleDepth));
-		out.writeInt(1, 0);  // Reserved
-		
-		// Variable-length: 1 to 7 bytes
-		writeUtf8Integer(sampleOffset, out);  // Sample position
-		
-		// Variable-length: 0 to 2 bytes
-		if (blockSizeCode == 6)
-			out.writeInt(8, blockSize - 1);
-		else if (blockSizeCode == 7)
-			out.writeInt(16, blockSize - 1);
-		
-		// Variable-length: 0 to 2 bytes
-		if (sampleRateCode == 12)
-			out.writeInt(8, sampleRate);
-		else if (sampleRateCode == 13)
-			out.writeInt(16, sampleRate);
-		else if (sampleRateCode == 14)
-			out.writeInt(16, sampleRate / 10);
-		
-		out.writeInt(8, out.getCrc8());
-	}
-	
-	
-	// Given a uint36 value, this writes 1 to 7 whole bytes to the given output stream.
-	private static void writeUtf8Integer(long val, BitOutputStream out) throws IOException {
-		if (val < 0 || val >= (1L << 36))
-			throw new IllegalArgumentException();
-		int bitLen = 64 - Long.numberOfLeadingZeros(val);
-		if (bitLen <= 7)
-			out.writeInt(8, (int)val);
-		else {
-			int n = (bitLen - 2) / 5;
-			out.writeInt(8, (0xFF80 >>> n) | (int)(val >>> (n * 6)));
-			for (int i = n - 1; i >= 0; i--)
-				out.writeInt(8, 0x80 | ((int)(val >>> (i * 6)) & 0x3F));
-		}
-	}
-	
-	
-	
-	/*---- Private helper integer pure functions ----*/
-	
-	// Returns a uint4 value representing the given block size.
-	private static int getBlockSizeCode(int blockSize) {
-		int result;
-		if (BLOCK_SIZE_CODES.containsKey(blockSize))
-			result = BLOCK_SIZE_CODES.get(blockSize);
-		else if (1 <= blockSize && blockSize <= 256)
-			result = 6;
-		else if (1 <= blockSize && blockSize <= 65536)
-			result = 7;
-		else  // blockSize < 1 || blockSize > 65536
-			throw new IllegalArgumentException();
-		
-		if ((result >>> 4) != 0)
-			throw new AssertionError();
-		return result;
-	}
-	
-	
-	// Returns a uint4 value representing the given sample rate.
-	private static int getSampleRateCode(int sampleRate) {
-		if (sampleRate <= 0)
-			throw new IllegalArgumentException();
-		int result;
-		if (SAMPLE_RATE_CODES.containsKey(sampleRate))
-			result = SAMPLE_RATE_CODES.get(sampleRate);
-		else if (0 <= sampleRate && sampleRate < 256)
-			result = 12;
-		else if (0 <= sampleRate && sampleRate < 65536)
-			result = 13;
-		else if (0 <= sampleRate && sampleRate < 655360 && sampleRate % 10 == 0)
-			result = 14;
-		else
-			result = 0;
-		
-		if ((result >>> 4) != 0)
-			throw new AssertionError();
-		return result;
-	}
-	
-	
-	
-	/*---- Tables of constants ----*/
-	
-	// Maps some integer values to unique uint4 values.
-	private static final Map<Integer,Integer> BLOCK_SIZE_CODES = new HashMap<>();
-	static {
-		BLOCK_SIZE_CODES.put(  192,  1);
-		BLOCK_SIZE_CODES.put(  576,  2);
-		BLOCK_SIZE_CODES.put( 1152,  3);
-		BLOCK_SIZE_CODES.put( 2304,  4);
-		BLOCK_SIZE_CODES.put( 4608,  5);
-		BLOCK_SIZE_CODES.put(  256,  8);
-		BLOCK_SIZE_CODES.put(  512,  9);
-		BLOCK_SIZE_CODES.put( 1024, 10);
-		BLOCK_SIZE_CODES.put( 2048, 11);
-		BLOCK_SIZE_CODES.put( 4096, 12);
-		BLOCK_SIZE_CODES.put( 8192, 13);
-		BLOCK_SIZE_CODES.put(16384, 14);
-		BLOCK_SIZE_CODES.put(32768, 15);
-	}
-	
-	
-	// Maps each integer in the range [1, 32] to either 0 or a unique uint3 value.
-	private static final Map<Integer,Integer> SAMPLE_DEPTH_CODES = new HashMap<>();
-	static {
-		for (int i = 1; i <= 32; i++)
-			SAMPLE_DEPTH_CODES.put(i, 0);
-		SAMPLE_DEPTH_CODES.put( 8, 1);
-		SAMPLE_DEPTH_CODES.put(12, 2);
-		SAMPLE_DEPTH_CODES.put(16, 4);
-		SAMPLE_DEPTH_CODES.put(20, 5);
-		SAMPLE_DEPTH_CODES.put(24, 6);
-	}
-	
-	
-	// Maps some integer values to unique uint4 values.
-	private static final Map<Integer,Integer> SAMPLE_RATE_CODES = new HashMap<>();
-	static {
-		SAMPLE_RATE_CODES.put( 88200,  1);
-		SAMPLE_RATE_CODES.put(176400,  2);
-		SAMPLE_RATE_CODES.put(192000,  3);
-		SAMPLE_RATE_CODES.put(  8000,  4);
-		SAMPLE_RATE_CODES.put( 16000,  5);
-		SAMPLE_RATE_CODES.put( 22050,  6);
-		SAMPLE_RATE_CODES.put( 24000,  7);
-		SAMPLE_RATE_CODES.put( 32000,  8);
-		SAMPLE_RATE_CODES.put( 44100,  9);
-		SAMPLE_RATE_CODES.put( 48000, 10);
-		SAMPLE_RATE_CODES.put( 96000, 11);
+	private void encodeHeader(BitOutputStream out) throws IOException {
+		FrameMetadata meta = new FrameMetadata();
+		meta.frameIndex = -1;
+		meta.sampleOffset = sampleOffset;
+		meta.channelAssignment = channelAssignment;
+		meta.blockSize = blockSize;
+		meta.sampleRate = sampleRate;
+		meta.sampleDepth = sampleDepth;
+		meta.writeHeader(out);
 	}
 	
 }

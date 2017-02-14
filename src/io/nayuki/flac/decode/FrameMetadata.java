@@ -7,6 +7,7 @@
 package io.nayuki.flac.decode;
 
 import java.io.IOException;
+import io.nayuki.flac.encode.BitOutputStream;
 
 
 // A mutable structure holding key pieces of information from decoding a frame header.
@@ -183,7 +184,123 @@ public final class FrameMetadata {
 	
 	
 	
+	public void writeHeader(BitOutputStream out) throws IOException {
+		out.resetCrcs();
+		out.writeInt(14, 0x3FFE);  // Sync
+		out.writeInt(1, 0);  // Reserved
+		out.writeInt(1, 1);  // Blocking strategy
+		
+		int blockSizeCode = getBlockSizeCode(blockSize);
+		out.writeInt(4, blockSizeCode);
+		int sampleRateCode = getSampleRateCode(sampleRate);
+		out.writeInt(4, sampleRateCode);
+		
+		out.writeInt(4, channelAssignment);
+		out.writeInt(3, getSampleDepthCode(sampleDepth));
+		out.writeInt(1, 0);  // Reserved
+		
+		// Variable-length: 1 to 7 bytes
+		if (frameIndex != -1 && sampleOffset == -1)
+			writeUtf8Integer(sampleOffset, out);
+		else if (sampleOffset != -1 && frameIndex == -1)
+			writeUtf8Integer(sampleOffset, out);
+		else
+			throw new IllegalStateException();
+		
+		// Variable-length: 0 to 2 bytes
+		if (blockSizeCode == 6)
+			out.writeInt(8, blockSize - 1);
+		else if (blockSizeCode == 7)
+			out.writeInt(16, blockSize - 1);
+		
+		// Variable-length: 0 to 2 bytes
+		if (sampleRateCode == 12)
+			out.writeInt(8, sampleRate);
+		else if (sampleRateCode == 13)
+			out.writeInt(16, sampleRate);
+		else if (sampleRateCode == 14)
+			out.writeInt(16, sampleRate / 10);
+		
+		out.writeInt(8, out.getCrc8());
+	}
+	
+	
+	// Given a uint36 value, this writes 1 to 7 whole bytes to the given output stream.
+	private static void writeUtf8Integer(long val, BitOutputStream out) throws IOException {
+		if (val < 0 || val >= (1L << 36))
+			throw new IllegalArgumentException();
+		int bitLen = 64 - Long.numberOfLeadingZeros(val);
+		if (bitLen <= 7)
+			out.writeInt(8, (int)val);
+		else {
+			int n = (bitLen - 2) / 5;
+			out.writeInt(8, (0xFF80 >>> n) | (int)(val >>> (n * 6)));
+			for (int i = n - 1; i >= 0; i--)
+				out.writeInt(8, 0x80 | ((int)(val >>> (i * 6)) & 0x3F));
+		}
+	}
+	
+	
+	// Returns a uint4 value representing the given block size. Pure function.
+	private static int getBlockSizeCode(int blockSize) {
+		int result = searchFirst(BLOCK_SIZE_CODES, blockSize);
+		if (result != -1);  // Already done
+		else if (1 <= blockSize && blockSize <= 256)
+			result = 6;
+		else if (1 <= blockSize && blockSize <= 65536)
+			result = 7;
+		else  // blockSize < 1 || blockSize > 65536
+			throw new IllegalArgumentException();
+		
+		if ((result >>> 4) != 0)
+			throw new AssertionError();
+		return result;
+	}
+	
+	
+	// Returns a uint4 value representing the given sample rate. Pure function.
+	private static int getSampleRateCode(int sampleRate) {
+		if (sampleRate <= 0)
+			throw new IllegalArgumentException();
+		int result = searchFirst(SAMPLE_RATE_CODES, sampleRate);
+		if (result != -1);  // Already done
+		else if (0 <= sampleRate && sampleRate < 256)
+			result = 12;
+		else if (0 <= sampleRate && sampleRate < 65536)
+			result = 13;
+		else if (0 <= sampleRate && sampleRate < 655360 && sampleRate % 10 == 0)
+			result = 14;
+		else
+			result = 0;
+		
+		if ((result >>> 4) != 0)
+			throw new AssertionError();
+		return result;
+	}
+	
+	
+	// Returns a uint3 value representing the given sample depth. Pure function.
+	private static int getSampleDepthCode(int sampleDepth) {
+		int result = searchFirst(SAMPLE_DEPTH_CODES, sampleDepth);
+		if (result == -1)
+			result = 0;
+		if ((result >>> 3) != 0)
+			throw new AssertionError();
+		return result;
+	}
+	
+	
+	
 	/*---- Tables of constants and search functions ----*/
+	
+	private static final int searchFirst(int[][] table, int key) {
+		for (int[] pair : table) {
+			if (pair[0] == key)
+				return pair[1];
+		}
+		return -1;
+	}
+	
 	
 	private static final int searchSecond(int[][] table, int key) {
 		for (int[] pair : table) {
