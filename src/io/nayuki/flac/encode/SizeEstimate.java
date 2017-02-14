@@ -10,14 +10,14 @@ import java.util.Objects;
 
 
 /* 
- * A mutable structure that pairs an integer with an arbitrary object.
+ * Pairs an integer with an arbitrary object. Immutable structure.
  */
 final class SizeEstimate<E> {
 	
 	/*---- Fields ----*/
 	
-	public long sizeEstimate;  // Should be non-negative
-	public E encoder;  // Should be not null
+	public final long sizeEstimate;  // Non-negative
+	public final E encoder;  // Not null
 	
 	
 	
