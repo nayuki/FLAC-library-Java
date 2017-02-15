@@ -18,13 +18,13 @@ final class FixedPredictionEncoder extends SubframeEncoder {
 	// Computes the best way to encode the given values under the fixed prediction coding mode of the given order,
 	// returning a size plus a new encoder object associated with the input arguments. The maxRiceOrder argument
 	// is used by the Rice encoder to estimate the size of coding the residual signal.
-	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth, int order, int maxRiceOrder) {
-		FixedPredictionEncoder enc = new FixedPredictionEncoder(data, shift, depth, order);
-		data = data.clone();
-		for (int i = 0; i < data.length; i++)
-			data[i] >>= shift;
-		LinearPredictiveEncoder.applyLpc(data, COEFFICIENTS[order], 0);
-		long temp = RiceEncoder.computeBestSizeAndOrder(data, order, maxRiceOrder);
+	public static SizeEstimate<SubframeEncoder> computeBest(long[] samples, int shift, int depth, int order, int maxRiceOrder) {
+		FixedPredictionEncoder enc = new FixedPredictionEncoder(samples, shift, depth, order);
+		samples = samples.clone();
+		for (int i = 0; i < samples.length; i++)
+			samples[i] >>= shift;
+		LinearPredictiveEncoder.applyLpc(samples, COEFFICIENTS[order], 0);
+		long temp = RiceEncoder.computeBestSizeAndOrder(samples, order, maxRiceOrder);
 		enc.riceOrder = (int)(temp & 0xF);
 		long size = 1 + 6 + 1 + shift + order * depth + (temp >>> 4);
 		return new SizeEstimate<SubframeEncoder>(size, enc);
@@ -36,29 +36,29 @@ final class FixedPredictionEncoder extends SubframeEncoder {
 	public int riceOrder;
 	
 	
-	public FixedPredictionEncoder(long[] data, int shift, int depth, int order) {
+	public FixedPredictionEncoder(long[] samples, int shift, int depth, int order) {
 		super(shift, depth);
-		if (order < 0 || order >= COEFFICIENTS.length || data.length < order)
+		if (order < 0 || order >= COEFFICIENTS.length || samples.length < order)
 			throw new IllegalArgumentException();
 		this.order = order;
 	}
 	
 	
-	public void encode(long[] data, BitOutputStream out) throws IOException {
-		Objects.requireNonNull(data);
+	public void encode(long[] samples, BitOutputStream out) throws IOException {
+		Objects.requireNonNull(samples);
 		Objects.requireNonNull(out);
-		if (data.length < order)
+		if (samples.length < order)
 			throw new IllegalArgumentException();
 		
 		writeTypeAndShift(8 + order, out);
-		data = data.clone();
-		for (int i = 0; i < data.length; i++)
-			data[i] >>= sampleShift;
+		samples = samples.clone();
+		for (int i = 0; i < samples.length; i++)
+			samples[i] >>= sampleShift;
 		
 		for (int i = 0; i < order; i++)  // Warmup
-			out.writeInt(sampleDepth - sampleShift, (int)data[i]);
-		LinearPredictiveEncoder.applyLpc(data, COEFFICIENTS[order], 0);
-		RiceEncoder.encode(data, order, riceOrder, out);
+			out.writeInt(sampleDepth - sampleShift, (int)samples[i]);
+		LinearPredictiveEncoder.applyLpc(samples, COEFFICIENTS[order], 0);
+		RiceEncoder.encode(samples, order, riceOrder, out);
 	}
 	
 	

@@ -17,15 +17,15 @@ final class VerbatimEncoder extends SubframeEncoder {
 	
 	// Computes the best way to encode the given values under the verbatim coding mode,
 	// returning an exact size plus a new encoder object associated with the input arguments.
-	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth) {
-		VerbatimEncoder enc = new VerbatimEncoder(data, shift, depth);
-		long size = 1 + 6 + 1 + shift + data.length * depth;
+	public static SizeEstimate<SubframeEncoder> computeBest(long[] samples, int shift, int depth) {
+		VerbatimEncoder enc = new VerbatimEncoder(samples, shift, depth);
+		long size = 1 + 6 + 1 + shift + samples.length * depth;
 		return new SizeEstimate<SubframeEncoder>(size, enc);
 	}
 	
 	
 	// Constructs a constant encoder for the given data, right shift, and sample depth.
-	public VerbatimEncoder(long[] data, int shift, int depth) {
+	public VerbatimEncoder(long[] samples, int shift, int depth) {
 		super(shift, depth);
 	}
 	
@@ -34,9 +34,9 @@ final class VerbatimEncoder extends SubframeEncoder {
 	// the this encoding method (and the superclass fields sampleShift and sampleDepth).
 	// This requires the data array to have the same values (but not necessarily
 	// the same object reference) as the array that was passed to the constructor.
-	public void encode(long[] data, BitOutputStream out) throws IOException {
+	public void encode(long[] samples, BitOutputStream out) throws IOException {
 		writeTypeAndShift(1, out);
-		for (long val : data)
+		for (long val : samples)
 			out.writeInt(sampleDepth, (int)(val >> sampleShift));
 	}
 	

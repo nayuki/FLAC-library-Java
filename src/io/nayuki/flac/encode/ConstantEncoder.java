@@ -20,17 +20,17 @@ final class ConstantEncoder extends SubframeEncoder {
 	// returning an exact size plus a new encoder object associated with the input arguments.
 	// However if the sample data is non-constant then null is returned instead,
 	// to indicate that the data is impossible to represent in this mode.
-	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth) {
-		if (!isConstant(data))
+	public static SizeEstimate<SubframeEncoder> computeBest(long[] samples, int shift, int depth) {
+		if (!isConstant(samples))
 			return null;
-		ConstantEncoder enc = new ConstantEncoder(data, shift, depth);
+		ConstantEncoder enc = new ConstantEncoder(samples, shift, depth);
 		long size = 1 + 6 + 1 + shift + depth;
 		return new SizeEstimate<SubframeEncoder>(size, enc);
 	}
 	
 	
 	// Constructs a constant encoder for the given data, right shift, and sample depth.
-	public ConstantEncoder(long[] data, int shift, int depth) {
+	public ConstantEncoder(long[] samples, int shift, int depth) {
 		super(shift, depth);
 	}
 	
@@ -39,13 +39,13 @@ final class ConstantEncoder extends SubframeEncoder {
 	// the this encoding method (and the superclass fields sampleShift and sampleDepth).
 	// This requires the data array to have the same values (but not necessarily
 	// the same object reference) as the array that was passed to the constructor.
-	public void encode(long[] data, BitOutputStream out) throws IOException {
-		if (!isConstant(data))
+	public void encode(long[] samples, BitOutputStream out) throws IOException {
+		if (!isConstant(samples))
 			throw new IllegalArgumentException("Data is not constant-valued");
-		if ((data[0] >> sampleShift) << sampleShift != data[0])
+		if ((samples[0] >> sampleShift) << sampleShift != samples[0])
 			throw new IllegalArgumentException("Invalid shift value for data");
 		writeTypeAndShift(0, out);
-		out.writeInt(sampleDepth, (int)(data[0] >> sampleShift));
+		out.writeInt(sampleDepth, (int)(samples[0] >> sampleShift));
 	}
 	
 	

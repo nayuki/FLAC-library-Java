@@ -20,19 +20,19 @@ final class FrameEncoder {
 	
 	/*---- Static functions ----*/
 	
-	public static SizeEstimate<FrameEncoder> computeBest(int sampleOffset, long[][] data, int sampleDepth, int sampleRate, SubframeEncoder.SearchOptions opt) {
-		FrameEncoder enc = new FrameEncoder(sampleOffset, data, sampleDepth, sampleRate);
-		int numChannels = data.length;
+	public static SizeEstimate<FrameEncoder> computeBest(int sampleOffset, long[][] samples, int sampleDepth, int sampleRate, SubframeEncoder.SearchOptions opt) {
+		FrameEncoder enc = new FrameEncoder(sampleOffset, samples, sampleDepth, sampleRate);
+		int numChannels = samples.length;
 		@SuppressWarnings("unchecked")
 		SizeEstimate<SubframeEncoder>[] encoderInfo = new SizeEstimate[numChannels];
 		if (numChannels != 2) {
 			enc.metadata.channelAssignment = numChannels - 1;
 			for (int i = 0; i < encoderInfo.length; i++)
-				encoderInfo[i] = SubframeEncoder.computeBest(data[i], sampleDepth, opt);
+				encoderInfo[i] = SubframeEncoder.computeBest(samples[i], sampleDepth, opt);
 		} else {  // Explore the 4 stereo encoding modes
-			long[] left  = data[0];
-			long[] right = data[1];
-			long[] mid  = new long[data[0].length];
+			long[] left  = samples[0];
+			long[] right = samples[1];
+			long[] mid  = new long[samples[0].length];
 			long[] side = new long[mid.length];
 			for (int i = 0; i < mid.length; i++) {
 				mid[i] = (left[i] + right[i]) >> 1;
@@ -104,35 +104,35 @@ final class FrameEncoder {
 	
 	/*---- Constructors ----*/
 	
-	public FrameEncoder(int sampleOffset, long[][] data, int sampleDepth, int sampleRate) {
+	public FrameEncoder(int sampleOffset, long[][] samples, int sampleDepth, int sampleRate) {
 		metadata = new FrameMetadata();
 		metadata.sampleOffset = sampleOffset;
 		metadata.sampleDepth = sampleDepth;
 		metadata.sampleRate = sampleRate;
-		metadata.blockSize = data[0].length;
-		metadata.channelAssignment = data.length - 1;
+		metadata.blockSize = samples[0].length;
+		metadata.channelAssignment = samples.length - 1;
 	}
 	
 	
 	
 	/*---- Public methods ----*/
 	
-	public void encode(long[][] data, BitOutputStream out) throws IOException {
+	public void encode(long[][] samples, BitOutputStream out) throws IOException {
 		// Check arguments
-		Objects.requireNonNull(data);
+		Objects.requireNonNull(samples);
 		Objects.requireNonNull(out);
-		if (data[0].length != metadata.blockSize)
+		if (samples[0].length != metadata.blockSize)
 			throw new IllegalArgumentException();
 		
 		metadata.writeHeader(out);
 		
 		int chanAsgn = metadata.channelAssignment;
 		if (0 <= chanAsgn && chanAsgn <= 7) {
-			for (int i = 0; i < data.length; i++)
-				subEncoders[i].encode(data[i], out);
+			for (int i = 0; i < samples.length; i++)
+				subEncoders[i].encode(samples[i], out);
 		} else if (8 <= chanAsgn || chanAsgn <= 10) {
-			long[] left  = data[0];
-			long[] right = data[1];
+			long[] left  = samples[0];
+			long[] right = samples[1];
 			long[] mid  = new long[metadata.blockSize];
 			long[] side = new long[metadata.blockSize];
 			for (int i = 0; i < metadata.blockSize; i++) {

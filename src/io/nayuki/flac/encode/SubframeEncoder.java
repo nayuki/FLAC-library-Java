@@ -19,40 +19,40 @@ abstract class SubframeEncoder {
 	
 	// Computes/estimates the best way to encode the given vector of audio sample data at the given sample depth under
 	// the given search criteria, returning a size estimate plus a new encoder object associated with that size.
-	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int sampleDepth, SearchOptions opt) {
+	public static SizeEstimate<SubframeEncoder> computeBest(long[] samples, int sampleDepth, SearchOptions opt) {
 		// Check arguments
-		Objects.requireNonNull(data);
+		Objects.requireNonNull(samples);
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
 		Objects.requireNonNull(opt);
-		for (long x : data) {
+		for (long x : samples) {
 			x >>= sampleDepth - 1;
 			if (x != 0 && x != -1)  // Check that the input actually fits the indicated sample depth
 				throw new IllegalArgumentException();
 		}
 		
 		// Encode with constant if possible
-		SizeEstimate<SubframeEncoder> result = ConstantEncoder.computeBest(data, 0, sampleDepth);
+		SizeEstimate<SubframeEncoder> result = ConstantEncoder.computeBest(samples, 0, sampleDepth);
 		if (result != null)
 			return result;
 		
 		// Detect number of trailing zero bits
-		int shift = computeWastedBits(data);
+		int shift = computeWastedBits(samples);
 		sampleDepth -= shift;
 		
 		// Start with verbatim as fallback
-		result = VerbatimEncoder.computeBest(data, shift, sampleDepth);
+		result = VerbatimEncoder.computeBest(samples, shift, sampleDepth);
 		
 		// Try fixed prediction encoding
 		for (int order = opt.minFixedOrder; order <= opt.maxFixedOrder; order++) {
-			SizeEstimate<SubframeEncoder> temp = FixedPredictionEncoder.computeBest(data, shift, sampleDepth, order, opt.maxRiceOrder);
+			SizeEstimate<SubframeEncoder> temp = FixedPredictionEncoder.computeBest(samples, shift, sampleDepth, order, opt.maxRiceOrder);
 			result = result.minimum(temp);
 		}
 		
 		// Try linear predictive coding
-		FastDotProduct fdp = new FastDotProduct(data, 32);
+		FastDotProduct fdp = new FastDotProduct(samples, 32);
 		for (int order = opt.minLpcOrder; order <= opt.maxLpcOrder; order++) {
-			SizeEstimate<SubframeEncoder> temp = LinearPredictiveEncoder.computeBest(data, shift, sampleDepth, order, Math.min(opt.lpcRoundVariables, order), fdp, opt.maxRiceOrder);
+			SizeEstimate<SubframeEncoder> temp = LinearPredictiveEncoder.computeBest(samples, shift, sampleDepth, order, Math.min(opt.lpcRoundVariables, order), fdp, opt.maxRiceOrder);
 			result = result.minimum(temp);
 		}
 		
@@ -104,7 +104,7 @@ abstract class SubframeEncoder {
 	// using the current encoding method (dictated by subclasses and field values).
 	// This requires the data array to have the same values (but not necessarily be the same object reference)
 	// as the array that was passed to the constructor when this encoder object was created.
-	public abstract void encode(long[] data, BitOutputStream out) throws IOException;
+	public abstract void encode(long[] samples, BitOutputStream out) throws IOException;
 	
 	
 	// Writes the subframe header to the given output stream, based on the given

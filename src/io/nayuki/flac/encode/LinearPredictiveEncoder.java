@@ -22,17 +22,17 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	// has an enormous search space, and it is impossible to guarantee the absolute optimal solution. The maxRiceOrder argument
 	// is used by the Rice encoder to estimate the size of coding the residual signal. The roundVars argument controls
 	// how many different coefficients are tested rounding both up and down, resulting in exponential time behavior.
-	public static SizeEstimate<SubframeEncoder> computeBest(long[] data, int shift, int depth, int order, int roundVars, FastDotProduct fdp, int maxRiceOrder) {
+	public static SizeEstimate<SubframeEncoder> computeBest(long[] samples, int shift, int depth, int order, int roundVars, FastDotProduct fdp, int maxRiceOrder) {
 		// Check arguments
 		if (order < 1 || order > 32)
 			throw new IllegalArgumentException();
 		if (roundVars < 0 || roundVars > order || roundVars > 30)
 			throw new IllegalArgumentException();
 		
-		LinearPredictiveEncoder enc = new LinearPredictiveEncoder(data, shift, depth, order, fdp);
-		data = data.clone();
-		for (int i = 0; i < data.length; i++)
-			data[i] >>= shift;
+		LinearPredictiveEncoder enc = new LinearPredictiveEncoder(samples, shift, depth, order, fdp);
+		samples = samples.clone();
+		for (int i = 0; i < samples.length; i++)
+			samples[i] >>= shift;
 		
 		final double[] residues;
 		Integer[] indices = null;
@@ -66,7 +66,7 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 				enc.coefficients[order - 1 - k] = Math.max(Math.min(val, (1 << (enc.coefDepth - 1)) - 1), -(1 << (enc.coefDepth - 1)));
 			}
 			
-			long[] newData = roundVars > 0 ? data.clone() : data;
+			long[] newData = roundVars > 0 ? samples.clone() : samples;
 			applyLpc(newData, enc.coefficients, enc.coefShift);
 			long temp = RiceEncoder.computeBestSizeAndOrder(newData, order, maxRiceOrder);
 			long size = 1 + 6 + 1 + shift + order * depth + (temp >>> 4);
@@ -90,9 +90,9 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	public int riceOrder;
 	
 	
-	public LinearPredictiveEncoder(long[] data, int shift, int depth, int order, FastDotProduct fdp) {
+	public LinearPredictiveEncoder(long[] samples, int shift, int depth, int order, FastDotProduct fdp) {
 		super(shift, depth);
-		int numSamples = data.length;
+		int numSamples = samples.length;
 		if (order < 1 || order > 32 || numSamples < order)
 			throw new IllegalArgumentException();
 		this.order = order;
@@ -103,7 +103,7 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 			for (int c = 0; c < matrix[r].length; c++) {
 				double val;
 				if (c >= r)
-					val = fdp.dotProduct(r, c, data.length - order);
+					val = fdp.dotProduct(r, c, samples.length - order);
 				else
 					val = matrix[c][r];
 				matrix[r][c] = val;
@@ -186,25 +186,25 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	}
 	
 	
-	public void encode(long[] data, BitOutputStream out) throws IOException {
-		Objects.requireNonNull(data);
+	public void encode(long[] samples, BitOutputStream out) throws IOException {
+		Objects.requireNonNull(samples);
 		Objects.requireNonNull(out);
-		if (data.length < order)
+		if (samples.length < order)
 			throw new IllegalArgumentException();
 		
 		writeTypeAndShift(32 + order - 1, out);
-		data = data.clone();
-		for (int i = 0; i < data.length; i++)
-			data[i] >>= sampleShift;
+		samples = samples.clone();
+		for (int i = 0; i < samples.length; i++)
+			samples[i] >>= sampleShift;
 		
 		for (int i = 0; i < order; i++)  // Warmup
-			out.writeInt(sampleDepth - sampleShift, (int)data[i]);
+			out.writeInt(sampleDepth - sampleShift, (int)samples[i]);
 		out.writeInt(4, coefDepth - 1);
 		out.writeInt(5, coefShift);
 		for (int x : coefficients)
 			out.writeInt(coefDepth, x);
-		applyLpc(data, coefficients, coefShift);
-		RiceEncoder.encode(data, order, riceOrder, out);
+		applyLpc(samples, coefficients, coefShift);
+		RiceEncoder.encode(samples, order, riceOrder, out);
 	}
 	
 	
