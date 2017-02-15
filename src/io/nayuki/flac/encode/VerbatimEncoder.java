@@ -37,7 +37,7 @@ final class VerbatimEncoder extends SubframeEncoder {
 	public void encode(long[] samples, BitOutputStream out) throws IOException {
 		writeTypeAndShift(1, out);
 		for (long val : samples)
-			out.writeInt(sampleDepth, (int)(val >> sampleShift));
+			out.writeInt(sampleDepth - sampleShift, (int)(val >> sampleShift));
 	}
 	
 }

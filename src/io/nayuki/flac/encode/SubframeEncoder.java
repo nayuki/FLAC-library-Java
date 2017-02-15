@@ -38,7 +38,6 @@ abstract class SubframeEncoder {
 		
 		// Detect number of trailing zero bits
 		int shift = computeWastedBits(samples);
-		sampleDepth -= shift;
 		
 		// Start with verbatim as fallback
 		result = VerbatimEncoder.computeBest(samples, shift, sampleDepth);
