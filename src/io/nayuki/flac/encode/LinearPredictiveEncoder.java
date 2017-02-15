@@ -30,9 +30,7 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 			throw new IllegalArgumentException();
 		
 		LinearPredictiveEncoder enc = new LinearPredictiveEncoder(samples, shift, depth, order, fdp);
-		samples = samples.clone();
-		for (int i = 0; i < samples.length; i++)
-			samples[i] >>= shift;
+		samples = shiftRight(samples, shift);
 		
 		final double[] residues;
 		Integer[] indices = null;
@@ -193,9 +191,7 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 			throw new IllegalArgumentException();
 		
 		writeTypeAndShift(32 + order - 1, out);
-		samples = samples.clone();
-		for (int i = 0; i < samples.length; i++)
-			samples[i] >>= sampleShift;
+		samples = shiftRight(samples, sampleShift);
 		
 		for (int i = 0; i < order; i++)  // Warmup
 			out.writeInt(sampleDepth - sampleShift, (int)samples[i]);
@@ -240,6 +236,18 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 				throw new AssertionError();
 			data[i] = val;
 		}
+	}
+	
+	
+	// Returns a new array where each result[i] = data[i] >> shift.
+	static long[] shiftRight(long[] data, int shift) {
+		Objects.requireNonNull(data);
+		if (shift < 0 || shift > 63)
+			throw new IllegalArgumentException();
+		long[] result = new long[data.length];
+		for (int i = 0; i < data.length; i++)
+			result[i] = data[i] >> shift;
+		return result;
 	}
 	
 }

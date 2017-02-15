@@ -20,9 +20,7 @@ final class FixedPredictionEncoder extends SubframeEncoder {
 	// is used by the Rice encoder to estimate the size of coding the residual signal.
 	public static SizeEstimate<SubframeEncoder> computeBest(long[] samples, int shift, int depth, int order, int maxRiceOrder) {
 		FixedPredictionEncoder enc = new FixedPredictionEncoder(samples, shift, depth, order);
-		samples = samples.clone();
-		for (int i = 0; i < samples.length; i++)
-			samples[i] >>= shift;
+		samples = LinearPredictiveEncoder.shiftRight(samples, shift);
 		LinearPredictiveEncoder.applyLpc(samples, COEFFICIENTS[order], 0);
 		long temp = RiceEncoder.computeBestSizeAndOrder(samples, order, maxRiceOrder);
 		enc.riceOrder = (int)(temp & 0xF);
@@ -51,9 +49,7 @@ final class FixedPredictionEncoder extends SubframeEncoder {
 			throw new IllegalArgumentException();
 		
 		writeTypeAndShift(8 + order, out);
-		samples = samples.clone();
-		for (int i = 0; i < samples.length; i++)
-			samples[i] >>= sampleShift;
+		samples = LinearPredictiveEncoder.shiftRight(samples, sampleShift);
 		
 		for (int i = 0; i < order; i++)  // Warmup
 			out.writeInt(sampleDepth - sampleShift, (int)samples[i]);
