@@ -79,7 +79,7 @@ final class RiceEncoder {
 			}
 		}
 		
-		if (bestSize == Integer.MAX_VALUE)
+		if (bestSize == Integer.MAX_VALUE || (bestOrder >>> 4) != 0)
 			throw new AssertionError();
 		return bestSize << 4 | bestOrder;
 	}

@@ -122,7 +122,7 @@ public final class BitInputStream implements AutoCloseable {
 	public void readRiceSignedInts(int param, long[] result, int start, int end) throws IOException {
 		if (param < 0 || param > 31)
 			throw new IllegalArgumentException();
-		long unaryLimit = 1L << (54 - param);
+		long unaryLimit = 1L << (53 - param);
 		
 		byte[] consumeTable = RICE_DECODING_CONSUMED_TABLES[param];
 		int[] valueTable = RICE_DECODING_VALUE_TABLES[param];
@@ -161,9 +161,9 @@ public final class BitInputStream implements AutoCloseable {
 				val++;
 			}
 			val = (val << param) | readUint(param);  // Note: Long masking unnecessary because param <= 31
-			assert (val >>> 54) == 0;  // Must fit a uint54 by design
-			val = (val >>> 1) ^ -(val & 1);
-			assert (val >> 53) == 0 || (val >> 53) == -1;  // Must fit a signed int54 by design
+			assert (val >>> 53) == 0;  // Must fit a uint53 by design due to unaryLimit
+			val = (val >>> 1) ^ -(val & 1);  // Transform uint53 to int53 according to Rice coding of signed numbers
+			assert (val >> 52) == 0 || (val >> 52) == -1;  // Must fit a signed int53 by design
 			result[start] = val;
 			start++;
 		}

@@ -235,7 +235,10 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 			long sum = 0;
 			for (int j = 0; j < coefs.length; j++)
 				sum += data[i - 1 - j] * coefs[j];
-			data[i] -= sum >> shift;
+			long val = data[i] - (sum >> shift);
+			if ((val >> 52) != 0 && (val >> 52) != -1)  // Check if it fits in signed int53
+				throw new AssertionError();
+			data[i] = val;
 		}
 	}
 	
