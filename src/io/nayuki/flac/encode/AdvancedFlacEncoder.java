@@ -10,8 +10,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import io.nayuki.flac.common.StreamInfo;
 
 
@@ -85,33 +83,6 @@ public final class AdvancedFlacEncoder {
 				info.minFrameSize = (int)frameSize;
 			if (frameSize > info.maxFrameSize)
 				info.maxFrameSize = (int)frameSize;
-		}
-		
-		System.err.println();
-		printBlockSizeStats(blockSizes);
-	}
-	
-	
-	private static void printBlockSizeStats(List<Integer> blockSizes) {
-		// Count how many times each block size occurred
-		Map<Integer,Integer> blockSizeCounts = new TreeMap<>();
-		int maxCount = 1;  // This avoids division by zero
-		for (int bs : blockSizes) {
-			if (!blockSizeCounts.containsKey(bs))
-				blockSizeCounts.put(bs, 0);
-			int count = blockSizeCounts.get(bs) + 1;
-			blockSizeCounts.put(bs, count);
-			maxCount = Math.max(count, maxCount);
-		}
-		
-		// Print a histogram bar chart
-		System.err.println("Block sizes used:");
-		final double maxBarWidth = 60;
-		for (Map.Entry<Integer,Integer> entry : blockSizeCounts.entrySet()) {
-			int count = entry.getValue();
-			int barWidth = (int)Math.round(maxBarWidth * count / maxCount);
-			String bar = new String(new char[barWidth]).replace((char)0, '*');
-			System.err.printf("%5d: %s (%d)%n", entry.getKey(), bar, count);
 		}
 	}
 	
