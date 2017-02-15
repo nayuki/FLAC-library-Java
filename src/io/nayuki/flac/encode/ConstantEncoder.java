@@ -45,7 +45,7 @@ final class ConstantEncoder extends SubframeEncoder {
 		if ((samples[0] >> sampleShift) << sampleShift != samples[0])
 			throw new IllegalArgumentException("Invalid shift value for data");
 		writeTypeAndShift(0, out);
-		out.writeInt(sampleDepth - sampleShift, (int)(samples[0] >> sampleShift));
+		writeRawSample(samples[0] >> sampleShift, out);
 	}
 	
 	

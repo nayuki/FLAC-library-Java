@@ -130,6 +130,24 @@ abstract class SubframeEncoder {
 	}
 	
 	
+	// Writes the given value to the output stream as a signed (sampleDepth-sampleShift) bit integer.
+	// Note that the value to being written is equal to the raw sample value shifted right by sampleShift.
+	protected final void writeRawSample(long val, BitOutputStream out) throws IOException {
+		int width = sampleDepth - sampleShift;
+		if (width < 1 || width > 33)
+			throw new IllegalStateException();
+		long temp = val >> (width - 1);
+		if (temp != 0 && temp != -1)
+			throw new IllegalArgumentException();
+		if (width <= 32)
+			out.writeInt(width, (int)val);
+		else {  // width == 33
+			out.writeInt(1, (int)(val >>> 32));
+			out.writeInt(33, (int)val);
+		}
+	}
+	
+	
 	
 	/*---- Helper structure ----*/
 	

@@ -194,7 +194,7 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 		samples = shiftRight(samples, sampleShift);
 		
 		for (int i = 0; i < order; i++)  // Warmup
-			out.writeInt(sampleDepth - sampleShift, (int)samples[i]);
+			writeRawSample(samples[i], out);
 		out.writeInt(4, coefDepth - 1);
 		out.writeInt(5, coefShift);
 		for (int x : coefficients)
