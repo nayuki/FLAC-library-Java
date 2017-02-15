@@ -25,6 +25,11 @@ abstract class SubframeEncoder {
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
 		Objects.requireNonNull(opt);
+		for (long x : data) {
+			x >>= sampleDepth - 1;
+			if (x != 0 && x != -1)  // Check that the input actually fits the indicated sample depth
+				throw new IllegalArgumentException();
+		}
 		
 		// Encode with constant if possible
 		SizeEstimate<SubframeEncoder> result = ConstantEncoder.computeBest(data, 0, sampleDepth);

@@ -234,7 +234,7 @@ public final class FrameMetadata {
 	
 	// Given a uint36 value, this writes 1 to 7 whole bytes to the given output stream.
 	private static void writeUtf8Integer(long val, BitOutputStream out) throws IOException {
-		if (val < 0 || val >= (1L << 36))
+		if ((val >>> 36) != 0)
 			throw new IllegalArgumentException();
 		int bitLen = 64 - Long.numberOfLeadingZeros(val);
 		if (bitLen <= 7)

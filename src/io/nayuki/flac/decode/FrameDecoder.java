@@ -304,7 +304,7 @@ public final class FrameDecoder {
 	// Reads metadata and Rice-coded numbers from the input stream, storing them in result[warmup : currentBlockSize].
 	// The stored numbers are guaranteed to fit in a signed int54 - see the explanation in restoreLpc().
 	private void readResiduals(int warmup, long[] result) throws IOException {
-		if (warmup < 0)
+		if (warmup < 0 || warmup > currentBlockSize)
 			throw new IllegalArgumentException();
 		int method = in.readUint(2);
 		if (method >= 2)

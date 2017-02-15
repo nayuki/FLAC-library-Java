@@ -213,8 +213,21 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	// By FLAC parameters, this function requires each data[i] to fit in a signed 33-bit integer and coefs.length <= 32.
 	// Meeting the preconditions will guarantee the lack of arithmetic overflow in the computation and results.
 	static void applyLpc(long[] data, int[] coefs, int shift) {
-		if (shift < 0 || shift > 63)
+		Objects.requireNonNull(data);
+		Objects.requireNonNull(coefs);
+		if (coefs.length > 32 || shift < 0 || shift > 63)
 			throw new IllegalArgumentException();
+		for (long x : data) {
+			x >>= 32;
+			if (x != 0 && x != -1)  // Check if it fits in signed int33
+				throw new IllegalArgumentException();
+		}
+		for (int x : coefs) {
+			x >>= 14;
+			if (x != 0 && x != -1)  // Check if it fits in signed int15
+				throw new IllegalArgumentException();
+		}
+		
 		for (int i = data.length - 1; i >= coefs.length; i--) {
 			long sum = 0;
 			for (int j = 0; j < coefs.length; j++)

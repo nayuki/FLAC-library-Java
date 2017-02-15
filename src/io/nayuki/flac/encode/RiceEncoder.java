@@ -7,6 +7,7 @@
 package io.nayuki.flac.encode;
 
 import java.io.IOException;
+import java.util.Objects;
 
 
 final class RiceEncoder {
@@ -15,8 +16,17 @@ final class RiceEncoder {
 	
 	// Calculates the number of bits needed to encode the sequence of values data[warmup : data.length].
 	public static long computeBestSizeAndOrder(long[] data, int warmup, int maxPartOrder) {
+		Objects.requireNonNull(data);
+		if (warmup < 0 || warmup > data.length)
+			throw new IllegalArgumentException();
 		if (maxPartOrder < 0 || maxPartOrder > 15)
 			throw new IllegalArgumentException();
+		for (long x : data) {
+			x >>= 52;
+			if (x != 0 && x != -1)  // Check that it fits in a signed int53
+				throw new IllegalArgumentException();
+		}
+		
 		long bestSize = Integer.MAX_VALUE;
 		int bestOrder = -1;
 		
@@ -70,6 +80,8 @@ final class RiceEncoder {
 	// Calculates the number of bits needed to encode the sequence of values
 	// data[start : end] with an optimally chosen Rice parameter.
 	private static long computeBestSizeAndParam(long[] data, int start, int end) {
+		assert data != null && 0 <= start && start <= end && end <= data.length;
+		
 		// Use escape code
 		int bestParam;
 		long bestSize = 4 + 5;
@@ -111,8 +123,18 @@ final class RiceEncoder {
 	
 	// Encodes the sequence of values data[warmup : data.length] with an appropriately chosen order and Rice parameters.
 	public static void encode(long[] data, int warmup, int order, BitOutputStream out) throws IOException {
+		Objects.requireNonNull(data);
+		Objects.requireNonNull(out);
+		if (warmup < 0 || warmup > data.length)
+			throw new IllegalArgumentException();
 		if (order < 0 || order > 15)
 			throw new IllegalArgumentException();
+		for (long x : data) {
+			x >>= 52;
+			if (x != 0 && x != -1)  // Check that it fits in a signed int53
+				throw new IllegalArgumentException();
+		}
+		
 		out.writeInt(2, 0);
 		out.writeInt(4, order);
 		int numPartitions = 1 << order;
@@ -129,6 +151,9 @@ final class RiceEncoder {
 	
 	// Encodes the sequence of values data[start : end] with the given Rice parameter.
 	private static void encode(long[] data, int start, int end, int param, BitOutputStream out) throws IOException {
+		assert 0 <= param && param <= 31 && data != null && out != null;
+		assert 0 <= start && start <= end && end <= data.length;
+		
 		if (param < 15) {
 			out.writeInt(4, param);
 			for (int j = start; j < end; j++)
@@ -144,6 +169,9 @@ final class RiceEncoder {
 	
 	
 	private static void writeRiceSignedInt(long val, int param, BitOutputStream out) throws IOException {
+		assert 0 <= param && param <= 31 && out != null;
+		assert (val >> 52) == 0 || (val >> 52) == -1;  // Fits in a signed int53
+		
 		long unsigned = val >= 0 ? val << 1 : ((-val) << 1) - 1;
 		int unary = (int)(unsigned >>> param);
 		for (int i = 0; i < unary; i++)
