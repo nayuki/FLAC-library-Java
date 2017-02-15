@@ -13,7 +13,7 @@ import java.util.Objects;
 /* 
  * Calculates/estimates the encoded size of a subframe of audio sample data, and also performs the encoding to an output stream.
  */
-abstract class SubframeEncoder {
+public abstract class SubframeEncoder {
 	
 	/*---- Static functions ----*/
 	

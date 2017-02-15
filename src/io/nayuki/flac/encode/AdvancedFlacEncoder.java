@@ -15,10 +15,8 @@ import io.nayuki.flac.common.StreamInfo;
 
 public final class AdvancedFlacEncoder {
 	
-	public AdvancedFlacEncoder(StreamInfo info, int[][] samples, BitOutputStream out) throws IOException {
+	public AdvancedFlacEncoder(StreamInfo info, int[][] samples, int baseSize, int[] sizeMultiples, SubframeEncoder.SearchOptions opts, BitOutputStream out) throws IOException {
 		int numSamples = samples[0].length;
-		int baseSize = 1024;
-		int[] sizeMultiples = {3, 4, 5, 6};
 		
 		// Calculate compressed sizes for many block positions and sizes
 		@SuppressWarnings("unchecked")
@@ -33,7 +31,7 @@ public final class AdvancedFlacEncoder {
 			for (int j = 0; j < encoderInfo.length; j++) {
 				int n = Math.min(sizeMultiples[j] * baseSize, numSamples - pos);
 				long[][] subsamples = getRange(samples, pos, n);
-				encoderInfo[j][i] = FrameEncoder.computeBest(pos, subsamples, info.sampleDepth, info.sampleRate, SubframeEncoder.SearchOptions.SUBSET_BEST);
+				encoderInfo[j][i] = FrameEncoder.computeBest(pos, subsamples, info.sampleDepth, info.sampleRate, opts);
 			}
 		}
 		System.err.println();

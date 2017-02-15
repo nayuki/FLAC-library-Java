@@ -20,6 +20,7 @@ import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.encode.BitOutputStream;
 import io.nayuki.flac.encode.FlacEncoder;
 import io.nayuki.flac.encode.RandomAccessFileOutputStream;
+import io.nayuki.flac.encode.SubframeEncoder;
 
 
 public final class EncodeWavToFlac {
@@ -108,7 +109,7 @@ public final class EncodeWavToFlac {
 			info.write(true, out);
 			
 			// Encode all frames
-			new FlacEncoder(info, samples, 4096, out);
+			new FlacEncoder(info, samples, 4096, SubframeEncoder.SearchOptions.SUBSET_BEST, out);
 			out.flush();
 			
 			// Rewrite the stream info metadata block, which is

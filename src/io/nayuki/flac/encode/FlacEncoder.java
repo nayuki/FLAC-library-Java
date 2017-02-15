@@ -12,7 +12,7 @@ import io.nayuki.flac.common.StreamInfo;
 
 public final class FlacEncoder {
 	
-	public FlacEncoder(StreamInfo info, int[][] samples, int blockSize, BitOutputStream out) throws IOException {
+	public FlacEncoder(StreamInfo info, int[][] samples, int blockSize, SubframeEncoder.SearchOptions opt, BitOutputStream out) throws IOException {
 		info.minBlockSize = blockSize;
 		info.maxBlockSize = blockSize;
 		info.minFrameSize = 0;
@@ -22,7 +22,7 @@ public final class FlacEncoder {
 			System.err.printf("frame=%d  position=%d  %.2f%%%n", i, pos, 100.0 * pos / samples[0].length);
 			int n = Math.min(samples[0].length - pos, blockSize);
 			long[][] subsamples = getRange(samples, pos, n);
-			FrameEncoder enc = FrameEncoder.computeBest(pos, subsamples, info.sampleDepth, info.sampleRate, SubframeEncoder.SearchOptions.SUBSET_BEST).encoder;
+			FrameEncoder enc = FrameEncoder.computeBest(pos, subsamples, info.sampleDepth, info.sampleRate, opt).encoder;
 			long startByte = out.getByteCount();
 			enc.encode(subsamples, out);
 			long frameSize = out.getByteCount() - startByte;
