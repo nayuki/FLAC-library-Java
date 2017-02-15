@@ -264,19 +264,16 @@ public final class FrameDecoder {
 	}
 	
 	
-	// Updates the values of block[coefs.length : currentBlockSize] according to linear predictive coding.
+	// Updates the values of result[coefs.length : currentBlockSize] according to linear predictive coding.
 	// This method reads all the arguments and the field currentBlockSize, only writes to result, and has no other side effects.
-	// 
-	// Note that at each outer loop iteration, before the sum is right shifted, its maximum absolute value is 2^52.
-	// This is because each element of the result fits in a signed int33 (thus max abs of 2^32), each coefficient fits in a
-	// signed int15 (max abs of 2^15), and the maximum number of coefficients (the order) is 32 (thus max multiplier of 2^5).
-	// Putting all these aspects together, the maximum possible absolute value of sum after all the multiply-accumulate
-	// is 2^(32+15+5) = 2^52, which fits in a signed 54-bit integer. Furthermore, the initial value of each result[i]
-	// (except the warmup prefix) is a Rice-coded residual, but afterwards the value result[i] += (sum >> shift)
-	// must fit in a signed integer of width 'sampleDepth' (max 33). This means that if the LPC was as far as possible
-	// from the desired value (e.g. prediction = 2^52, desired = -(2^32), residual = -(2^52 + 2^32)), then the residual
-	// still fits in a signed 54-bit integer. Hence if the Rice-decoding procedure encounters a number that is too large
-	// to fit in a signed int54, then the output sample value will necessarily overflow the indicated sample depth.
+	// After this method returns, every value in result must fit in a signed sampleDepth-bit integer.
+	// The largest allowed sample depth is 33, hence the largest absolute value allowed in the result is 2^32.
+	// During the LPC restoration process, the prefix of result before index i consists of entirely int33 values.
+	// Because coefs.length <= 32 and each coefficient fits in a signed int15 (both according to the FLAC specification),
+	// the maximum (worst-case) absolute value of 'sum' is 2^32 * 2^14 * 32 = 2^51, which fits in a signed int53.
+	// And because of this, the maximum possible absolute value of a residual before LPC restoration is applied,
+	// such that the post-LPC result fits in a signed int33, is 2^51 + 2^32 which also fits in a signed int53.
+	// Therefore a residue that is larger than a signed int53 will necessarily not fit in the int33 result and is wrong.
 	private void restoreLpc(long[] result, int[] coefs, int sampleDepth, int shift) {
 		// Check and handle arguments
 		if (sampleDepth < 1 || sampleDepth > 33)
@@ -302,7 +299,7 @@ public final class FrameDecoder {
 	
 	
 	// Reads metadata and Rice-coded numbers from the input stream, storing them in result[warmup : currentBlockSize].
-	// The stored numbers are guaranteed to fit in a signed int54 - see the explanation in restoreLpc().
+	// The stored numbers are guaranteed to fit in a signed int53 - see the explanation in restoreLpc().
 	private void readResiduals(int warmup, long[] result) throws IOException {
 		if (warmup < 0 || warmup > currentBlockSize)
 			throw new IllegalArgumentException();

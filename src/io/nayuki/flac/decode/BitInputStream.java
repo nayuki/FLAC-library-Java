@@ -117,7 +117,7 @@ public final class BitInputStream implements AutoCloseable {
 	
 	// Reads and decodes the next batch of Rice-coded signed integers. Note that any Rice-coded integer might read a large
 	// number of bits from the underlying stream (but not in practice because it would be a very inefficient encoding).
-	// Every new value stored into the array is guaranteed to fit into a signed int54 - see FrameDecoder.restoreLpc()
+	// Every new value stored into the array is guaranteed to fit into a signed int53 - see FrameDecoder.restoreLpc()
 	// for an explanation of why this is a necessary (but not sufficient) bound on the range of decoded values.
 	public void readRiceSignedInts(int param, long[] result, int start, int end) throws IOException {
 		if (param < 0 || param > 31)

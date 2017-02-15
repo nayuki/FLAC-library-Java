@@ -28,7 +28,7 @@ public final class StreamInfo {
 	public int sampleRate;   // In hertz (Hz), a uint20 value. 0 is invalid.
 	public int numChannels;  // An integer in the range [1, 8].
 	public int sampleDepth;  // In bits per sample, in the range [4, 32].
-	public long numSamples;  // Total number of samples (per channel) in the audio clip. 0 signifies unknown.
+	public long numSamples;  // Total number of samples (per channel) in the audio clip, a uint36 value. 0 signifies unknown (cannot have empty audio).
 	
 	// Always 16 bytes long. Can be all zeros to signify that the encoder did not
 	// compute the MD5 hash. It is okay to replace this array with a different object.
@@ -74,7 +74,7 @@ public final class StreamInfo {
 			throw new DataFormatException("Invalid sample rate");
 		numChannels = in.readUint(3) + 1;
 		sampleDepth = in.readUint(5) + 1;
-		numSamples = (long)in.readUint(18) << 18 | in.readUint(18);
+		numSamples = (long)in.readUint(18) << 18 | in.readUint(18);  // uint36
 		in.readFully(md5Hash);
 	}
 	

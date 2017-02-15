@@ -210,9 +210,11 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	
 	// Applies linear prediction to data[coefs.length : data.length] so that newdata[i] =
 	// data[i] - ((data[i-1]*coefs[0] + data[i-2]*coefs[1] + ... + data[i-coefs.length]*coefs[coefs.length]) >> shift).
-	// By FLAC parameters, this function requires each data[i] to fit in a signed 33-bit integer and coefs.length <= 32.
-	// Meeting the preconditions will guarantee the lack of arithmetic overflow in the computation and results.
+	// By FLAC parameters, each data[i] must fit in a signed 33-bit integer, each coef must fit in signed int15, and coefs.length <= 32.
+	// When these preconditions are met, they guarantee the lack of arithmetic overflow in the computation and results,
+	// and each value written back to the data array fits in a signed int53.
 	static void applyLpc(long[] data, int[] coefs, int shift) {
+		// Check arguments and arrays strictly
 		Objects.requireNonNull(data);
 		Objects.requireNonNull(coefs);
 		if (coefs.length > 32 || shift < 0 || shift > 63)
@@ -228,6 +230,7 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 				throw new IllegalArgumentException();
 		}
 		
+		// Perform the LPC convolution/FIR
 		for (int i = data.length - 1; i >= coefs.length; i--) {
 			long sum = 0;
 			for (int j = 0; j < coefs.length; j++)

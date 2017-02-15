@@ -10,12 +10,19 @@ import java.io.IOException;
 import java.util.Objects;
 
 
+/* 
+ * Calculates/estimates the encoded size of a vector of residuals, and also performs the encoding to an output stream.
+ */
 final class RiceEncoder {
 	
 	/*---- Functions for size calculation ---*/
 	
-	// Calculates the number of bits needed to encode the sequence of values data[warmup : data.length].
+	// Calculates the best number of bits and partition order needed to encode the values data[warmup : data.length].
+	// Each value in that subrange of data must fit in a signed 53-bit integer. The result is packed in the form
+	// ((bestSize << 4) | bestOrder), where bestSize is an unsigned integer and bestOrder is a uint4.
+	// Note that the partition orders searched, and hence the resulting bestOrder, are in the range [0, maxPartOrder].
 	public static long computeBestSizeAndOrder(long[] data, int warmup, int maxPartOrder) {
+		// Check arguments strictly
 		Objects.requireNonNull(data);
 		if (warmup < 0 || warmup > data.length)
 			throw new IllegalArgumentException();
@@ -38,7 +45,7 @@ final class RiceEncoder {
 				continue;
 			int numPartitions = 1 << order;
 			
-			if (escapeBits == null) {
+			if (escapeBits == null) {  // And bitsAtParam == null
 				escapeBits = new int[numPartitions];
 				bitsAtParam = new int[numPartitions * 16];
 				for (int i = warmup; i < data.length; i++) {
@@ -49,7 +56,8 @@ final class RiceEncoder {
 					for (int param = 0; param < 15; param++, val >>>= 1)
 						bitsAtParam[param + j * 16] += val + 1 + param;
 				}
-			} else {
+			} else {  // Both arrays are non-null
+				// Logically halve the size of both arrays (but without reallocating to the true new size)
 				for (int i = 0; i < numPartitions; i++) {
 					int j = i << 1;
 					escapeBits[i] = Math.max(escapeBits[j], escapeBits[j + 1]);
@@ -122,7 +130,9 @@ final class RiceEncoder {
 	/*---- Functions for encoding data ---*/
 	
 	// Encodes the sequence of values data[warmup : data.length] with an appropriately chosen order and Rice parameters.
+	// Each value in data must fit in a signed 53-bit integer.
 	public static void encode(long[] data, int warmup, int order, BitOutputStream out) throws IOException {
+		// Check arguments strictly
 		Objects.requireNonNull(data);
 		Objects.requireNonNull(out);
 		if (warmup < 0 || warmup > data.length)

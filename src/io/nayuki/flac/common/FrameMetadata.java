@@ -43,7 +43,7 @@ public final class FrameMetadata {
 	
 	
 	
-	/*---- Static functions ----*/
+	/*---- Functions to read FrameMetadata from stream ----*/
 	
 	// Tries to read the next FLAC frame header from the given bit input stream.
 	// The stream must be aligned to a byte boundary, and should start at a sync code.
@@ -110,7 +110,7 @@ public final class FrameMetadata {
 	}
 	
 	
-	// Reads 1 to 7 bytes from the input stream. Return value is a uint36.
+	// Reads 1 to 7 whole bytes from the input stream. Return value is a uint36.
 	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
 	private static long readUtf8Integer(BitInputStream in) throws IOException {
 		int head = in.readUint(8);
@@ -191,6 +191,14 @@ public final class FrameMetadata {
 	
 	
 	
+	/*---- Functions to write FrameMetadata to stream ----*/
+	
+	// Writes the current state of this FrameMetadata object to the given output stream,
+	// from the sync field through to the CRC-8 field (inclusive). This does not write
+	// subframe data, bit padding, nor the CRC-16 field. The stream must be aligned before this method
+	// is called, and will be aligned after the method returns (i.e. it writes a whole number of bytes).
+	// This method resets the CRCs on the output stream before any data is written. This behavior
+	// is useful for the caller, which will need to write the CRC-16 at the end ofthe frame.
 	public void writeHeader(BitOutputStream out) throws IOException {
 		out.resetCrcs();
 		out.writeInt(14, 0x3FFE);  // Sync
