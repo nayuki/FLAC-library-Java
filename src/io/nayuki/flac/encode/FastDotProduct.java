@@ -52,6 +52,9 @@ final class FastDotProduct {
 	}
 	
 	
+	
+	/*---- Methods ----*/
+	
 	// Returns the dot product of data[off0 : off0 + len] with data[off1 : off1 + len],
 	// i.e. data[off0]*data[off1] + data[off0+1]*data[off1+1] + ... + data[off0+len-1]*data[off1+len-1],
 	// with potential rounding error. Note that all the endpoints must lie within the bounds

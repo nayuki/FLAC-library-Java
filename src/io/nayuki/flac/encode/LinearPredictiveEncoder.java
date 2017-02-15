@@ -204,6 +204,9 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 	}
 	
 	
+	
+	/*---- Static helper functions ----*/
+	
 	// Applies linear prediction to data[coefs.length : data.length] so that newdata[i] =
 	// data[i] - ((data[i-1]*coefs[0] + data[i-2]*coefs[1] + ... + data[i-coefs.length]*coefs[coefs.length]) >> shift).
 	// By FLAC parameters, each data[i] must fit in a signed 33-bit integer, each coef must fit in signed int15, and coefs.length <= 32.

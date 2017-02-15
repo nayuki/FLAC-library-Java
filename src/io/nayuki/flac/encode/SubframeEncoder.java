@@ -44,14 +44,16 @@ public abstract class SubframeEncoder {
 		
 		// Try fixed prediction encoding
 		for (int order = opt.minFixedOrder; 0 <= order && order <= opt.maxFixedOrder; order++) {
-			SizeEstimate<SubframeEncoder> temp = FixedPredictionEncoder.computeBest(samples, shift, sampleDepth, order, opt.maxRiceOrder);
+			SizeEstimate<SubframeEncoder> temp = FixedPredictionEncoder.computeBest(
+				samples, shift, sampleDepth, order, opt.maxRiceOrder);
 			result = result.minimum(temp);
 		}
 		
 		// Try linear predictive coding
 		FastDotProduct fdp = new FastDotProduct(samples, 32);
 		for (int order = opt.minLpcOrder; 0 <= order && order <= opt.maxLpcOrder; order++) {
-			SizeEstimate<SubframeEncoder> temp = LinearPredictiveEncoder.computeBest(samples, shift, sampleDepth, order, Math.min(opt.lpcRoundVariables, order), fdp, opt.maxRiceOrder);
+			SizeEstimate<SubframeEncoder> temp = LinearPredictiveEncoder.computeBest(
+				samples, shift, sampleDepth, order, Math.min(opt.lpcRoundVariables, order), fdp, opt.maxRiceOrder);
 			result = result.minimum(temp);
 		}
 		
