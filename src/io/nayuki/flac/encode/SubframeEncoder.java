@@ -50,7 +50,7 @@ public abstract class SubframeEncoder {
 		}
 		
 		// Try linear predictive coding
-		FastDotProduct fdp = new FastDotProduct(samples, 32);
+		FastDotProduct fdp = new FastDotProduct(samples, Math.max(opt.maxLpcOrder, 0));
 		for (int order = opt.minLpcOrder; 0 <= order && order <= opt.maxLpcOrder; order++) {
 			SizeEstimate<SubframeEncoder> temp = LinearPredictiveEncoder.computeBest(
 				samples, shift, sampleDepth, order, Math.min(opt.lpcRoundVariables, order), fdp, opt.maxRiceOrder);
