@@ -83,7 +83,9 @@ final class RiceEncoder {
 			
 			long size = 4 + (4 << order);
 			for (int i = 0; i < numPartitions; i++) {
-				int min = 5 + escapeBits[i] * (partSize - (i == 0 ? warmup : 0));
+				int min = Integer.MAX_VALUE;
+				if (escapeBits[i] <= 31)
+					min = 5 + escapeBits[i] * (partSize - (i == 0 ? warmup : 0));
 				for (int param = 0; param < 15; param++)
 					min = Math.min(bitsAtParam[param + i * 16], min);
 				size += min;
@@ -107,7 +109,7 @@ final class RiceEncoder {
 		
 		// Use escape code
 		int bestParam;
-		long bestSize = 4 + 5;
+		long bestSize;
 		{
 			long accumulator = 0;
 			for (int i = start; i < end; i++) {
@@ -115,10 +117,16 @@ final class RiceEncoder {
 				accumulator |= val ^ (val >> 63);
 			}
 			int numBits = 65 - Long.numberOfLeadingZeros(accumulator);
-			bestSize += (end - start) * numBits;
-			bestParam = 16 + numBits;
-			if ((bestParam >>> 7) != 0)
-				throw new AssertionError();
+			assert 1 <= numBits && numBits <= 65;
+			if (numBits <= 31) {
+				bestSize = 4 + 5 + (end - start) * numBits;
+				bestParam = 16 + numBits;
+				if ((bestParam >>> 7) != 0)
+					throw new AssertionError();
+			} else {
+				bestSize = Long.MAX_VALUE;
+				bestParam = 0;
+			}
 		}
 		
 		// Use Rice coding
