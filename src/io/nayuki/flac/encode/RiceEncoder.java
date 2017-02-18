@@ -121,7 +121,7 @@ final class RiceEncoder {
 			if (numBits <= 31) {
 				bestSize = 4 + 5 + (end - start) * numBits;
 				bestParam = 16 + numBits;
-				if ((bestParam >>> 7) != 0)
+				if ((bestParam >>> 6) != 0)
 					throw new AssertionError();
 			} else {
 				bestSize = Long.MAX_VALUE;
@@ -145,7 +145,7 @@ final class RiceEncoder {
 				bestParam = param;
 			}
 		}
-		return bestSize << 7 | bestParam;
+		return bestSize << 6 | bestParam;
 	}
 	
 	
@@ -174,7 +174,7 @@ final class RiceEncoder {
 		int start = warmup;
 		int end = data.length >>> order;
 		for (int i = 0; i < numPartitions; i++) {
-			int param = (int)computeBestSizeAndParam(data, start, end) & 0x7F;
+			int param = (int)computeBestSizeAndParam(data, start, end) & 0x3F;
 			encode(data, start, end, param, out);
 			start = end;
 			end += data.length >>> order;
