@@ -114,11 +114,8 @@ public final class SeekableFlacPlayerGui {
 			}
 			
 			// Set display position
-			{
-				double timePos = (line.getMicrosecondPosition() - startTime) / 1e6;
-				double songProportion = timePos * streamInfo.sampleRate / streamInfo.numSamples;
-				gui.setPosition(songProportion);
-			}
+			double timePos = (line.getMicrosecondPosition() - startTime) / 1e6;
+			gui.setPosition(timePos * streamInfo.sampleRate / streamInfo.numSamples);
 			
 			// Wait when end of stream reached
 			if (blockSamples == 0) {
