@@ -43,7 +43,7 @@ public final class EncodeWavToFlac {
 	public static void main(String[] args) throws IOException {
 		// Handle command line arguments
 		if (args.length != 2) {
-			System.err.println("Usage: java EncodeWavToFlac InFileChan0.raw [InFileChan1.raw ...] OutFile.flac");
+			System.err.println("Usage: java EncodeWavToFlac InFile.wav OutFile.flac");
 			System.exit(1);
 			return;
 		}
