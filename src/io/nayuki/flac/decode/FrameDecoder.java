@@ -41,6 +41,10 @@ public final class FrameDecoder {
 	// Must be not null when readFrame() is called.
 	public BitInputStream in;
 	
+	// Can be changed when there is no active call of readFrame().
+	// Must be in the range [4, 32].
+	public int expectedSampleDepth;
+	
 	// Temporary arrays to hold two decoded audio channels (a.k.a. subframes). They have int64 range
 	// because the worst case of 32-bit audio encoded in stereo side mode uses signed 33 bits.
 	// The maximum possible block size is either 65536 samples per channel from the
@@ -61,8 +65,9 @@ public final class FrameDecoder {
 	
 	// Constructs a frame decoder that initially uses the given stream.
 	// The caller is responsible for cleaning up the input stream.
-	public FrameDecoder(BitInputStream in) {
+	public FrameDecoder(BitInputStream in, int expectDepth) {
 		this.in = in;
+		expectedSampleDepth = expectDepth;
 		temp0 = new long[65536];
 		temp1 = new long[65536];
 		currentBlockSize = -1;
@@ -89,6 +94,8 @@ public final class FrameDecoder {
 		FrameMetadata meta = FrameMetadata.readFrame(in);
 		if (meta == null)  // EOF occurred cleanly
 			return null;
+		if (meta.sampleDepth != -1 && meta.sampleDepth != expectedSampleDepth)
+			throw new DataFormatException("Sample depth mismatch");
 		
 		// Check arguments and read frame header
 		currentBlockSize = meta.blockSize;
@@ -101,7 +108,7 @@ public final class FrameDecoder {
 			throw new IndexOutOfBoundsException();
 		
 		// Do the hard work
-		decodeSubframes(meta.sampleDepth, meta.channelAssignment, outSamples, outOffset);
+		decodeSubframes(expectedSampleDepth, meta.channelAssignment, outSamples, outOffset);
 		
 		// Read padding and footer
 		if (in.readUint((8 - in.getBitPosition()) % 8) != 0)

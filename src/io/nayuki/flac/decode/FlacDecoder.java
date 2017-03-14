@@ -125,7 +125,7 @@ public final class FlacDecoder implements AutoCloseable {
 		
 		if (last) {
 			metadataEndPos = bitInput.getByteCount();
-			frameDec = new FrameDecoder(bitInput);
+			frameDec = new FrameDecoder(bitInput, streamInfo.sampleDepth);
 		}
 		return new Object[]{type, data};
 	}

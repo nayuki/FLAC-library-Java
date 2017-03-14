@@ -133,7 +133,7 @@ public final class ShowFlacFileStats {
 			}
 			
 			// Decode every frame
-			FrameDecoder dec = new FrameDecoder(in);
+			FrameDecoder dec = new FrameDecoder(in, streamInfo.sampleDepth);
 			int[][] blockSamples = new int[8][65536];
 			while (true) {
 				FrameMetadata meta = dec.readFrame(blockSamples, 0);
