@@ -40,6 +40,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.plaf.basic.BasicSliderUI;
 import javax.swing.plaf.metal.MetalSliderUI;
+import io.nayuki.flac.common.StreamInfo;
 import io.nayuki.flac.decode.FlacDecoder;
 
 
@@ -51,14 +52,16 @@ public final class SeekableFlacPlayerGui {
 			System.exit(1);
 			return;
 		}
+		File inFile = new File(args[0]);
 		
-		FlacDecoder decoder = new FlacDecoder(new File(args[0]));
+		FlacDecoder decoder = new FlacDecoder(inFile);
 		while (decoder.readAndHandleMetadataBlock() != null);
-		if (decoder.streamInfo.numSamples == 0)
+		StreamInfo streamInfo = decoder.streamInfo;
+		if (streamInfo.numSamples == 0)
 			throw new IllegalArgumentException("Unknown audio length");
 		
-		AudioFormat format = new AudioFormat(decoder.streamInfo.sampleRate,
-			decoder.streamInfo.sampleDepth, decoder.streamInfo.numChannels, true, false);
+		AudioFormat format = new AudioFormat(streamInfo.sampleRate,
+			streamInfo.sampleDepth, streamInfo.numChannels, true, false);
 		DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
 		SourceDataLine line = (SourceDataLine)AudioSystem.getLine(info);
 		line.open(format);
@@ -80,7 +83,7 @@ public final class SeekableFlacPlayerGui {
 			}
 		};
 		
-		int bytesPerSample = decoder.streamInfo.sampleDepth / 8;
+		int bytesPerSample = streamInfo.sampleDepth / 8;
 		int[][] samples = new int[8][65536];
 		long position = 0;
 		long startTime = line.getMicrosecondPosition();
@@ -95,15 +98,15 @@ public final class SeekableFlacPlayerGui {
 			if (seekReq == -1)
 				blockSamples = decoder.readAudioBlock(samples, 0);
 			else {
-				position = Math.round(seekReq * decoder.streamInfo.numSamples);
+				position = Math.round(seekReq * streamInfo.numSamples);
 				seekReq = -1;
 				blockSamples = decoder.seekAndReadAudioBlock(position, samples, 0);
 				line.flush();
-				startTime = line.getMicrosecondPosition() - Math.round(position * 1e6 / decoder.streamInfo.sampleRate);
+				startTime = line.getMicrosecondPosition() - Math.round(position * 1e6 / streamInfo.sampleRate);
 			}
 			{
 				double timePos = (line.getMicrosecondPosition() - startTime) / 1e6;
-				double songProportion = timePos * decoder.streamInfo.sampleRate / decoder.streamInfo.numSamples;
+				double songProportion = timePos * streamInfo.sampleRate / streamInfo.numSamples;
 				gui.setPosition(songProportion);
 			}
 			if (blockSamples == 0) {
@@ -114,9 +117,9 @@ public final class SeekableFlacPlayerGui {
 				continue;
 			}
 			
-			byte[] buf = new byte[blockSamples * decoder.streamInfo.numChannels * bytesPerSample];
+			byte[] buf = new byte[blockSamples * streamInfo.numChannels * bytesPerSample];
 			for (int i = 0, k = 0; i < blockSamples; i++) {
-				for (int ch = 0; ch < decoder.streamInfo.numChannels; ch++) {
+				for (int ch = 0; ch < streamInfo.numChannels; ch++) {
 					int val = samples[ch][i];
 					for (int j = 0; j < bytesPerSample; j++, k++)
 						buf[k] = (byte)(val >>> (j << 3));
