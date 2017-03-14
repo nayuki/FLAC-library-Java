@@ -94,10 +94,8 @@ public final class FrameDecoder {
 		decodeSubframes(meta.sampleDepth, meta.channelAssignment, outSamples, outOffset);
 		
 		// Read padding and footer
-		while (in.getBitPosition() != 0) {
-			if (in.readUint(1) != 0)
-				throw new DataFormatException("Invalid padding bit");
-		}
+		if (in.readUint((8 - in.getBitPosition()) % 8) != 0)
+			throw new DataFormatException("Invalid padding bits");
 		int computedCrc16 = in.getCrc16();
 		if (in.readUint(16) != computedCrc16)
 			throw new DataFormatException("CRC-16 mismatch");
@@ -209,16 +207,12 @@ public final class FrameDecoder {
 		else if (type == 1) {  // Verbatim coding
 			for (int i = 0; i < currentBlockSize; i++)
 				result[i] = in.readSignedInt(sampleDepth);
-		} else if (2 <= type && type <= 7)
-			throw new DataFormatException("Reserved subframe type");
-		else if (8 <= type && type <= 12)
+		} else if (8 <= type && type <= 12)
 			decodeFixedPredictionSubframe(type - 8, sampleDepth, result);
-		else if (13 <= type && type <= 31)
-			throw new DataFormatException("Reserved subframe type");
 		else if (32 <= type && type <= 63)
 			decodeLinearPredictiveCodingSubframe(type - 31, sampleDepth, result);
 		else
-			throw new AssertionError();
+			throw new DataFormatException("Reserved subframe type");
 		
 		// Add back the trailing zeros to each sample
 		if (shift > 0) {
@@ -234,7 +228,7 @@ public final class FrameDecoder {
 		Objects.requireNonNull(result);
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
-		if (predOrder < 0 || predOrder > 4)
+		if (predOrder < 0 || predOrder >= FIXED_PREDICTION_COEFFICIENTS.length)
 			throw new IllegalArgumentException();
 		if (predOrder > currentBlockSize)
 			throw new DataFormatException("Fixed prediction order exceeds block size");
