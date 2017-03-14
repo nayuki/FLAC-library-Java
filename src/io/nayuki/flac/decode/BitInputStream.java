@@ -312,16 +312,18 @@ public final class BitInputStream implements AutoCloseable {
 	// For example if the underlying stream supports seeking, then it is okay to discard an existing BitInputStream,
 	// call seek on the underlying stream, and wrap a new BitInputStream over the underlying stream after seeking.
 	public void close() throws IOException {
-		in.close();
-		in = null;
-		byteBuffer = null;
-		byteBufferLen = -1;
-		byteBufferIndex = -1;
-		bitBuffer = 0;
-		bitBufferLen = -1;
-		crc8 = -1;
-		crc16 = -1;
-		crcStartIndex = -1;
+		if (in != null) {
+			in.close();
+			in = null;
+			byteBuffer = null;
+			byteBufferLen = -1;
+			byteBufferIndex = -1;
+			bitBuffer = 0;
+			bitBufferLen = -1;
+			crc8 = -1;
+			crc16 = -1;
+			crcStartIndex = -1;
+		}
 	}
 	
 	

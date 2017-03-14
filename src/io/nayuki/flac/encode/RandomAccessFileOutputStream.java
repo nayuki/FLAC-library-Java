@@ -73,8 +73,10 @@ public final class RandomAccessFileOutputStream extends OutputStream {
 	
 	
 	public void close() throws IOException {
-		out.close();
-		out = null;
+		if (out != null) {
+			out.close();
+			out = null;
+		}
 	}
 	
 }

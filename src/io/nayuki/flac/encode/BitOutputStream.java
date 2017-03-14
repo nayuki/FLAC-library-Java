@@ -164,10 +164,12 @@ public final class BitOutputStream implements AutoCloseable {
 	// be garbage collected without calling close(), but the parent is still responsible for calling close()
 	// on the underlying output stream if it uses native resources (such as FileOutputStream or SocketOutputStream).
 	public void close() throws IOException {
-		checkByteAligned();
-		flush();
-		out.close();
-		out = null;
+		if (out != null) {
+			checkByteAligned();
+			flush();
+			out.close();
+			out = null;
+		}
 	}
 	
 }
