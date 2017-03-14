@@ -21,82 +21,109 @@
 
 package io.nayuki.flac.decode;
 
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.Arrays;
+import java.io.RandomAccessFile;
 import java.util.Objects;
 import io.nayuki.flac.common.FrameMetadata;
 import io.nayuki.flac.common.StreamInfo;
 
 
-public final class FlacDecoder {
+public final class FlacDecoder implements AutoCloseable {
 	
 	/*---- Fields ----*/
 	
-	public int[][] samples;
-	public int hashCheck;  // 0 = skipped because hash in file was all zeros, 1 = hash check passed, 2 = hash mismatch
-	
-	private BitInputStream in;
-	
 	public StreamInfo streamInfo;
+	
+	private RandomAccessFileInputStream fileInput;
+	private BitInputStream bitInput;
+	
+	private long metadataEndPos;
+	
+	private FrameDecoder frameDec;
 	
 	
 	
 	/*---- Constructors ----*/
 	
-	// Constructs a FLAC decoder from the given input stream, and immediately
-	// performs full decoding of the data until the end of stream is reached.
-	public FlacDecoder(InputStream in) throws IOException {
-		// Initialize some fields
-		Objects.requireNonNull(in);
-		this.in = new BitInputStream(in);
-		streamInfo = null;
+	// Constructs a new FLAC decoder to read the given file.
+	// This immediately reads the basic header but not metadata blocks.
+	public FlacDecoder(File file) throws IOException {
+		// Initialize streams
+		Objects.requireNonNull(file);
+		fileInput = new RandomAccessFileInputStream(new RandomAccessFile(file, "r"));
+		bitInput = new BitInputStream(fileInput);
 		
-		// Parse header blocks
-		if (this.in.readUint(32) != 0x664C6143)  // Magic string "fLaC"
+		// Read basic header
+		if (bitInput.readUint(32) != 0x664C6143)  // Magic string "fLaC"
 			throw new DataFormatException("Invalid magic string");
-		while (handleMetadataBlock());
-		
-		// Decode frames until end of stream
-		FrameDecoder dec = new FrameDecoder(this.in);
-		for (int i = 0, sampleOffset = 0; ; i++) {
-			FrameMetadata meta = dec.readFrame(samples, sampleOffset);
-			if (meta == null)
-				break;
-			streamInfo.checkFrame(meta);
-			if (meta.frameIndex != -1 && meta.frameIndex != i)
-				throw new DataFormatException("Frame index mismatch");
-			if (meta.sampleOffset != -1 && meta.sampleOffset != sampleOffset)
-				throw new DataFormatException("Sample offset mismatch");
-			sampleOffset += meta.blockSize;
-		}
-		
-		// Check audio data against hash
-		if (Arrays.equals(streamInfo.md5Hash, new byte[16]))
-			hashCheck = 0;
-		else if (Arrays.equals(StreamInfo.getMd5Hash(samples, streamInfo.sampleDepth), streamInfo.md5Hash))
-			hashCheck = 1;
-		else
-			hashCheck = 2;  // Hash check failed!
+		metadataEndPos = -1;
 	}
 	
 	
 	
-	/*---- Private methods ----*/
+	/*---- Methods ----*/
 	
-	private boolean handleMetadataBlock() throws IOException {
-		boolean last = in.readUint(1) != 0;
-		int type = in.readUint(7);
-		int length = in.readUint(24);
+	// Reads, handles, and returns the next metadata block. Returns a pair (int type, byte[] data) if the
+	// next metadata block exists, otherwise returns null if the final metadata block was previously read.
+	// In addition to reading and returning data, this method also updates the internal state
+	// of this object to reflect the new data seen, and throws exceptions for situations such as
+	// not starting with a stream info metadata block or encountering duplicates of certain blocks.
+	public Object[] readAndHandleMetadataBlock() throws IOException {
+		if (metadataEndPos != -1)
+			return null;  // All metadata already consumed
+		
+		// Read entire block
+		boolean last = bitInput.readUint(1) != 0;
+		int type = bitInput.readUint(7);
+		int length = bitInput.readUint(24);
 		byte[] data = new byte[length];
-		in.readFully(data);
-		if (type == 0) {  // Stream info block
+		bitInput.readFully(data);
+		
+		// Handle recognized block
+		if (type == 0) {
 			if (streamInfo != null)
-				throw new DataFormatException("Duplicate stream info block");
+				throw new DataFormatException("Duplicate stream info metadata block");
 			streamInfo = new StreamInfo(data);
-			samples = new int[streamInfo.numChannels][(int)streamInfo.numSamples];
+		} else {
+			if (streamInfo == null)
+				throw new DataFormatException("Expected stream info metadata block");
 		}
-		return !last;
+		
+		if (last) {
+			metadataEndPos = fileInput.getPosition();
+			frameDec = new FrameDecoder(bitInput);
+		}
+		return new Object[]{type, data};
+	}
+	
+	
+	// Reads and decodes the next block of audio samples into the given buffer,
+	// returning the number of samples in the block. The return value is 0 if the read
+	// started at the end of stream, or a number in the range [1, 65536] for a valid block.
+	// All metadata blocks must be read before starting to read audio blocks.
+	public int readAudioBlock(int[][] samples, int off) throws IOException {
+		if (frameDec == null)
+			throw new IllegalStateException("Metadata blocks not fully consumed yet");
+		FrameMetadata frame = frameDec.readFrame(samples, off);
+		if (frame == null)
+			return 0;
+		else
+			return frame.blockSize;  // In the range [1, 65536]
+	}
+	
+	
+	// Closes the underlying input streams and discards object data.
+	// This decoder object becomes invalid for any method calls or field usages.
+	public void close() throws IOException {
+		if (bitInput != null) {
+			streamInfo = null;
+			frameDec = null;
+			bitInput.close();
+			fileInput.close();
+			bitInput = null;
+			fileInput = null;
+		}
 	}
 	
 }

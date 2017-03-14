@@ -24,10 +24,9 @@ package io.nayuki.flac.app;
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.util.Arrays;
 import io.nayuki.flac.common.StreamInfo;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.decode.FlacDecoder;
@@ -45,29 +44,39 @@ public final class DecodeFlacToWav {
 		File inFile  = new File(args[0]);
 		File outFile = new File(args[1]);
 		
-		// Read and decode the file
-		FlacDecoder dec;
-		try (InputStream in = new FileInputStream(inFile)) {
-			dec = new FlacDecoder(in);
+		StreamInfo streamInfo;
+		int[][] samples;
+		try (FlacDecoder dec = new FlacDecoder(inFile)) {
+			while (dec.readAndHandleMetadataBlock() != null);
+			streamInfo = dec.streamInfo;
+			if (streamInfo.sampleDepth % 8 != 0)
+				throw new UnsupportedOperationException("Only whole-byte sample depth supported");
+			
+			// Decode every frame
+			samples = new int[streamInfo.numChannels][(int)streamInfo.numSamples];
+			for (int off = 0; ;) {
+				int len = dec.readAudioBlock(samples, off);
+				if (len == 0)
+					break;
+				off += len;
+			}
 		}
 		
-		// Check decoder metadata
-		if (dec.hashCheck == 0)
+		// Check audio MD5 hash
+		byte[] expectHash = streamInfo.md5Hash;
+		if (Arrays.equals(expectHash, new byte[16]))
 			System.err.println("Warning: MD5 hash field was blank");
-		else if (dec.hashCheck == 2)
+		else if (!Arrays.equals(StreamInfo.getMd5Hash(samples, streamInfo.sampleDepth), expectHash))
 			throw new DataFormatException("MD5 hash check failed");
-		StreamInfo streamInfo = dec.streamInfo;
-		if (streamInfo.sampleDepth % 8 != 0)
-			throw new UnsupportedOperationException("Only whole-byte sample depth supported");
-		int bytesPerSample = streamInfo.sampleDepth / 8;
+		// Else the hash check passed
 		
 		// Start writing WAV output file
+		int bytesPerSample = streamInfo.sampleDepth / 8;
 		try (DataOutputStream out = new DataOutputStream(
 				new BufferedOutputStream(new FileOutputStream(outFile)))) {
 			DecodeFlacToWav.out = out;
 			
 			// Header chunk
-			int[][] samples = dec.samples;
 			int sampleDataLen = samples[0].length * streamInfo.numChannels * bytesPerSample;
 			out.writeInt(0x52494646);  // "RIFF"
 			writeLittleInt32(sampleDataLen + 36);
