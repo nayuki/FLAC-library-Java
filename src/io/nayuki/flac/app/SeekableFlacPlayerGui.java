@@ -96,15 +96,8 @@ public final class SeekableFlacPlayerGui {
 				int bytesPerSample = decoder.streamInfo.sampleDepth / 8;
 				int[][] samples = new int[8][65536];
 				long position = 0;
+				long startTime = line.getMicrosecondPosition();
 				while (true) {
-					final int sliderPos = (int)Math.round((double)position / decoder.streamInfo.numSamples * slider.getMaximum());
-					SwingUtilities.invokeLater(new Runnable() {
-						public void run() {
-							if (!slider.getValueIsAdjusting())
-								slider.setValue(sliderPos);
-						}
-					});
-					
 					double seekReq;
 					synchronized(lock) {
 						seekReq = seekRequest;
@@ -119,6 +112,18 @@ public final class SeekableFlacPlayerGui {
 						seekReq = -1;
 						blockSamples = decoder.seekAndReadAudioBlock(position, samples, 0);
 						line.flush();
+						startTime = line.getMicrosecondPosition() - Math.round(position * 1e6 / decoder.streamInfo.sampleRate);
+					}
+					{
+						double timePos = (line.getMicrosecondPosition() - startTime) / 1e6;
+						double songProportion = timePos * decoder.streamInfo.sampleRate / decoder.streamInfo.numSamples;
+						final int sliderPos = (int)Math.round(songProportion * slider.getMaximum());
+						SwingUtilities.invokeLater(new Runnable() {
+							public void run() {
+								if (!slider.getValueIsAdjusting())
+									slider.setValue(sliderPos);
+							}
+						});
 					}
 					if (blockSamples == 0) {
 						synchronized(lock) {
