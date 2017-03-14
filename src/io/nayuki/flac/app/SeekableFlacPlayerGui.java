@@ -47,6 +47,7 @@ import io.nayuki.flac.decode.FlacDecoder;
 public final class SeekableFlacPlayerGui {
 	
 	public static void main(String[] args) throws LineUnavailableException, IOException, InterruptedException {
+		// Handle command line arguments
 		if (args.length != 1) {
 			System.err.println("Usage: java SeekableFlacPlayerGui InFile.flac");
 			System.exit(1);
@@ -54,12 +55,14 @@ public final class SeekableFlacPlayerGui {
 		}
 		File inFile = new File(args[0]);
 		
+		// Process header metadata blocks
 		FlacDecoder decoder = new FlacDecoder(inFile);
 		while (decoder.readAndHandleMetadataBlock() != null);
 		StreamInfo streamInfo = decoder.streamInfo;
 		if (streamInfo.numSamples == 0)
 			throw new IllegalArgumentException("Unknown audio length");
 		
+		// Start Java sound output API
 		AudioFormat format = new AudioFormat(streamInfo.sampleRate,
 			streamInfo.sampleDepth, streamInfo.numChannels, true, false);
 		DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
@@ -67,6 +70,7 @@ public final class SeekableFlacPlayerGui {
 		line.open(format);
 		line.start();
 		
+		// Create GUI object, event handler, communication object
 		final double[] seekRequest = {-1};
 		AudioPlayerGui gui = new AudioPlayerGui("FLAC Player");
 		gui.listener = new AudioPlayerGui.Listener() {
@@ -81,6 +85,7 @@ public final class SeekableFlacPlayerGui {
 			}
 		};
 		
+		// Decode and write audio data, handle seek requests, wait for seek when end of stream reached
 		int bytesPerSample = streamInfo.sampleDepth / 8;
 		long startTime = line.getMicrosecondPosition();
 		
@@ -89,12 +94,14 @@ public final class SeekableFlacPlayerGui {
 		byte[] sampleBytes = new byte[65536 * streamInfo.numChannels * bytesPerSample];
 		while (true) {
 			
+			// Get and clear seek request, if any
 			double seekReq;
 			synchronized(seekRequest) {
 				seekReq = seekRequest[0];
 				seekRequest[0] = -1;
 			}
 			
+			// Decode next audio block, or seek and decode
 			int blockSamples;
 			if (seekReq == -1)
 				blockSamples = decoder.readAudioBlock(samples, 0);
@@ -105,11 +112,15 @@ public final class SeekableFlacPlayerGui {
 				line.flush();
 				startTime = line.getMicrosecondPosition() - Math.round(samplePos * 1e6 / streamInfo.sampleRate);
 			}
+			
+			// Set display position
 			{
 				double timePos = (line.getMicrosecondPosition() - startTime) / 1e6;
 				double songProportion = timePos * streamInfo.sampleRate / streamInfo.numSamples;
 				gui.setPosition(songProportion);
 			}
+			
+			// Wait when end of stream reached
 			if (blockSamples == 0) {
 				synchronized(seekRequest) {
 					while (seekRequest[0] == -1)
@@ -118,6 +129,7 @@ public final class SeekableFlacPlayerGui {
 				continue;
 			}
 			
+			// Convert samples to channel-interleaved bytes in little endian
 			for (int i = 0, k = 0; i < blockSamples; i++) {
 				for (int ch = 0; ch < streamInfo.numChannels; ch++) {
 					int val = samples[ch][i];
