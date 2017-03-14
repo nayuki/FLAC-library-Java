@@ -71,6 +71,9 @@ public final class FrameDecoder {
 	// decodes a frame and returns a new metadata object, or throws an appropriate exception. A frame
 	// may have up to 8 channels and 65536 samples, so the output arrays need to be sized appropriately.
 	public FrameMetadata readFrame(int[][] outSamples, int outOffset) throws IOException {
+		Objects.requireNonNull(in);
+		if (currentBlockSize != -1)
+			throw new IllegalStateException("Concurrent call");
 		// Parse the frame header to see if one is available
 		long startByte = in.getByteCount();
 		FrameMetadata meta = FrameMetadata.readFrame(in);
@@ -180,8 +183,12 @@ public final class FrameDecoder {
 	
 	// Reads one subframe from the bit input stream, decodes it, and writes to result[0 : currentBlockSize].
 	private void decodeSubframe(int sampleDepth, long[] result) throws IOException {
+		Objects.requireNonNull(result);
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
+		if (result.length < currentBlockSize)
+			throw new IllegalArgumentException();
+		
 		if (in.readUint(1) != 0)
 			throw new DataFormatException("Invalid padding bit");
 		int type = in.readUint(6);
@@ -224,12 +231,15 @@ public final class FrameDecoder {
 	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
 	private void decodeFixedPredictionSubframe(int predOrder, int sampleDepth, long[] result) throws IOException {
 		// Check arguments
+		Objects.requireNonNull(result);
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
 		if (predOrder < 0 || predOrder > 4)
 			throw new IllegalArgumentException();
 		if (predOrder > currentBlockSize)
 			throw new DataFormatException("Fixed prediction order exceeds block size");
+		if (result.length < currentBlockSize)
+			throw new IllegalArgumentException();
 		
 		// Read and compute various values
 		for (int i = 0; i < predOrder; i++)  // Unpredicted warm-up samples
@@ -250,12 +260,15 @@ public final class FrameDecoder {
 	// Reads from the input stream, performs computation, and writes to result[0 : currentBlockSize].
 	private void decodeLinearPredictiveCodingSubframe(int lpcOrder, int sampleDepth, long[] result) throws IOException {
 		// Check arguments
+		Objects.requireNonNull(result);
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
 		if (lpcOrder < 1 || lpcOrder > 32)
 			throw new IllegalArgumentException();
 		if (lpcOrder > currentBlockSize)
 			throw new DataFormatException("LPC order exceeds block size");
+		if (result.length < currentBlockSize)
+			throw new IllegalArgumentException();
 		
 		for (int i = 0; i < lpcOrder; i++)  // Unpredicted warm-up samples
 			result[i] = in.readSignedInt(sampleDepth);
@@ -291,6 +304,10 @@ public final class FrameDecoder {
 	// Therefore a residue that is larger than a signed int53 will necessarily not fit in the int33 result and is wrong.
 	private void restoreLpc(long[] result, int[] coefs, int sampleDepth, int shift) {
 		// Check and handle arguments
+		Objects.requireNonNull(result);
+		Objects.requireNonNull(coefs);
+		if (result.length < currentBlockSize)
+			throw new IllegalArgumentException();
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
 		if (shift < 0 || shift > 63)
@@ -316,8 +333,12 @@ public final class FrameDecoder {
 	// Reads metadata and Rice-coded numbers from the input stream, storing them in result[warmup : currentBlockSize].
 	// The stored numbers are guaranteed to fit in a signed int53 - see the explanation in restoreLpc().
 	private void readResiduals(int warmup, long[] result) throws IOException {
+		Objects.requireNonNull(result);
 		if (warmup < 0 || warmup > currentBlockSize)
 			throw new IllegalArgumentException();
+		if (result.length < currentBlockSize)
+			throw new IllegalArgumentException();
+		
 		int method = in.readUint(2);
 		if (method >= 2)
 			throw new DataFormatException("Reserved residual coding method");
