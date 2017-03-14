@@ -68,12 +68,10 @@ public final class ShowFlacFileStats {
 				last = in.readUint(1) != 0;
 				int type = in.readUint(7);
 				int length = in.readUint(24);
+				byte[] data = new byte[length];
+				in.readFully(data);
 				if (type == 0)
-					streamInfo = new StreamInfo(in);
-				else {
-					for (int i = 0; i < length; i++)
-						in.readUint(8);
-				}
+					streamInfo = new StreamInfo(data);
 			}
 			
 			// Decode every frame
