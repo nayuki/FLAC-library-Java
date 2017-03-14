@@ -25,6 +25,8 @@ import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import javax.sound.sampled.AudioFormat;
@@ -43,14 +45,6 @@ import io.nayuki.flac.decode.FlacDecoder;
 
 public final class SeekableFlacPlayerGui {
 	
-	private static FlacDecoder decoder;
-	private static SourceDataLine line;
-	private static JSlider slider;
-	private static BasicSliderUI sliderUi;
-	private static double seekRequest;
-	private static Object lock;
-	
-	
 	public static void main(String[] args) throws LineUnavailableException, IOException, InterruptedException {
 		if (args.length != 1) {
 			System.err.println("Usage: java SeekableFlacPlayerGui InFile.flac");
@@ -58,7 +52,7 @@ public final class SeekableFlacPlayerGui {
 			return;
 		}
 		
-		decoder = new FlacDecoder(new File(args[0]));
+		FlacDecoder decoder = new FlacDecoder(new File(args[0]));
 		while (decoder.readAndHandleMetadataBlock() != null);
 		if (decoder.streamInfo.numSamples == 0)
 			throw new IllegalArgumentException("Unknown audio length");
@@ -66,41 +60,25 @@ public final class SeekableFlacPlayerGui {
 		AudioFormat format = new AudioFormat(decoder.streamInfo.sampleRate,
 			decoder.streamInfo.sampleDepth, decoder.streamInfo.numChannels, true, false);
 		DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
-		line = (SourceDataLine)AudioSystem.getLine(info);
+		SourceDataLine line = (SourceDataLine)AudioSystem.getLine(info);
 		line.open(format);
 		line.start();
 		
-		lock = new Object();
-		seekRequest = -1;
+		final Object lock = new Object();
+		final double[] seekRequest = {-1};
 		
-		slider = new JSlider(SwingConstants.HORIZONTAL, 0, 10000, 0);
-		sliderUi = new MetalSliderUI();
-		slider.setUI(sliderUi);
-		slider.setPreferredSize(new Dimension(800, 50));
-		slider.addMouseListener(new MouseAdapter() {
-			public void mousePressed(MouseEvent ev) {
-				moveSlider(ev);
-			}
-			public void mouseReleased(MouseEvent ev) {
-				moveSlider(ev);
+		AudioPlayerGui gui = new AudioPlayerGui("FLAC Player");
+		gui.listener = new AudioPlayerGui.Listener() {
+			public void seekRequested(double t) {
 				synchronized(lock) {
-					seekRequest = (double)slider.getValue() / slider.getMaximum();
+					seekRequest[0] = t;
 					lock.notify();
 				}
 			}
-		});
-		slider.addMouseMotionListener(new MouseMotionAdapter() {
-			public void mouseDragged(MouseEvent ev) {
-				moveSlider(ev);
+			public void windowClosing() {
+				System.exit(0);
 			}
-		});
-		
-		JFrame frame = new JFrame("FLAC Player");
-		frame.add(slider);
-		frame.pack();
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setResizable(false);
-		frame.setVisible(true);
+		};
 		
 		int bytesPerSample = decoder.streamInfo.sampleDepth / 8;
 		int[][] samples = new int[8][65536];
@@ -109,8 +87,8 @@ public final class SeekableFlacPlayerGui {
 		while (true) {
 			double seekReq;
 			synchronized(lock) {
-				seekReq = seekRequest;
-				seekRequest = -1;
+				seekReq = seekRequest[0];
+				seekRequest[0] = -1;
 			}
 			
 			int blockSamples;
@@ -126,17 +104,11 @@ public final class SeekableFlacPlayerGui {
 			{
 				double timePos = (line.getMicrosecondPosition() - startTime) / 1e6;
 				double songProportion = timePos * decoder.streamInfo.sampleRate / decoder.streamInfo.numSamples;
-				final int sliderPos = (int)Math.round(songProportion * slider.getMaximum());
-				SwingUtilities.invokeLater(new Runnable() {
-					public void run() {
-						if (!slider.getValueIsAdjusting())
-							slider.setValue(sliderPos);
-					}
-				});
+				gui.setPosition(songProportion);
 			}
 			if (blockSamples == 0) {
 				synchronized(lock) {
-					while (seekRequest == -1)
+					while (seekRequest[0] == -1)
 						lock.wait();
 				}
 				continue;
@@ -156,8 +128,83 @@ public final class SeekableFlacPlayerGui {
 	}
 	
 	
-	private static void moveSlider(MouseEvent ev) {
-		slider.setValue(sliderUi.valueForXPosition(ev.getX()));
+	
+	/*---- User interface classes ----*/
+	
+	private static final class AudioPlayerGui {
+		
+		/*-- Fields --*/
+		
+		public Listener listener;
+		private JSlider slider;
+		private BasicSliderUI sliderUi;
+		
+		
+		/*-- Constructor --*/
+		
+		public AudioPlayerGui(String windowTitle) {
+			slider = new JSlider(SwingConstants.HORIZONTAL, 0, 10000, 0);
+			sliderUi = new MetalSliderUI();
+			slider.setUI(sliderUi);
+			slider.setPreferredSize(new Dimension(800, 50));
+			slider.addMouseListener(new MouseAdapter() {
+				public void mousePressed(MouseEvent ev) {
+					moveSlider(ev);
+				}
+				public void mouseReleased(MouseEvent ev) {
+					moveSlider(ev);
+					listener.seekRequested((double)slider.getValue() / slider.getMaximum());
+				}
+			});
+			slider.addMouseMotionListener(new MouseMotionAdapter() {
+				public void mouseDragged(MouseEvent ev) {
+					moveSlider(ev);
+				}
+			});
+			
+			JFrame frame = new JFrame(windowTitle);
+			frame.add(slider);
+			frame.pack();
+			frame.addWindowListener(new WindowAdapter() {
+				public void windowClosing(WindowEvent ev) {
+					listener.windowClosing();
+				}
+			});
+			frame.setResizable(false);
+			frame.setVisible(true);
+		}
+		
+		
+		/*-- Methods --*/
+		
+		public void setPosition(double t) {
+			if (Double.isNaN(t))
+				return;
+			final double val = Math.max(Math.min(t, 1), 0);
+			SwingUtilities.invokeLater(new Runnable() {
+				public void run() {
+					if (!slider.getValueIsAdjusting())
+						slider.setValue((int)Math.round(val * slider.getMaximum()));
+				}
+			});
+		}
+		
+		
+		private void moveSlider(MouseEvent ev) {
+			slider.setValue(sliderUi.valueForXPosition(ev.getX()));
+		}
+		
+		
+		/*-- Helper interface --*/
+		
+		public interface Listener {
+			
+			public void seekRequested(double t);  // 0.0 <= t <= 1.0
+			
+			public void windowClosing();
+			
+		}
+		
 	}
 	
 }
