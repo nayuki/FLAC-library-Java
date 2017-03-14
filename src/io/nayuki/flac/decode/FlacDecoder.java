@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Objects;
 import io.nayuki.flac.common.FrameMetadata;
+import io.nayuki.flac.common.SeekTable;
 import io.nayuki.flac.common.StreamInfo;
 
 
@@ -34,6 +35,7 @@ public final class FlacDecoder implements AutoCloseable {
 	/*---- Fields ----*/
 	
 	public StreamInfo streamInfo;
+	public SeekTable seekTable;
 	
 	private RandomAccessFileInputStream fileInput;
 	private BitInputStream bitInput;
@@ -88,6 +90,11 @@ public final class FlacDecoder implements AutoCloseable {
 		} else {
 			if (streamInfo == null)
 				throw new DataFormatException("Expected stream info metadata block");
+			if (type == 3) {
+				if (seekTable != null)
+					throw new DataFormatException("Duplicate seek table metadata block");
+				seekTable = new SeekTable(data);
+			}
 		}
 		
 		if (last) {
@@ -118,6 +125,7 @@ public final class FlacDecoder implements AutoCloseable {
 	public void close() throws IOException {
 		if (bitInput != null) {
 			streamInfo = null;
+			seekTable = null;
 			frameDec = null;
 			bitInput.close();
 			fileInput.close();
