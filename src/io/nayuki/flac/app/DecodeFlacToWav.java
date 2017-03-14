@@ -32,6 +32,19 @@ import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.decode.FlacDecoder;
 
 
+/* 
+ * Decodes a FLAC file to an uncompressed PCM WAV file. Overwrites output file if already exists.
+ * Runs silently if successful, otherwise prints error messages to standard error.
+ * 
+ * Usage: java DecodeFlacToWav InFile.flac OutFile.wav
+ * 
+ * Requirements on the FLAC file:
+ * - Sample depth is 8, 16, 24, or 32 bits (not 4, 17, 23, etc.)
+ * - Contains no ID3v1 or ID3v2 tags, or other data unrecognized by the FLAC format
+ * - Correct total number of samples (not zero) is stored in stream info block
+ * - Every frame has a correct header, subframes do not overflow the sample depth,
+ *   and other strict checks enforced by this decoder library
+ */
 public final class DecodeFlacToWav {
 	
 	public static void main(String[] args) throws IOException {
@@ -44,15 +57,18 @@ public final class DecodeFlacToWav {
 		File inFile  = new File(args[0]);
 		File outFile = new File(args[1]);
 		
+		// Decode input FLAC file
 		StreamInfo streamInfo;
 		int[][] samples;
 		try (FlacDecoder dec = new FlacDecoder(inFile)) {
+			
+			// Handle metadata header blocks
 			while (dec.readAndHandleMetadataBlock() != null);
 			streamInfo = dec.streamInfo;
 			if (streamInfo.sampleDepth % 8 != 0)
 				throw new UnsupportedOperationException("Only whole-byte sample depth supported");
 			
-			// Decode every frame
+			// Decode every block
 			samples = new int[streamInfo.numChannels][(int)streamInfo.numSamples];
 			for (int off = 0; ;) {
 				int len = dec.readAudioBlock(samples, off);
@@ -110,13 +126,13 @@ public final class DecodeFlacToWav {
 	}
 	
 	
-	private static DataOutputStream out;
+	// Helper members for writing WAV files
 	
+	private static DataOutputStream out;
 	
 	private static void writeLittleInt16(int x) throws IOException {
 		out.writeShort(Integer.reverseBytes(x) >>> 16);
 	}
-	
 	
 	private static void writeLittleInt32(int x) throws IOException {
 		out.writeInt(Integer.reverseBytes(x));

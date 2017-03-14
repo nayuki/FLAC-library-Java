@@ -44,9 +44,20 @@ import io.nayuki.flac.common.StreamInfo;
 import io.nayuki.flac.decode.FlacDecoder;
 
 
+/* 
+ * Plays a single FLAC file to the system audio output, showing a GUI window with a seek bar.
+ * The file to play is specified as a command line argument. The seek bar is responsible for both
+ * displaying the current playback position, and allowing the user to click to seek to new positions.
+ * 
+ * Usage: java SeekableFlacPlayerGui InFile.flac
+ */
 public final class SeekableFlacPlayerGui {
 	
-	public static void main(String[] args) throws LineUnavailableException, IOException, InterruptedException {
+	public static void main(String[] args) throws
+		LineUnavailableException, IOException, InterruptedException {
+		
+		/*-- Initialization code --*/
+		
 		// Handle command line arguments
 		if (args.length != 1) {
 			System.err.println("Usage: java SeekableFlacPlayerGui InFile.flac");
@@ -84,6 +95,8 @@ public final class SeekableFlacPlayerGui {
 				System.exit(0);
 			}
 		};
+		
+		/*-- Audio player loop --*/
 		
 		// Decode and write audio data, handle seek requests, wait for seek when end of stream reached
 		int bytesPerSample = streamInfo.sampleDepth / 8;
@@ -155,6 +168,7 @@ public final class SeekableFlacPlayerGui {
 		/*-- Constructor --*/
 		
 		public AudioPlayerGui(String windowTitle) {
+			// Create and configure slider
 			slider = new JSlider(SwingConstants.HORIZONTAL, 0, 10000, 0);
 			sliderUi = new MetalSliderUI();
 			slider.setUI(sliderUi);
@@ -174,6 +188,7 @@ public final class SeekableFlacPlayerGui {
 				}
 			});
 			
+			// Create and configure frame (window)
 			JFrame frame = new JFrame(windowTitle);
 			frame.add(slider);
 			frame.pack();
