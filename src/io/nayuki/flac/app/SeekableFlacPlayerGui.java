@@ -82,10 +82,14 @@ public final class SeekableFlacPlayerGui {
 		};
 		
 		int bytesPerSample = streamInfo.sampleDepth / 8;
-		int[][] samples = new int[8][65536];
 		long position = 0;
 		long startTime = line.getMicrosecondPosition();
+		
+		// Buffers for data created and discarded within each loop iteration, but allocated outside the loop
+		int[][] samples = new int[streamInfo.numChannels][65536];
+		byte[] sampleBytes = new byte[65536 * streamInfo.numChannels * bytesPerSample];
 		while (true) {
+			
 			double seekReq;
 			synchronized(seekRequest) {
 				seekReq = seekRequest[0];
@@ -115,15 +119,14 @@ public final class SeekableFlacPlayerGui {
 				continue;
 			}
 			
-			byte[] buf = new byte[blockSamples * streamInfo.numChannels * bytesPerSample];
 			for (int i = 0, k = 0; i < blockSamples; i++) {
 				for (int ch = 0; ch < streamInfo.numChannels; ch++) {
 					int val = samples[ch][i];
 					for (int j = 0; j < bytesPerSample; j++, k++)
-						buf[k] = (byte)(val >>> (j << 3));
+						sampleBytes[k] = (byte)(val >>> (j << 3));
 				}
 			}
-			line.write(buf, 0, buf.length);
+			line.write(sampleBytes, 0, blockSamples * streamInfo.numChannels * bytesPerSample);
 			position += blockSamples;
 		}
 	}
