@@ -26,7 +26,8 @@ public final class SeekableFlacPlayerGui {
 	private static SourceDataLine line;
 	private static JSlider slider;
 	private static BasicSliderUI sliderUi;
-	private static volatile double seekRequest;
+	private static double seekRequest;
+	private static Object lock;
 	
 	
 	public static void main(String[] args) throws LineUnavailableException, IOException {
@@ -48,7 +49,9 @@ public final class SeekableFlacPlayerGui {
 		line.open(format);
 		line.start();
 		
+		lock = new Object();
 		seekRequest = -1;
+		
 		slider = new JSlider(SwingConstants.HORIZONTAL, 0, 10000, 0);
 		sliderUi = new MetalSliderUI();
 		slider.setUI(sliderUi);
@@ -59,7 +62,9 @@ public final class SeekableFlacPlayerGui {
 			}
 			public void mouseReleased(MouseEvent ev) {
 				moveSlider(ev);
-				seekRequest = (double)slider.getValue() / slider.getMaximum();
+				synchronized(lock) {
+					seekRequest = (double)slider.getValue() / slider.getMaximum();
+				}
 			}
 		});
 		slider.addMouseMotionListener(new MouseMotionAdapter() {
@@ -99,12 +104,18 @@ public final class SeekableFlacPlayerGui {
 						}
 					});
 					
+					double seekReq;
+					synchronized(lock) {
+						seekReq = seekRequest;
+						seekRequest = -1;
+					}
+					
 					int blockSamples;
-					if (seekRequest == -1)
+					if (seekReq == -1)
 						blockSamples = decoder.readAudioBlock(samples, 0);
 					else {
-						position = Math.round(seekRequest * decoder.streamInfo.numSamples);
-						seekRequest = -1;
+						position = Math.round(seekReq * decoder.streamInfo.numSamples);
+						seekReq = -1;
 						blockSamples = decoder.seekAndReadAudioBlock(position, samples, 0);
 						line.flush();
 					}
