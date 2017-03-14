@@ -67,15 +67,13 @@ public final class SeekableFlacPlayerGui {
 		line.open(format);
 		line.start();
 		
-		final Object lock = new Object();
 		final double[] seekRequest = {-1};
-		
 		AudioPlayerGui gui = new AudioPlayerGui("FLAC Player");
 		gui.listener = new AudioPlayerGui.Listener() {
 			public void seekRequested(double t) {
-				synchronized(lock) {
+				synchronized(seekRequest) {
 					seekRequest[0] = t;
-					lock.notify();
+					seekRequest.notify();
 				}
 			}
 			public void windowClosing() {
@@ -89,7 +87,7 @@ public final class SeekableFlacPlayerGui {
 		long startTime = line.getMicrosecondPosition();
 		while (true) {
 			double seekReq;
-			synchronized(lock) {
+			synchronized(seekRequest) {
 				seekReq = seekRequest[0];
 				seekRequest[0] = -1;
 			}
@@ -110,9 +108,9 @@ public final class SeekableFlacPlayerGui {
 				gui.setPosition(songProportion);
 			}
 			if (blockSamples == 0) {
-				synchronized(lock) {
+				synchronized(seekRequest) {
 					while (seekRequest[0] == -1)
-						lock.wait();
+						seekRequest.wait();
 				}
 				continue;
 			}
