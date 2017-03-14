@@ -51,7 +51,7 @@ public final class SeekableFlacPlayerGui {
 	private static Object lock;
 	
 	
-	public static void main(String[] args) throws LineUnavailableException, IOException {
+	public static void main(String[] args) throws LineUnavailableException, IOException, InterruptedException {
 		if (args.length != 1) {
 			System.err.println("Usage: java SeekableFlacPlayerGui InFile.flac");
 			System.exit(1);
@@ -102,73 +102,62 @@ public final class SeekableFlacPlayerGui {
 		frame.setResizable(false);
 		frame.setVisible(true);
 		
-		new PlayerThread().start();
+		int bytesPerSample = decoder.streamInfo.sampleDepth / 8;
+		int[][] samples = new int[8][65536];
+		long position = 0;
+		long startTime = line.getMicrosecondPosition();
+		while (true) {
+			double seekReq;
+			synchronized(lock) {
+				seekReq = seekRequest;
+				seekRequest = -1;
+			}
+			
+			int blockSamples;
+			if (seekReq == -1)
+				blockSamples = decoder.readAudioBlock(samples, 0);
+			else {
+				position = Math.round(seekReq * decoder.streamInfo.numSamples);
+				seekReq = -1;
+				blockSamples = decoder.seekAndReadAudioBlock(position, samples, 0);
+				line.flush();
+				startTime = line.getMicrosecondPosition() - Math.round(position * 1e6 / decoder.streamInfo.sampleRate);
+			}
+			{
+				double timePos = (line.getMicrosecondPosition() - startTime) / 1e6;
+				double songProportion = timePos * decoder.streamInfo.sampleRate / decoder.streamInfo.numSamples;
+				final int sliderPos = (int)Math.round(songProportion * slider.getMaximum());
+				SwingUtilities.invokeLater(new Runnable() {
+					public void run() {
+						if (!slider.getValueIsAdjusting())
+							slider.setValue(sliderPos);
+					}
+				});
+			}
+			if (blockSamples == 0) {
+				synchronized(lock) {
+					while (seekRequest == -1)
+						lock.wait();
+				}
+				continue;
+			}
+			
+			byte[] buf = new byte[blockSamples * decoder.streamInfo.numChannels * bytesPerSample];
+			for (int i = 0, k = 0; i < blockSamples; i++) {
+				for (int ch = 0; ch < decoder.streamInfo.numChannels; ch++) {
+					int val = samples[ch][i];
+					for (int j = 0; j < bytesPerSample; j++, k++)
+						buf[k] = (byte)(val >>> (j << 3));
+				}
+			}
+			line.write(buf, 0, buf.length);
+			position += blockSamples;
+		}
 	}
 	
 	
 	private static void moveSlider(MouseEvent ev) {
 		slider.setValue(sliderUi.valueForXPosition(ev.getX()));
-	}
-	
-	
-	private static final class PlayerThread extends Thread {
-		public void run() {
-			try {
-				int bytesPerSample = decoder.streamInfo.sampleDepth / 8;
-				int[][] samples = new int[8][65536];
-				long position = 0;
-				long startTime = line.getMicrosecondPosition();
-				while (true) {
-					double seekReq;
-					synchronized(lock) {
-						seekReq = seekRequest;
-						seekRequest = -1;
-					}
-					
-					int blockSamples;
-					if (seekReq == -1)
-						blockSamples = decoder.readAudioBlock(samples, 0);
-					else {
-						position = Math.round(seekReq * decoder.streamInfo.numSamples);
-						seekReq = -1;
-						blockSamples = decoder.seekAndReadAudioBlock(position, samples, 0);
-						line.flush();
-						startTime = line.getMicrosecondPosition() - Math.round(position * 1e6 / decoder.streamInfo.sampleRate);
-					}
-					{
-						double timePos = (line.getMicrosecondPosition() - startTime) / 1e6;
-						double songProportion = timePos * decoder.streamInfo.sampleRate / decoder.streamInfo.numSamples;
-						final int sliderPos = (int)Math.round(songProportion * slider.getMaximum());
-						SwingUtilities.invokeLater(new Runnable() {
-							public void run() {
-								if (!slider.getValueIsAdjusting())
-									slider.setValue(sliderPos);
-							}
-						});
-					}
-					if (blockSamples == 0) {
-						synchronized(lock) {
-							while (seekRequest == -1)
-								lock.wait();
-						}
-						continue;
-					}
-					
-					byte[] buf = new byte[blockSamples * decoder.streamInfo.numChannels * bytesPerSample];
-					for (int i = 0, k = 0; i < blockSamples; i++) {
-						for (int ch = 0; ch < decoder.streamInfo.numChannels; ch++) {
-							int val = samples[ch][i];
-							for (int j = 0; j < bytesPerSample; j++, k++)
-								buf[k] = (byte)(val >>> (j << 3));
-						}
-					}
-					line.write(buf, 0, buf.length);
-					position += blockSamples;
-				}
-			} catch (IOException|InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
 	}
 	
 }
