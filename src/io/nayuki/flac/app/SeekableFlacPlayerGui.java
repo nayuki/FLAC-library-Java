@@ -12,6 +12,8 @@ import javax.swing.JFrame;
 import javax.swing.JSlider;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import io.nayuki.flac.decode.FlacDecoder;
 
 
@@ -20,6 +22,8 @@ public final class SeekableFlacPlayerGui {
 	private static FlacDecoder decoder;
 	private static SourceDataLine line;
 	private static JSlider slider;
+	private static boolean sliderInternalSetValue;
+	private static volatile double seekRequest;
 	
 	
 	public static void main(String[] args) throws LineUnavailableException, IOException {
@@ -41,8 +45,15 @@ public final class SeekableFlacPlayerGui {
 		line.open(format);
 		line.start();
 		
+		seekRequest = -1;
 		slider = new JSlider(SwingConstants.HORIZONTAL, 0, 10000, 0);
 		slider.setPreferredSize(new Dimension(800, 50));
+		slider.addChangeListener(new ChangeListener() {
+			public void stateChanged(ChangeEvent e) {
+				if (!sliderInternalSetValue && !slider.getValueIsAdjusting())
+					seekRequest = (double)slider.getValue() / slider.getMaximum();
+			}
+		});
 		
 		JFrame frame = new JFrame("FLAC Player");
 		frame.add(slider);
@@ -65,11 +76,23 @@ public final class SeekableFlacPlayerGui {
 					final int sliderPos = (int)Math.round((double)position / decoder.streamInfo.numSamples * slider.getMaximum());
 					SwingUtilities.invokeLater(new Runnable() {
 						public void run() {
-							slider.setValue(sliderPos);
+							if (!slider.getValueIsAdjusting()) {
+								sliderInternalSetValue = true;
+								slider.setValue(sliderPos);
+								sliderInternalSetValue = false;
+							}
 						}
 					});
 					
-					int blockSamples = decoder.readAudioBlock(samples, 0);
+					int blockSamples;
+					if (seekRequest == -1)
+						blockSamples = decoder.readAudioBlock(samples, 0);
+					else {
+						position = Math.round(seekRequest * decoder.streamInfo.numSamples);
+						seekRequest = -1;
+						blockSamples = decoder.seekAndReadAudioBlock(position, samples, 0);
+						line.flush();
+					}
 					if (blockSamples == 0)
 						break;
 					
