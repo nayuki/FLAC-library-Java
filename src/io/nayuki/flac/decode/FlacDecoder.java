@@ -98,7 +98,7 @@ public final class FlacDecoder implements AutoCloseable {
 		}
 		
 		if (last) {
-			metadataEndPos = fileInput.getPosition();
+			metadataEndPos = bitInput.getByteCount();
 			frameDec = new FrameDecoder(bitInput);
 		}
 		return new Object[]{type, data};
@@ -117,6 +117,41 @@ public final class FlacDecoder implements AutoCloseable {
 			return 0;
 		else
 			return frame.blockSize;  // In the range [1, 65536]
+	}
+	
+	
+	public int seekAndReadAudioBlock(long pos, int[][] samples, int off) throws IOException {
+		if (frameDec == null)
+			throw new IllegalStateException("Metadata blocks not fully consumed yet");
+		
+		long curPos = 0;
+		long filePos = 0;
+		if (seekTable != null) {
+			for (SeekTable.SeekPoint p : seekTable.points) {
+				if (p.sampleOffset <= pos) {
+					curPos = p.sampleOffset;
+					filePos = p.fileOffset;
+				} else
+					break;
+			}
+		}
+		fileInput.seek(filePos + metadataEndPos);
+		bitInput = new BitInputStream(fileInput);
+		frameDec = new FrameDecoder(bitInput);
+		
+		int[][] smpl = new int[streamInfo.numChannels][65536];
+		while (true) {
+			FrameMetadata frame = frameDec.readFrame(smpl, 0);
+			if (frame == null)
+				return 0;
+			long nextPos = curPos + frame.blockSize;
+			if (nextPos > pos) {
+				for (int ch = 0; ch < smpl.length; ch++)
+					System.arraycopy(smpl[ch], (int)(pos - curPos), samples[ch], off, (int)(nextPos - pos));
+				return (int)(nextPos - pos);
+			}
+			curPos = nextPos;
+		}
 	}
 	
 	
