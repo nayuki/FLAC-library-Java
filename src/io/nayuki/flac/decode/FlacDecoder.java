@@ -126,8 +126,7 @@ public final class FlacDecoder implements AutoCloseable {
 		
 		long[] sampleAndFilePos = getBestSeekPoint(pos);
 		fileInput.seek(sampleAndFilePos[1] + metadataEndPos);
-		bitInput = new BitInputStream(fileInput);
-		frameDec = new FrameDecoder(bitInput);
+		bitInput.flush();
 		
 		long curPos = sampleAndFilePos[0];
 		int[][] smpl = new int[streamInfo.numChannels][65536];

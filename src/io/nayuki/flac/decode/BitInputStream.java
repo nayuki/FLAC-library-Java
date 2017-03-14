@@ -24,6 +24,7 @@ package io.nayuki.flac.decode;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Objects;
 
 
@@ -63,18 +64,8 @@ public final class BitInputStream implements AutoCloseable {
 	public BitInputStream(InputStream in) {
 		Objects.requireNonNull(in);
 		this.in = in;
-		byteCount = 0;
-		
 		byteBuffer = new byte[4096];
-		byteBufferLen = 0;
-		byteBufferIndex = 0;
-		
-		bitBuffer = 0;
-		bitBufferLen = 0;
-		
-		crc8  = 0;
-		crc16 = 0;
-		crcStartIndex = 0;
+		flush();
 	}
 	
 	
@@ -302,6 +293,22 @@ public final class BitInputStream implements AutoCloseable {
 	public long getByteCount() {
 		updateCrcs(bitBufferLen / 8);
 		return byteCount;
+	}
+	
+	
+	// Discards all buffered data so that the next read loads new data from the underlying stream.
+	// This method only makes sense if the underlying stream is seekable or resettable.
+	// This also resets the CRC calculation and number of bytes read.
+	public void flush() {
+		byteCount = 0;
+		Arrays.fill(byteBuffer, (byte)0);  // Defensive clearing, should have no visible effect outside of debugging
+		byteBufferLen = 0;
+		byteBufferIndex = 0;
+		bitBuffer = 0;  // Defensive clearing, should have no visible effect outside of debugging
+		bitBufferLen = 0;
+		crc8  = 0;
+		crc16 = 0;
+		crcStartIndex = 0;
 	}
 	
 	
