@@ -130,14 +130,15 @@ public final class SeekableFlacPlayerGui {
 			}
 			
 			// Convert samples to channel-interleaved bytes in little endian
-			for (int i = 0, k = 0; i < blockSamples; i++) {
+			int sampleBytesLen = 0;
+			for (int i = 0; i < blockSamples; i++) {
 				for (int ch = 0; ch < streamInfo.numChannels; ch++) {
 					int val = samples[ch][i];
-					for (int j = 0; j < bytesPerSample; j++, k++)
-						sampleBytes[k] = (byte)(val >>> (j << 3));
+					for (int j = 0; j < bytesPerSample; j++, sampleBytesLen++)
+						sampleBytes[sampleBytesLen] = (byte)(val >>> (j << 3));
 				}
 			}
-			line.write(sampleBytes, 0, blockSamples * streamInfo.numChannels * bytesPerSample);
+			line.write(sampleBytes, 0, sampleBytesLen);
 		}
 	}
 	
