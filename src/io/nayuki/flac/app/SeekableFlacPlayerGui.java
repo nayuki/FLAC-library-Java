@@ -64,6 +64,7 @@ public final class SeekableFlacPlayerGui {
 				moveSlider(ev);
 				synchronized(lock) {
 					seekRequest = (double)slider.getValue() / slider.getMaximum();
+					lock.notify();
 				}
 			}
 		});
@@ -119,8 +120,13 @@ public final class SeekableFlacPlayerGui {
 						blockSamples = decoder.seekAndReadAudioBlock(position, samples, 0);
 						line.flush();
 					}
-					if (blockSamples == 0)
-						break;
+					if (blockSamples == 0) {
+						synchronized(lock) {
+							while (seekRequest == -1)
+								lock.wait();
+						}
+						continue;
+					}
 					
 					byte[] buf = new byte[blockSamples * decoder.streamInfo.numChannels * bytesPerSample];
 					for (int i = 0, k = 0; i < blockSamples; i++) {
@@ -133,7 +139,7 @@ public final class SeekableFlacPlayerGui {
 					line.write(buf, 0, buf.length);
 					position += blockSamples;
 				}
-			} catch (IOException e) {
+			} catch (IOException|InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
