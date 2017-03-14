@@ -57,6 +57,11 @@ public final class RandomAccessFileInputStream extends InputStream {
 	}
 	
 	
+	public long getLength() throws IOException {
+		return in.length();
+	}
+	
+	
 	public void seek(long pos) throws IOException {
 		in.seek(pos);
 	}

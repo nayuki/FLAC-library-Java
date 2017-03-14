@@ -125,6 +125,10 @@ public final class FlacDecoder implements AutoCloseable {
 			throw new IllegalStateException("Metadata blocks not fully consumed yet");
 		
 		long[] sampleAndFilePos = getBestSeekPoint(pos);
+		if (pos - sampleAndFilePos[0] > 300000) {
+			sampleAndFilePos = seekBySyncAndDecode(pos);
+			sampleAndFilePos[1] -= metadataEndPos;
+		}
 		fileInput.seek(sampleAndFilePos[1] + metadataEndPos);
 		bitInput.flush();
 		
@@ -158,6 +162,80 @@ public final class FlacDecoder implements AutoCloseable {
 			}
 		}
 		return new long[]{samplePos, filePos};
+	}
+	
+	
+	// Returns a pair (sample offset, file position) such sampleOffset <= pos and abs(sampleOffset - pos)
+	// is a relatively small number compared to the total number of samples in the audio file.
+	// This method works by skipping to arbitrary places in the file, finding a sync sequence,
+	// decoding the frame header, examining the audio position stored in the frame, and possibly deciding
+	// to skip to other places and retrying. This changes the state of the input streams as a side effect.
+	// There is a small chance of finding a valid-looking frame header but causing erroneous decoding later.
+	private long[] seekBySyncAndDecode(long pos) throws IOException {
+		long start = metadataEndPos;
+		long end = fileInput.getLength();
+		while (end - start > 100000) {  // Binary search
+			long mid = (start + end) >>> 1;
+			long[] offsets = getNextFrameOffsets(mid);
+			if (offsets == null || offsets[0] > pos)
+				end = mid;
+			else
+				start = offsets[1];
+		}
+		return getNextFrameOffsets(start);
+	}
+	
+	
+	// Returns a pair (sample offset, file position) describing the next frame found starting
+	// at the given file offset, or null if no frame is found before the end of stream.
+	// This changes the state of the input streams as a side effect.
+	private long[] getNextFrameOffsets(long filePos) throws IOException {
+		if (filePos < metadataEndPos || filePos > fileInput.getLength())
+			throw new IllegalArgumentException("File position out of bounds");
+		
+		// Repeatedly search for a sync
+		while (true) {
+			fileInput.seek(filePos);
+			bitInput.flush();
+			
+			// Finite state machine to match the 2-byte sync sequence
+			int state = 0;
+			while (true) {
+				int b = bitInput.readByte();
+				if (b == -1)
+					return null;
+				else if (b == 0xFF)
+					state = 1;
+				else if (state == 1 && (b & 0xFE) == 0xF8)
+					break;
+				else
+					state = 0;
+			}
+			
+			// Sync found, rewind 2 bytes, try to decode frame header
+			filePos += bitInput.getByteCount() - 2;
+			fileInput.seek(filePos);
+			bitInput.flush();
+			try {
+				FrameMetadata frame = FrameMetadata.readFrame(bitInput);
+				return new long[]{getSampleOffset(frame), filePos};
+			} catch (DataFormatException e) {
+				// Advance past the sync and search again
+				filePos += 2;
+			}
+		}
+	}
+	
+	
+	// Calculates the sample offset of the given frame, automatically handling the constant-block-size case.
+	private long getSampleOffset(FrameMetadata frame) {
+		Objects.requireNonNull(frame);
+		if (frame.sampleOffset != -1)
+			return frame.sampleOffset;
+		else if (frame.frameIndex != -1)
+			return frame.frameIndex * streamInfo.maxBlockSize;
+		else
+			throw new AssertionError();
 	}
 	
 	
