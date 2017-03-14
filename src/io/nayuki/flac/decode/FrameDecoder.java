@@ -27,19 +27,26 @@ import java.util.Objects;
 import io.nayuki.flac.common.FrameMetadata;
 
 
-// Decodes a FLAC frame from an input stream into raw audio samples. Note that these objects are
-// stateful and not thread-safe, because of the bit input stream field, private temporary arrays, etc.
+/* 
+ * Decodes a FLAC frame from an input stream into raw audio samples. Note that these objects are
+ * stateful and not thread-safe, due to the bit input stream field, private temporary arrays, etc.
+ * This class only uses memory and has no native resources; however, the
+ * code that uses this class is responsible for cleaning up the input stream.
+ */
 public final class FrameDecoder {
 	
 	/*---- Fields ----*/
 	
-	// Can be changed when there is no active call of readFrame(). Must be not null when readFrame() is called.
+	// Can be changed when there is no active call of readFrame().
+	// Must be not null when readFrame() is called.
 	public BitInputStream in;
 	
-	// Temporary arrays to hold two decoded audio channels. The maximum possible block size is either
-	// 65536 from the frame header logic, or 65535 from a strict reading of the FLAC specification.
-	// Two buffers are needed due to stereo techniques like mid-side processing, but not more than
-	// two buffers because all other multi-channel audio is processed independently per channel.
+	// Temporary arrays to hold two decoded audio channels (a.k.a. subframes). They have int64 range
+	// because the worst case of 32-bit audio encoded in stereo side mode uses signed 33 bits.
+	// The maximum possible block size is either 65536 samples per channel from the
+	// frame header logic, or 65535 from a strict reading of the FLAC specification.
+	// Two buffers are needed for stereo coding modes, but not more than two because
+	// all other multi-channel audio is processed independently per channel.
 	private long[] temp0;
 	private long[] temp1;
 	
@@ -53,6 +60,7 @@ public final class FrameDecoder {
 	/*---- Constructors ----*/
 	
 	// Constructs a frame decoder that initially uses the given stream.
+	// The caller is responsible for cleaning up the input stream.
 	public FrameDecoder(BitInputStream in) {
 		this.in = in;
 		temp0 = new long[65536];
@@ -71,9 +79,11 @@ public final class FrameDecoder {
 	// decodes a frame and returns a new metadata object, or throws an appropriate exception. A frame
 	// may have up to 8 channels and 65536 samples, so the output arrays need to be sized appropriately.
 	public FrameMetadata readFrame(int[][] outSamples, int outOffset) throws IOException {
+		// Check field states
 		Objects.requireNonNull(in);
 		if (currentBlockSize != -1)
 			throw new IllegalStateException("Concurrent call");
+		
 		// Parse the frame header to see if one is available
 		long startByte = in.getByteCount();
 		FrameMetadata meta = FrameMetadata.readFrame(in);
@@ -172,7 +182,8 @@ public final class FrameDecoder {
 	// For example when depth = 16, the range of valid values is [-32768, 32767].
 	private static int checkBitDepth(long val, int depth) {
 		assert 1 <= depth && depth <= 32;
-		if ((-(val >> (depth - 1)) | 1) != 1)  // Or equivalently: (val >> (depth - 1)) == 0 || (val >> (depth - 1)) == -1
+		// Equivalent check: (val >> (depth - 1)) == 0 || (val >> (depth - 1)) == -1
+		if ((-(val >> (depth - 1)) | 1) != 1)
 			throw new IllegalArgumentException(val + " is not a signed " + depth + "-bit value");
 		else
 			return (int)val;
@@ -181,12 +192,14 @@ public final class FrameDecoder {
 	
 	// Reads one subframe from the bit input stream, decodes it, and writes to result[0 : currentBlockSize].
 	private void decodeSubframe(int sampleDepth, long[] result) throws IOException {
+		// Check arguments
 		Objects.requireNonNull(result);
 		if (sampleDepth < 1 || sampleDepth > 33)
 			throw new IllegalArgumentException();
 		if (result.length < currentBlockSize)
 			throw new IllegalArgumentException();
 		
+		// Read header fields
 		if (in.readUint(1) != 0)
 			throw new DataFormatException("Invalid padding bit");
 		int type = in.readUint(6);
@@ -202,6 +215,7 @@ public final class FrameDecoder {
 			throw new AssertionError();
 		sampleDepth -= shift;
 		
+		// Read sample data based on type
 		if (type == 0)  // Constant coding
 			Arrays.fill(result, 0, currentBlockSize, in.readSignedInt(sampleDepth));
 		else if (type == 1) {  // Verbatim coding
@@ -214,7 +228,7 @@ public final class FrameDecoder {
 		else
 			throw new DataFormatException("Reserved subframe type");
 		
-		// Add back the trailing zeros to each sample
+		// Add trailing zeros to each sample
 		if (shift > 0) {
 			for (int i = 0; i < currentBlockSize; i++)
 				result[i] <<= shift;
@@ -236,7 +250,7 @@ public final class FrameDecoder {
 			throw new IllegalArgumentException();
 		
 		// Read and compute various values
-		for (int i = 0; i < predOrder; i++)  // Unpredicted warm-up samples
+		for (int i = 0; i < predOrder; i++)  // Non-Rice-coded warm-up samples
 			result[i] = in.readSignedInt(sampleDepth);
 		readResiduals(predOrder, result);
 		restoreLpc(result, FIXED_PREDICTION_COEFFICIENTS[predOrder], sampleDepth, 0);
@@ -264,7 +278,8 @@ public final class FrameDecoder {
 		if (result.length < currentBlockSize)
 			throw new IllegalArgumentException();
 		
-		for (int i = 0; i < lpcOrder; i++)  // Unpredicted warm-up samples
+		// Read non-Rice-coded warm-up samples
+		for (int i = 0; i < lpcOrder; i++)
 			result[i] = in.readSignedInt(sampleDepth);
 		
 		// Read parameters for the LPC coefficients
@@ -327,6 +342,7 @@ public final class FrameDecoder {
 	// Reads metadata and Rice-coded numbers from the input stream, storing them in result[warmup : currentBlockSize].
 	// The stored numbers are guaranteed to fit in a signed int53 - see the explanation in restoreLpc().
 	private void readResiduals(int warmup, long[] result) throws IOException {
+		// Check and handle arguments
 		Objects.requireNonNull(result);
 		if (warmup < 0 || warmup > currentBlockSize)
 			throw new IllegalArgumentException();

@@ -30,6 +30,32 @@ import io.nayuki.flac.common.SeekTable;
 import io.nayuki.flac.common.StreamInfo;
 
 
+/*
+ * Handles high-level decoding and seeking in FLAC files. Also returns metadata blocks.
+ * Every object is stateful, not thread-safe, and needs to be closed. Sample usage:
+ *   
+ *   // Create a decoder
+ *   FlacDecoder dec = new FlacDecoder(...);
+ *   
+ *   // Make the decoder process all metadata blocks internally.
+ *   // We could capture the returned data for extra processing.
+ *   // We must read all metadata before reading audio data.
+ *   while (dec.readAndHandleMetadataBlock() != null);
+ *   
+ *   // Read audio samples starting from beginning
+ *   int[][] samples = (...);
+ *   dec.readAudioBlock(samples, ...);
+ *   dec.readAudioBlock(samples, ...);
+ *   dec.readAudioBlock(samples, ...);
+ *   
+ *   // Seek to some position and continue reading
+ *   dec.seekAndReadAudioBlock(..., samples, ...);
+ *   dec.readAudioBlock(samples, ...);
+ *   dec.readAudioBlock(samples, ...);
+ *   
+ *   // Close underlying file stream
+ *   dec.close();
+ */
 public final class FlacDecoder implements AutoCloseable {
 	
 	/*---- Fields ----*/
@@ -66,7 +92,7 @@ public final class FlacDecoder implements AutoCloseable {
 	
 	/*---- Methods ----*/
 	
-	// Reads, handles, and returns the next metadata block. Returns a pair (int type, byte[] data) if the
+	// Reads, handles, and returns the next metadata block. Returns a pair (Integer type, byte[] data) if the
 	// next metadata block exists, otherwise returns null if the final metadata block was previously read.
 	// In addition to reading and returning data, this method also updates the internal state
 	// of this object to reflect the new data seen, and throws exceptions for situations such as
@@ -120,6 +146,12 @@ public final class FlacDecoder implements AutoCloseable {
 	}
 	
 	
+	// Seeks to the given sample position and reads audio samples into the given buffer,
+	// returning the number of samples filled. If audio data is available then the return value
+	// is at least 1; otherwise 0 is returned to indicate the end of stream. Note that the
+	// sample position can land in the middle of a FLAC block and will still behave correctly.
+	// In theory this method subsumes the functionality of readAudioBlock(), but seeking can be
+	// an expensive operation so readAudioBlock() should be used for ordinary contiguous streaming.
 	public int seekAndReadAudioBlock(long pos, int[][] samples, int off) throws IOException {
 		if (frameDec == null)
 			throw new IllegalStateException("Metadata blocks not fully consumed yet");
