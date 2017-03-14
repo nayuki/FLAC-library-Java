@@ -124,21 +124,12 @@ public final class FlacDecoder implements AutoCloseable {
 		if (frameDec == null)
 			throw new IllegalStateException("Metadata blocks not fully consumed yet");
 		
-		long curPos = 0;
-		long filePos = 0;
-		if (seekTable != null) {
-			for (SeekTable.SeekPoint p : seekTable.points) {
-				if (p.sampleOffset <= pos) {
-					curPos = p.sampleOffset;
-					filePos = p.fileOffset;
-				} else
-					break;
-			}
-		}
-		fileInput.seek(filePos + metadataEndPos);
+		long[] sampleAndFilePos = getBestSeekPoint(pos);
+		fileInput.seek(sampleAndFilePos[1] + metadataEndPos);
 		bitInput = new BitInputStream(fileInput);
 		frameDec = new FrameDecoder(bitInput);
 		
+		long curPos = sampleAndFilePos[0];
 		int[][] smpl = new int[streamInfo.numChannels][65536];
 		while (true) {
 			FrameMetadata frame = frameDec.readFrame(smpl, 0);
@@ -152,6 +143,22 @@ public final class FlacDecoder implements AutoCloseable {
 			}
 			curPos = nextPos;
 		}
+	}
+	
+	
+	private long[] getBestSeekPoint(long pos) {
+		long samplePos = 0;
+		long filePos = 0;
+		if (seekTable != null) {
+			for (SeekTable.SeekPoint p : seekTable.points) {
+				if (p.sampleOffset <= pos) {
+					samplePos = p.sampleOffset;
+					filePos = p.fileOffset;
+				} else
+					break;
+			}
+		}
+		return new long[]{samplePos, filePos};
 	}
 	
 	
