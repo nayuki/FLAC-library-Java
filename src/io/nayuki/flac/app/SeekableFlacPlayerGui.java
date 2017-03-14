@@ -82,7 +82,6 @@ public final class SeekableFlacPlayerGui {
 		};
 		
 		int bytesPerSample = streamInfo.sampleDepth / 8;
-		long position = 0;
 		long startTime = line.getMicrosecondPosition();
 		
 		// Buffers for data created and discarded within each loop iteration, but allocated outside the loop
@@ -100,11 +99,11 @@ public final class SeekableFlacPlayerGui {
 			if (seekReq == -1)
 				blockSamples = decoder.readAudioBlock(samples, 0);
 			else {
-				position = Math.round(seekReq * streamInfo.numSamples);
+				long samplePos = Math.round(seekReq * streamInfo.numSamples);
 				seekReq = -1;
-				blockSamples = decoder.seekAndReadAudioBlock(position, samples, 0);
+				blockSamples = decoder.seekAndReadAudioBlock(samplePos, samples, 0);
 				line.flush();
-				startTime = line.getMicrosecondPosition() - Math.round(position * 1e6 / streamInfo.sampleRate);
+				startTime = line.getMicrosecondPosition() - Math.round(samplePos * 1e6 / streamInfo.sampleRate);
 			}
 			{
 				double timePos = (line.getMicrosecondPosition() - startTime) / 1e6;
@@ -127,7 +126,6 @@ public final class SeekableFlacPlayerGui {
 				}
 			}
 			line.write(sampleBytes, 0, blockSamples * streamInfo.numChannels * bytesPerSample);
-			position += blockSamples;
 		}
 	}
 	
