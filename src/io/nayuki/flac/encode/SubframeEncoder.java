@@ -160,7 +160,7 @@ public abstract class SubframeEncoder {
 			out.writeInt(width, (int)val);
 		else {  // width == 33
 			out.writeInt(1, (int)(val >>> 32));
-			out.writeInt(33, (int)val);
+			out.writeInt(32, (int)val);
 		}
 	}
 	
