@@ -1,6 +1,9 @@
 package io.nayuki.flac.app;
 
 import java.awt.Dimension;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.io.File;
 import java.io.IOException;
 import javax.sound.sampled.AudioFormat;
@@ -12,8 +15,8 @@ import javax.swing.JFrame;
 import javax.swing.JSlider;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
+import javax.swing.plaf.basic.BasicSliderUI;
+import javax.swing.plaf.metal.MetalSliderUI;
 import io.nayuki.flac.decode.FlacDecoder;
 
 
@@ -22,7 +25,7 @@ public final class SeekableFlacPlayerGui {
 	private static FlacDecoder decoder;
 	private static SourceDataLine line;
 	private static JSlider slider;
-	private static boolean sliderInternalSetValue;
+	private static BasicSliderUI sliderUi;
 	private static volatile double seekRequest;
 	
 	
@@ -47,11 +50,21 @@ public final class SeekableFlacPlayerGui {
 		
 		seekRequest = -1;
 		slider = new JSlider(SwingConstants.HORIZONTAL, 0, 10000, 0);
+		sliderUi = new MetalSliderUI();
+		slider.setUI(sliderUi);
 		slider.setPreferredSize(new Dimension(800, 50));
-		slider.addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent e) {
-				if (!sliderInternalSetValue && !slider.getValueIsAdjusting())
-					seekRequest = (double)slider.getValue() / slider.getMaximum();
+		slider.addMouseListener(new MouseAdapter() {
+			public void mousePressed(MouseEvent ev) {
+				moveSlider(ev);
+			}
+			public void mouseReleased(MouseEvent ev) {
+				moveSlider(ev);
+				seekRequest = (double)slider.getValue() / slider.getMaximum();
+			}
+		});
+		slider.addMouseMotionListener(new MouseMotionAdapter() {
+			public void mouseDragged(MouseEvent ev) {
+				moveSlider(ev);
 			}
 		});
 		
@@ -66,6 +79,11 @@ public final class SeekableFlacPlayerGui {
 	}
 	
 	
+	private static void moveSlider(MouseEvent ev) {
+		slider.setValue(sliderUi.valueForXPosition(ev.getX()));
+	}
+	
+	
 	private static final class PlayerThread extends Thread {
 		public void run() {
 			try {
@@ -76,11 +94,8 @@ public final class SeekableFlacPlayerGui {
 					final int sliderPos = (int)Math.round((double)position / decoder.streamInfo.numSamples * slider.getMaximum());
 					SwingUtilities.invokeLater(new Runnable() {
 						public void run() {
-							if (!slider.getValueIsAdjusting()) {
-								sliderInternalSetValue = true;
+							if (!slider.getValueIsAdjusting())
 								slider.setValue(sliderPos);
-								sliderInternalSetValue = false;
-							}
 						}
 					});
 					
