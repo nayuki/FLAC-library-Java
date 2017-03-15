@@ -62,7 +62,7 @@ public final class FlacDecoder implements AutoCloseable {
 	public StreamInfo streamInfo;
 	public SeekTable seekTable;
 	
-	private FlacLowLevelInput bitInput;
+	private FlacLowLevelInput input;
 	
 	private long metadataEndPos;
 	
@@ -77,10 +77,10 @@ public final class FlacDecoder implements AutoCloseable {
 	public FlacDecoder(File file) throws IOException {
 		// Initialize streams
 		Objects.requireNonNull(file);
-		bitInput = new SeekableFileFlacInput(file);
+		input = new SeekableFileFlacInput(file);
 		
 		// Read basic header
-		if (bitInput.readUint(32) != 0x664C6143)  // Magic string "fLaC"
+		if (input.readUint(32) != 0x664C6143)  // Magic string "fLaC"
 			throw new DataFormatException("Invalid magic string");
 		metadataEndPos = -1;
 	}
@@ -99,11 +99,11 @@ public final class FlacDecoder implements AutoCloseable {
 			return null;  // All metadata already consumed
 		
 		// Read entire block
-		boolean last = bitInput.readUint(1) != 0;
-		int type = bitInput.readUint(7);
-		int length = bitInput.readUint(24);
+		boolean last = input.readUint(1) != 0;
+		int type = input.readUint(7);
+		int length = input.readUint(24);
 		byte[] data = new byte[length];
-		bitInput.readFully(data);
+		input.readFully(data);
 		
 		// Handle recognized block
 		if (type == 0) {
@@ -121,8 +121,8 @@ public final class FlacDecoder implements AutoCloseable {
 		}
 		
 		if (last) {
-			metadataEndPos = bitInput.getPosition();
-			frameDec = new FrameDecoder(bitInput, streamInfo.sampleDepth);
+			metadataEndPos = input.getPosition();
+			frameDec = new FrameDecoder(input, streamInfo.sampleDepth);
 		}
 		return new Object[]{type, data};
 	}
@@ -158,7 +158,7 @@ public final class FlacDecoder implements AutoCloseable {
 			sampleAndFilePos = seekBySyncAndDecode(pos);
 			sampleAndFilePos[1] -= metadataEndPos;
 		}
-		bitInput.seekTo(sampleAndFilePos[1] + metadataEndPos);
+		input.seekTo(sampleAndFilePos[1] + metadataEndPos);
 		
 		long curPos = sampleAndFilePos[0];
 		int[][] smpl = new int[streamInfo.numChannels][65536];
@@ -201,7 +201,7 @@ public final class FlacDecoder implements AutoCloseable {
 	// There is a small chance of finding a valid-looking frame header but causing erroneous decoding later.
 	private long[] seekBySyncAndDecode(long pos) throws IOException {
 		long start = metadataEndPos;
-		long end = bitInput.getLength();
+		long end = input.getLength();
 		while (end - start > 100000) {  // Binary search
 			long mid = (start + end) >>> 1;
 			long[] offsets = getNextFrameOffsets(mid);
@@ -218,17 +218,17 @@ public final class FlacDecoder implements AutoCloseable {
 	// at the given file offset, or null if no frame is found before the end of stream.
 	// This changes the state of the input streams as a side effect.
 	private long[] getNextFrameOffsets(long filePos) throws IOException {
-		if (filePos < metadataEndPos || filePos > bitInput.getLength())
+		if (filePos < metadataEndPos || filePos > input.getLength())
 			throw new IllegalArgumentException("File position out of bounds");
 		
 		// Repeatedly search for a sync
 		while (true) {
-			bitInput.seekTo(filePos);
+			input.seekTo(filePos);
 			
 			// Finite state machine to match the 2-byte sync sequence
 			int state = 0;
 			while (true) {
-				int b = bitInput.readByte();
+				int b = input.readByte();
 				if (b == -1)
 					return null;
 				else if (b == 0xFF)
@@ -240,10 +240,10 @@ public final class FlacDecoder implements AutoCloseable {
 			}
 			
 			// Sync found, rewind 2 bytes, try to decode frame header
-			filePos = bitInput.getPosition() - 2;
-			bitInput.seekTo(filePos);
+			filePos = input.getPosition() - 2;
+			input.seekTo(filePos);
 			try {
-				FrameMetadata frame = FrameMetadata.readFrame(bitInput);
+				FrameMetadata frame = FrameMetadata.readFrame(input);
 				return new long[]{getSampleOffset(frame), filePos};
 			} catch (DataFormatException e) {
 				// Advance past the sync and search again
@@ -268,12 +268,12 @@ public final class FlacDecoder implements AutoCloseable {
 	// Closes the underlying input streams and discards object data.
 	// This decoder object becomes invalid for any method calls or field usages.
 	public void close() throws IOException {
-		if (bitInput != null) {
+		if (input != null) {
 			streamInfo = null;
 			seekTable = null;
 			frameDec = null;
-			bitInput.close();
-			bitInput = null;
+			input.close();
+			input = null;
 		}
 	}
 	

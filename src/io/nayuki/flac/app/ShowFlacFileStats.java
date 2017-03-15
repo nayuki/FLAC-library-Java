@@ -116,24 +116,24 @@ public final class ShowFlacFileStats {
 		
 		// Read input file
 		StreamInfo streamInfo = null;
-		try (FlacLowLevelInput in = new SeekableFileFlacInput(inFile)) {
+		try (FlacLowLevelInput input = new SeekableFileFlacInput(inFile)) {
 			// Magic string "fLaC"
-			if (in.readUint(32) != 0x664C6143)
+			if (input.readUint(32) != 0x664C6143)
 				throw new DataFormatException("Invalid magic string");
 			
 			// Handle metadata blocks
 			for (boolean last = false; !last; ) {
-				last = in.readUint(1) != 0;
-				int type = in.readUint(7);
-				int length = in.readUint(24);
+				last = input.readUint(1) != 0;
+				int type = input.readUint(7);
+				int length = input.readUint(24);
 				byte[] data = new byte[length];
-				in.readFully(data);
+				input.readFully(data);
 				if (type == 0)
 					streamInfo = new StreamInfo(data);
 			}
 			
 			// Decode every frame
-			FrameDecoder dec = new FrameDecoder(in, streamInfo.sampleDepth);
+			FrameDecoder dec = new FrameDecoder(input, streamInfo.sampleDepth);
 			int[][] blockSamples = new int[8][65536];
 			while (true) {
 				FrameMetadata meta = dec.readFrame(blockSamples, 0);
