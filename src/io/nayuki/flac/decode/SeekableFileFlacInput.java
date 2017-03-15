@@ -62,7 +62,7 @@ public final class SeekableFileFlacInput extends AbstractFlacLowLevelInput {
 	
 	public void seekTo(long pos) throws IOException {
 		raf.seek(pos);
-		flush(pos);
+		positionChanged(pos);
 	}
 	
 	

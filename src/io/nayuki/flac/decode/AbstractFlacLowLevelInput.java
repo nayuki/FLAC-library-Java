@@ -57,7 +57,7 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	
 	public AbstractFlacLowLevelInput() {
 		byteBuffer = new byte[4096];
-		flush(0);
+		positionChanged(0);
 	}
 	
 	
@@ -274,7 +274,7 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	
 	/*-- Miscellaneous --*/
 	
-	protected void flush(long pos) {
+	protected void positionChanged(long pos) {
 		byteCount = pos;
 		Arrays.fill(byteBuffer, (byte)0);  // Defensive clearing, should have no visible effect outside of debugging
 		byteBufferLen = 0;

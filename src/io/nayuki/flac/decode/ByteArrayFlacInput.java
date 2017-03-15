@@ -58,7 +58,7 @@ public final class ByteArrayFlacInput extends AbstractFlacLowLevelInput {
 	
 	public void seekTo(long pos) {
 		offset = (int)pos;
-		flush(pos);
+		positionChanged(pos);
 	}
 	
 	
