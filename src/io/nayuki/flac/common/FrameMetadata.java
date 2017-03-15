@@ -22,7 +22,7 @@
 package io.nayuki.flac.common;
 
 import java.io.IOException;
-import io.nayuki.flac.decode.BitInputStream;
+import io.nayuki.flac.decode.FlacLowLevelInput;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.encode.BitOutputStream;
 
@@ -70,7 +70,7 @@ public final class FrameMetadata {
 	// After the frame header is successfully decoded, a new FrameMetadata with
 	// all fields (except frameSize) set to appropriate values is returned.
 	// (This doesn't read to the end of the frame, so the frameSize field is set to -1.)
-	public static FrameMetadata readFrame(BitInputStream in) throws IOException {
+	public static FrameMetadata readFrame(FlacLowLevelInput in) throws IOException {
 		// Preliminaries
 		in.resetCrcs();
 		int temp = in.readByte();
@@ -127,7 +127,7 @@ public final class FrameMetadata {
 	
 	// Reads 1 to 7 whole bytes from the input stream. Return value is a uint36.
 	// See: https://hydrogenaud.io/index.php/topic,112831.msg929128.html#msg929128
-	private static long readUtf8Integer(BitInputStream in) throws IOException {
+	private static long readUtf8Integer(FlacLowLevelInput in) throws IOException {
 		int head = in.readUint(8);
 		int n = Integer.numberOfLeadingZeros(~(head << 24));  // Number of leading 1s in the byte
 		assert 0 <= n && n <= 8;
@@ -152,7 +152,7 @@ public final class FrameMetadata {
 	
 	// Argument is a uint4 value. Reads 0 to 2 bytes from the input stream.
 	// Return value is in the range [1, 65536].
-	private static int decodeBlockSize(int code, BitInputStream in) throws IOException {
+	private static int decodeBlockSize(int code, FlacLowLevelInput in) throws IOException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
 		switch (code) {
@@ -170,7 +170,7 @@ public final class FrameMetadata {
 	
 	// Argument is a uint4 value. Reads 0 to 2 bytes from the input stream.
 	// Return value is in the range [-1, 655350].
-	private static int decodeSampleRate(int code, BitInputStream in) throws IOException {
+	private static int decodeSampleRate(int code, FlacLowLevelInput in) throws IOException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
 		switch (code) {

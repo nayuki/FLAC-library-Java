@@ -64,7 +64,7 @@ public final class FlacDecoder implements AutoCloseable {
 	public SeekTable seekTable;
 	
 	private RandomAccessFileInputStream fileInput;
-	private BitInputStream bitInput;
+	private FlacLowLevelInput bitInput;
 	
 	private long metadataEndPos;
 	

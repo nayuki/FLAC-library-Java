@@ -4,7 +4,7 @@ package io.nayuki.flac.decode;
 import java.io.IOException;
 
 
-public interface BitInputStream extends AutoCloseable {
+public interface FlacLowLevelInput extends AutoCloseable {
 	
 	/*---- Bit position ----*/
 	

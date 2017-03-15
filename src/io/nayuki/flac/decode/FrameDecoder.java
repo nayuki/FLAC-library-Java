@@ -39,7 +39,7 @@ public final class FrameDecoder {
 	
 	// Can be changed when there is no active call of readFrame().
 	// Must be not null when readFrame() is called.
-	public BitInputStream in;
+	public FlacLowLevelInput in;
 	
 	// Can be changed when there is no active call of readFrame().
 	// Must be in the range [4, 32].
@@ -65,7 +65,7 @@ public final class FrameDecoder {
 	
 	// Constructs a frame decoder that initially uses the given stream.
 	// The caller is responsible for cleaning up the input stream.
-	public FrameDecoder(BitInputStream in, int expectDepth) {
+	public FrameDecoder(FlacLowLevelInput in, int expectDepth) {
 		this.in = in;
 		expectedSampleDepth = expectDepth;
 		temp0 = new long[65536];

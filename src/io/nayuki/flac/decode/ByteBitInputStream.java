@@ -31,7 +31,7 @@ import java.util.Objects;
 /* 
  * A bit-oriented input stream, with many methods tailored for FLAC usage (such as Rice decoding and CRC calculation).
  */
-public final class ByteBitInputStream implements BitInputStream {
+public final class ByteBitInputStream implements FlacLowLevelInput {
 	
 	/*---- Fields ----*/
 	
