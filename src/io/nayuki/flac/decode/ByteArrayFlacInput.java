@@ -47,6 +47,17 @@ public final class ByteArrayFlacInput extends AbstractFlacLowLevelInput {
 	
 	/*---- Methods ----*/
 	
+	public long getLength() {
+		return data.length;
+	}
+	
+	
+	public void seekTo(long pos) {
+		offset = (int)pos;
+		flush(pos);
+	}
+	
+	
 	protected int readUnderlying(byte[] buf, int off, int len) {
 		int n = Math.min(data.length - offset, len);
 		if (n == 0)

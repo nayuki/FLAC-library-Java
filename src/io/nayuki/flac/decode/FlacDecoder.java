@@ -23,7 +23,6 @@ package io.nayuki.flac.decode;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.Objects;
 import io.nayuki.flac.common.FrameMetadata;
 import io.nayuki.flac.common.SeekTable;
@@ -63,7 +62,6 @@ public final class FlacDecoder implements AutoCloseable {
 	public StreamInfo streamInfo;
 	public SeekTable seekTable;
 	
-	private RandomAccessFileInputStream fileInput;
 	private FlacLowLevelInput bitInput;
 	
 	private long metadataEndPos;
@@ -79,8 +77,7 @@ public final class FlacDecoder implements AutoCloseable {
 	public FlacDecoder(File file) throws IOException {
 		// Initialize streams
 		Objects.requireNonNull(file);
-		fileInput = new RandomAccessFileInputStream(new RandomAccessFile(file, "r"));
-		bitInput = new ByteBitInputStream(fileInput);
+		bitInput = new SeekableFileFlacInput(file);
 		
 		// Read basic header
 		if (bitInput.readUint(32) != 0x664C6143)  // Magic string "fLaC"
@@ -124,7 +121,7 @@ public final class FlacDecoder implements AutoCloseable {
 		}
 		
 		if (last) {
-			metadataEndPos = bitInput.getByteCount();
+			metadataEndPos = bitInput.getPosition();
 			frameDec = new FrameDecoder(bitInput, streamInfo.sampleDepth);
 		}
 		return new Object[]{type, data};
@@ -161,8 +158,7 @@ public final class FlacDecoder implements AutoCloseable {
 			sampleAndFilePos = seekBySyncAndDecode(pos);
 			sampleAndFilePos[1] -= metadataEndPos;
 		}
-		fileInput.seek(sampleAndFilePos[1] + metadataEndPos);
-		bitInput.flush();
+		bitInput.seekTo(sampleAndFilePos[1] + metadataEndPos);
 		
 		long curPos = sampleAndFilePos[0];
 		int[][] smpl = new int[streamInfo.numChannels][65536];
@@ -205,7 +201,7 @@ public final class FlacDecoder implements AutoCloseable {
 	// There is a small chance of finding a valid-looking frame header but causing erroneous decoding later.
 	private long[] seekBySyncAndDecode(long pos) throws IOException {
 		long start = metadataEndPos;
-		long end = fileInput.getLength();
+		long end = bitInput.getLength();
 		while (end - start > 100000) {  // Binary search
 			long mid = (start + end) >>> 1;
 			long[] offsets = getNextFrameOffsets(mid);
@@ -222,13 +218,12 @@ public final class FlacDecoder implements AutoCloseable {
 	// at the given file offset, or null if no frame is found before the end of stream.
 	// This changes the state of the input streams as a side effect.
 	private long[] getNextFrameOffsets(long filePos) throws IOException {
-		if (filePos < metadataEndPos || filePos > fileInput.getLength())
+		if (filePos < metadataEndPos || filePos > bitInput.getLength())
 			throw new IllegalArgumentException("File position out of bounds");
 		
 		// Repeatedly search for a sync
 		while (true) {
-			fileInput.seek(filePos);
-			bitInput.flush();
+			bitInput.seekTo(filePos);
 			
 			// Finite state machine to match the 2-byte sync sequence
 			int state = 0;
@@ -245,9 +240,8 @@ public final class FlacDecoder implements AutoCloseable {
 			}
 			
 			// Sync found, rewind 2 bytes, try to decode frame header
-			filePos += bitInput.getByteCount() - 2;
-			fileInput.seek(filePos);
-			bitInput.flush();
+			filePos = bitInput.getPosition() - 2;
+			bitInput.seekTo(filePos);
 			try {
 				FrameMetadata frame = FrameMetadata.readFrame(bitInput);
 				return new long[]{getSampleOffset(frame), filePos};
@@ -279,9 +273,7 @@ public final class FlacDecoder implements AutoCloseable {
 			seekTable = null;
 			frameDec = null;
 			bitInput.close();
-			fileInput.close();
 			bitInput = null;
-			fileInput = null;
 		}
 	}
 	

@@ -21,66 +21,58 @@
 
 package io.nayuki.flac.decode;
 
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.util.Objects;
 
 
-/* 
- * A bare adapter from RandomAccessFile to InputStream. These objects have no buffer, so any seek()
- * on the underlying RAF is visible on the next read(). Also, objects of this class have no direct
- * native resources - so it is safe to discard a RandomAccessFileInputStream object without closing it,
- * as long as other code will close() the underlying RandomAccessFile object.
- */
-public final class RandomAccessFileInputStream extends InputStream {
+public final class SeekableFileFlacInput extends AbstractFlacLowLevelInput {
 	
 	/*---- Fields ----*/
 	
-	private RandomAccessFile in;
+	// The underlying byte-based input stream to read from.
+	private RandomAccessFile raf;
 	
 	
 	
 	/*---- Constructors ----*/
 	
-	public RandomAccessFileInputStream(RandomAccessFile raf) {
-		Objects.requireNonNull(raf);
-		this.in = raf;
+	public SeekableFileFlacInput(File file) throws IOException {
+		super();
+		Objects.requireNonNull(file);
+		this.raf = new RandomAccessFile(file, "r");
 	}
 	
 	
 	
 	/*---- Methods ----*/
 	
-	public long getPosition() throws IOException {
-		return in.getFilePointer();
+	public long getLength() {
+		try {
+			return raf.length();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	
 	
-	public long getLength() throws IOException {
-		return in.length();
+	public void seekTo(long pos) throws IOException {
+		raf.seek(pos);
+		flush(pos);
 	}
 	
 	
-	public void seek(long pos) throws IOException {
-		in.seek(pos);
-	}
-	
-	
-	public int read() throws IOException {
-		return in.read();
-	}
-	
-	
-	public int read(byte[] b, int off, int len) throws IOException {
-		return in.read(b, off, len);
+	protected int readUnderlying(byte[] buf, int off, int len) throws IOException {
+		return raf.read(buf, off, len);
 	}
 	
 	
 	public void close() throws IOException {
-		if (in != null) {
-			in.close();
-			in = null;
+		if (raf != null) {
+			raf.close();
+			raf = null;
+			super.close();
 		}
 	}
 	

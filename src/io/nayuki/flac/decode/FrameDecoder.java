@@ -90,7 +90,7 @@ public final class FrameDecoder {
 			throw new IllegalStateException("Concurrent call");
 		
 		// Parse the frame header to see if one is available
-		long startByte = in.getByteCount();
+		long startByte = in.getPosition();
 		FrameMetadata meta = FrameMetadata.readFrame(in);
 		if (meta == null)  // EOF occurred cleanly
 			return null;
@@ -118,7 +118,7 @@ public final class FrameDecoder {
 			throw new DataFormatException("CRC-16 mismatch");
 		
 		// Handle frame size and miscellaneous
-		long frameSize = in.getByteCount() - startByte;
+		long frameSize = in.getPosition() - startByte;
 		if (frameSize < 10)
 			throw new AssertionError();
 		if ((int)frameSize != frameSize)

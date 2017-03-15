@@ -6,11 +6,20 @@ import java.io.IOException;
 
 public interface FlacLowLevelInput extends AutoCloseable {
 	
-	/*---- Bit position ----*/
+	/*---- Stream position ----*/
+	
+	public long getLength();
+	
+	
+	public long getPosition();
+	
 	
 	// Returns the number of bits in the current byte that have been consumed.
 	// This starts at 0, increments for each bit consumed, topping out at 7, then wraps around and repeats.
 	public int getBitPosition();
+	
+	
+	public void seekTo(long pos) throws IOException;
 	
 	
 	
@@ -62,16 +71,6 @@ public interface FlacLowLevelInput extends AutoCloseable {
 	
 	
 	/*---- Miscellaneous ----*/
-	
-	// Returns the number of bytes consumed since the start of the stream.
-	public long getByteCount();
-	
-	
-	// Discards all buffered data so that the next read loads new data from the underlying stream.
-	// This method only makes sense if the underlying stream is seekable or resettable.
-	// This also resets the CRC calculation and number of bytes read.
-	public void flush();
-	
 	
 	// Discards all buffers and closes the underlying input stream. This bit input stream becomes invalid
 	// for any future operation. Note that a ByteBitInputStream only uses memory but does not have native resources.

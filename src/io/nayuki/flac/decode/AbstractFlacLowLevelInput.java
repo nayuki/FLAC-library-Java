@@ -31,7 +31,6 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	
 	/*---- Fields ----*/
 	
-	// Number of bytes read since the start of stream.
 	private long byteCount;
 	
 	// Data from the underlying stream is first stored into this byte buffer before further processing.
@@ -55,14 +54,20 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	
 	public AbstractFlacLowLevelInput() {
 		byteBuffer = new byte[4096];
-		flush();
+		flush(0);
 	}
 	
 	
 	
 	/*---- Methods ----*/
 	
-	/*-- Bit position --*/
+	/*-- Stream position --*/
+	
+	public long getPosition() {
+		updateCrcs(bitBufferLen / 8);
+		return byteCount;
+	}
+	
 	
 	public int getBitPosition() {
 		return (-bitBufferLen) & 7;
@@ -266,14 +271,8 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	
 	/*-- Miscellaneous --*/
 	
-	public long getByteCount() {
-		updateCrcs(bitBufferLen / 8);
-		return byteCount;
-	}
-	
-	
-	public void flush() {
-		byteCount = 0;
+	protected void flush(long pos) {
+		byteCount = pos;
 		Arrays.fill(byteBuffer, (byte)0);  // Defensive clearing, should have no visible effect outside of debugging
 		byteBufferLen = 0;
 		byteBufferIndex = 0;
