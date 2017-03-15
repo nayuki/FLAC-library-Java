@@ -75,6 +75,17 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	}
 	
 	
+	protected void positionChanged(long pos) {
+		byteBufferStartPos = pos;
+		Arrays.fill(byteBuffer, (byte)0);  // Defensive clearing, should have no visible effect outside of debugging
+		byteBufferLen = 0;
+		byteBufferIndex = 0;
+		bitBuffer = 0;  // Defensive clearing, should have no visible effect outside of debugging
+		bitBufferLen = 0;
+		resetCrcs();
+	}
+	
+	
 	// Either returns silently or throws an exception.
 	private void checkByteAligned() {
 		if (bitBufferLen % 8 != 0)
@@ -271,17 +282,6 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	
 	
 	/*-- Miscellaneous --*/
-	
-	protected void positionChanged(long pos) {
-		byteBufferStartPos = pos;
-		Arrays.fill(byteBuffer, (byte)0);  // Defensive clearing, should have no visible effect outside of debugging
-		byteBufferLen = 0;
-		byteBufferIndex = 0;
-		bitBuffer = 0;  // Defensive clearing, should have no visible effect outside of debugging
-		bitBufferLen = 0;
-		resetCrcs();
-	}
-	
 	
 	// Note: This class only uses memory and has no native resources. It's not strictly necessary to
 	// call the implementation of AbstractFlacLowLevelInput.close() here, but it's a good habit anyway.
