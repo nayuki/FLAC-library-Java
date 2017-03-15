@@ -25,10 +25,14 @@ import java.io.IOException;
 import java.util.Objects;
 
 
+/* 
+ * A FLAC input stream based on a fixed byte array.
+ */
 public final class ByteArrayFlacInput extends AbstractFlacLowLevelInput {
 	
 	/*---- Fields ----*/
 	
+	// The underlying byte array to read from.
 	private byte[] data;
 	private int offset;
 	
@@ -68,6 +72,9 @@ public final class ByteArrayFlacInput extends AbstractFlacLowLevelInput {
 	}
 	
 	
+	// Discards data buffers and invalidates this stream. Because this class and its superclass
+	// only use memory and have no native resources, it's okay to simply let a ByteArrayFlacInput
+	// be garbage-collected without calling close().
 	public void close() throws IOException {
 		if (data != null) {
 			data = null;

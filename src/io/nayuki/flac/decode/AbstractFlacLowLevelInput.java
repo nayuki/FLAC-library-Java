@@ -27,6 +27,9 @@ import java.util.Arrays;
 import java.util.Objects;
 
 
+/* 
+ * A basic implementation of most functionality required by FlacLowLevelInpuut.
+ */
 public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	
 	/*---- Fields ----*/
@@ -284,6 +287,8 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	}
 	
 	
+	// Note: This class only uses memory and has no native resources. It's not strictly necessary to
+	// call the implementation of AbstractFlacLowLevelInput.close() here, but it's a good habit anyway.
 	public void close() throws IOException {
 		byteBuffer = null;
 		byteBufferLen = -1;

@@ -27,6 +27,9 @@ import java.io.RandomAccessFile;
 import java.util.Objects;
 
 
+/* 
+ * A FLAC input stream based on a RandomAccessFile.
+ */
 public final class SeekableFileFlacInput extends AbstractFlacLowLevelInput {
 	
 	/*---- Fields ----*/
@@ -68,6 +71,7 @@ public final class SeekableFileFlacInput extends AbstractFlacLowLevelInput {
 	}
 	
 	
+	// Closes the underlying RandomAccessFile stream (very important).
 	public void close() throws IOException {
 		if (raf != null) {
 			raf.close();

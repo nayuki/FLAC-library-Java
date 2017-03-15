@@ -4,33 +4,50 @@ package io.nayuki.flac.decode;
 import java.io.IOException;
 
 
+/* 
+ * A low-level input stream tailored to the needs of FLAC decoding. An overview of methods includes
+ * bit reading, CRC calculation, Rice decoding, and positioning and seeking (partly optional).
+ */
 public interface FlacLowLevelInput extends AutoCloseable {
 	
 	/*---- Stream position ----*/
 	
+	// Returns the total number of bytes in the FLAC file represented by this input stream.
+	// This number should not change for the lifetime of this object. Implementing this is optional;
+	// it's intended to support blind seeking without the use of seek tables, such as binary searching
+	// the whole file. A class may choose to throw UnsupportedOperationException instead,
+	// such as for a non-seekable network input stream of unknown length.
 	public long getLength();
 	
 	
+	// Returns the current byte position in the stream, a non-negative value.
+	// This increments after every 8 bits read, and a partially read byte is treated as unread.
+	// This value is 0 initially, is set directly by seekTo(), and potentially increases
+	// after every call to a read*() method. Other methods do not affect this value.
 	public long getPosition();
 	
 	
-	// Returns the number of bits in the current byte that have been consumed.
-	// This starts at 0, increments for each bit consumed, topping out at 7, then wraps around and repeats.
+	// Returns the current number of consumed bits in the current byte. This starts at 0,
+	// increments for each bit consumed, maxes out at 7, then resets to 0 and repeats.
 	public int getBitPosition();
 	
 	
+	// Changes the position of the next read to the given byte offset from the start of the stream.
+	// This also resets CRCs and sets the bit position to 0.
+	// Implementing this is optional; it is intended to support playback seeking.
+	// A class may choose to throw UnsupportedOperationException instead.
 	public void seekTo(long pos) throws IOException;
 	
 	
 	
 	/*---- Reading bitwise integers ----*/
 	
-	// Reads the next given number of bits as an unsigned integer (i.e. zero-extended to int32).
-	// Note that when n = 32, the result will be always a signed integer.
+	// Reads the next given number of bits (0 <= n <= 32) as an unsigned integer (i.e. zero-extended to int32).
+	// However in the case of n = 32, the result will be a signed integer that represents a uint32.
 	public int readUint(int n) throws IOException;
 	
 	
-	// Reads the next given number of bits as an signed integer (i.e. sign-extended to int32).
+	// Reads the next given number of bits (0 <= n <= 32) as an signed integer (i.e. sign-extended to int32).
 	public int readSignedInt(int n) throws IOException;
 	
 	
@@ -44,7 +61,8 @@ public interface FlacLowLevelInput extends AutoCloseable {
 	
 	/*---- Reading bytes ----*/
 	
-	// Discards any partial bits, then either returns an unsigned byte value or -1 for EOF.
+	// Returns the next unsigned byte value (in the range [0, 255]) or -1 for EOF.
+	// Must be called at a byte boundary (i.e. getBitPosition() == 0), otherwise IllegalStateException is thrown.
 	public int readByte() throws IOException;
 	
 	
@@ -55,29 +73,34 @@ public interface FlacLowLevelInput extends AutoCloseable {
 	
 	/*---- CRC calculations ----*/
 	
-	// Marks the current position (which must be byte-aligned) as the start of both CRC calculations.
+	// Marks the current byte position as the start of both CRC calculations.
+	// The effect of resetCrcs() is implied at the beginning of stream and when seekTo() is called.
+	// Must be called at a byte boundary (i.e. getBitPosition() == 0), otherwise IllegalStateException is thrown.
 	public void resetCrcs();
 	
 	
-	// Returns the CRC-8 hash of all the bytes read since the last call to resetCrcs()
-	// (or from the beginning of stream if reset was never called).
+	// Returns the CRC-8 hash of all the bytes read since the most recent time one of these
+	// events occurred: a call to resetCrcs(), a call to seekTo(), the beginning of stream.
+	// Must be called at a byte boundary (i.e. getBitPosition() == 0), otherwise IllegalStateException is thrown.
 	public int getCrc8();
 	
 	
-	// Returns the CRC-16 hash of all the bytes read since the last call to resetCrcs()
-	// (or from the beginning of stream if reset was never called).
+	// Returns the CRC-16 hash of all the bytes read since the most recent time one of these
+	// events occurred: a call to resetCrcs(), a call to seekTo(), the beginning of stream.
+	// Must be called at a byte boundary (i.e. getBitPosition() == 0), otherwise IllegalStateException is thrown.
 	public int getCrc16();
 	
 	
 	
 	/*---- Miscellaneous ----*/
 	
-	// Discards all buffers and closes the underlying input stream. This bit input stream becomes invalid
-	// for any future operation. Note that a ByteBitInputStream only uses memory but does not have native resources.
-	// It is okay to simply let a ByteBitInputStream be garbage collected without calling close(), but the parent is still responsible
-	// for calling close() on the underlying input stream if it uses native resources (such as FileInputStream or SocketInputStream).
-	// For example if the underlying stream supports seeking, then it is okay to discard an existing ByteBitInputStream,
-	// call seek on the underlying stream, and wrap a new ByteBitInputStream over the underlying stream after seeking.
+	// Closes underlying objects / native resources, and possibly discards memory buffers.
+	// Generally speaking, this operation invalidates this input stream, so calling methods
+	// (other than close()) or accessing fields thereafter should be forbidden.
+	// The close() method must be idempotent and safe when called more than once.
+	// If an implementation does not have native or time-sensitive resources, it is okay for the class user
+	// to skip calling close() and simply let the object be garbage-collected. But out of good habit, it is
+	// recommended to always close a FlacLowLevelInput stream so that the logic works correctly on all types.
 	public void close() throws IOException;
 	
 }
