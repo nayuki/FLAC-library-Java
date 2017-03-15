@@ -80,7 +80,7 @@ public final class FlacDecoder implements AutoCloseable {
 		// Initialize streams
 		Objects.requireNonNull(file);
 		fileInput = new RandomAccessFileInputStream(new RandomAccessFile(file, "r"));
-		bitInput = new BitInputStream(fileInput);
+		bitInput = new ByteBitInputStream(fileInput);
 		
 		// Read basic header
 		if (bitInput.readUint(32) != 0x664C6143)  // Magic string "fLaC"

@@ -34,6 +34,7 @@ import java.util.TreeMap;
 import io.nayuki.flac.common.FrameMetadata;
 import io.nayuki.flac.common.StreamInfo;
 import io.nayuki.flac.decode.BitInputStream;
+import io.nayuki.flac.decode.ByteBitInputStream;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.decode.FrameDecoder;
 
@@ -116,7 +117,7 @@ public final class ShowFlacFileStats {
 		
 		// Read input file
 		StreamInfo streamInfo = null;
-		try (BitInputStream in = new BitInputStream(new FileInputStream(inFile))) {
+		try (BitInputStream in = new ByteBitInputStream(new FileInputStream(inFile))) {
 			// Magic string "fLaC"
 			if (in.readUint(32) != 0x664C6143)
 				throw new DataFormatException("Invalid magic string");

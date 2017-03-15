@@ -27,6 +27,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 import io.nayuki.flac.decode.BitInputStream;
+import io.nayuki.flac.decode.ByteBitInputStream;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.encode.BitOutputStream;
 
@@ -73,7 +74,7 @@ public final class StreamInfo {
 	// This throws DataFormatException if values are invalid.
 	public StreamInfo(byte[] b) {
 		try {
-			BitInputStream in = new BitInputStream(new ByteArrayInputStream(b));
+			BitInputStream in = new ByteBitInputStream(new ByteArrayInputStream(b));
 			minBlockSize = in.readUint(16);
 			maxBlockSize = in.readUint(16);
 			minFrameSize = in.readUint(24);
