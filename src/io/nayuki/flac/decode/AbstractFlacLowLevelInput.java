@@ -34,9 +34,8 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	
 	/*---- Fields ----*/
 	
-	private long byteCount;
-	
 	// Data from the underlying stream is first stored into this byte buffer before further processing.
+	private long byteBufferStartPos;
 	private byte[] byteBuffer;
 	private int byteBufferLen;
 	private int byteBufferIndex;
@@ -67,8 +66,7 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	/*-- Stream position --*/
 	
 	public long getPosition() {
-		updateCrcs(bitBufferLen / 8);
-		return byteCount;
+		return byteBufferStartPos + byteBufferIndex - (bitBufferLen + 7) / 8;
 	}
 	
 	
@@ -212,6 +210,7 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 		if (byteBufferIndex >= byteBufferLen) {
 			if (byteBufferLen == -1)
 				return -1;
+			byteBufferStartPos += byteBufferLen;
 			updateCrcs(0);
 			byteBufferLen = readUnderlying(byteBuffer, 0, byteBuffer.length);
 			crcStartIndex = 0;
@@ -266,7 +265,6 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 			crc16 = CRC16_TABLE[(crc16 >>> 8) ^ b] ^ ((crc16 & 0xFF) << 8);
 			assert (crc8 >>> 8) == 0;
 			assert (crc16 >>> 16) == 0;
-			byteCount++;
 		}
 		crcStartIndex = end;
 	}
@@ -275,7 +273,7 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	/*-- Miscellaneous --*/
 	
 	protected void positionChanged(long pos) {
-		byteCount = pos;
+		byteBufferStartPos = pos;
 		Arrays.fill(byteBuffer, (byte)0);  // Defensive clearing, should have no visible effect outside of debugging
 		byteBufferLen = 0;
 		byteBufferIndex = 0;
