@@ -22,8 +22,8 @@
 package io.nayuki.flac.common;
 
 import java.io.IOException;
-import io.nayuki.flac.decode.FlacLowLevelInput;
 import io.nayuki.flac.decode.DataFormatException;
+import io.nayuki.flac.decode.FlacLowLevelInput;
 import io.nayuki.flac.encode.BitOutputStream;
 
 

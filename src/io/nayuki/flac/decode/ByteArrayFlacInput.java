@@ -63,6 +63,8 @@ public final class ByteArrayFlacInput extends AbstractFlacLowLevelInput {
 	
 	
 	protected int readUnderlying(byte[] buf, int off, int len) {
+		if (off < 0 || off > buf.length || len < 0 || len > buf.length - off)
+			throw new ArrayIndexOutOfBoundsException();
 		int n = Math.min(data.length - offset, len);
 		if (n == 0)
 			return -1;

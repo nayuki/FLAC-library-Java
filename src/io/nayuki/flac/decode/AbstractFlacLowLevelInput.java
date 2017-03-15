@@ -281,9 +281,7 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 		byteBufferIndex = 0;
 		bitBuffer = 0;  // Defensive clearing, should have no visible effect outside of debugging
 		bitBufferLen = 0;
-		crc8  = 0;
-		crc16 = 0;
-		crcStartIndex = 0;
+		resetCrcs();
 	}
 	
 	
