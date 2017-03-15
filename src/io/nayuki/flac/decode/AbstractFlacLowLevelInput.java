@@ -75,6 +75,8 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	}
 	
 	
+	// When a subclass handles seekTo() and didn't throw UnsupportedOperationException,
+	// it must call this method to flush the buffers of upcoming data.
 	protected void positionChanged(long pos) {
 		byteBufferStartPos = pos;
 		Arrays.fill(byteBuffer, (byte)0);  // Defensive clearing, should have no visible effect outside of debugging
@@ -236,6 +238,8 @@ public abstract class AbstractFlacLowLevelInput implements FlacLowLevelInput {
 	}
 	
 	
+	// Reads up to 'len' bytes from the underlying byte-based input stream into the given array subrange.
+	// Returns a value in the range [0, len] for a successful read, or -1 if the end of stream was reached.
 	protected abstract int readUnderlying(byte[] buf, int off, int len) throws IOException;
 	
 	

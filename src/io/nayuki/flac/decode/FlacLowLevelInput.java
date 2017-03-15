@@ -66,7 +66,8 @@ public interface FlacLowLevelInput extends AutoCloseable {
 	public int readByte() throws IOException;
 	
 	
-	// Discards any partial bits, then reads the given array fully or throws EOFEOxception.
+	// Discards any partial bits, then reads the given array fully or throws EOFException.
+	// Must be called at a byte boundary (i.e. getBitPosition() == 0), otherwise IllegalStateException is thrown.
 	public void readFully(byte[] b) throws IOException;
 	
 	
