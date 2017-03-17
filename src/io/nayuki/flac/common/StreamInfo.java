@@ -129,7 +129,7 @@ public final class StreamInfo {
 	
 	// Checks whether the given frame metadata is consistent with this stream info object.
 	// This method either returns silently or throws an exception.
-	public void checkFrame(FrameMetadata meta) {
+	public void checkFrame(FrameInfo meta) {
 		if (meta.numChannels != numChannels)
 			throw new DataFormatException("Channel count mismatch");
 		if (meta.sampleRate != -1 && meta.sampleRate != sampleRate)

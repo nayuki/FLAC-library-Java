@@ -24,7 +24,7 @@ package io.nayuki.flac.decode;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import io.nayuki.flac.common.FrameMetadata;
+import io.nayuki.flac.common.FrameInfo;
 
 
 /* 
@@ -83,7 +83,7 @@ public final class FrameDecoder {
 	// any actual bytes were read, then this returns null. Otherwise this function either successfully
 	// decodes a frame and returns a new metadata object, or throws an appropriate exception. A frame
 	// may have up to 8 channels and 65536 samples, so the output arrays need to be sized appropriately.
-	public FrameMetadata readFrame(int[][] outSamples, int outOffset) throws IOException {
+	public FrameInfo readFrame(int[][] outSamples, int outOffset) throws IOException {
 		// Check field states
 		Objects.requireNonNull(in);
 		if (currentBlockSize != -1)
@@ -91,7 +91,7 @@ public final class FrameDecoder {
 		
 		// Parse the frame header to see if one is available
 		long startByte = in.getPosition();
-		FrameMetadata meta = FrameMetadata.readFrame(in);
+		FrameInfo meta = FrameInfo.readFrame(in);
 		if (meta == null)  // EOF occurred cleanly
 			return null;
 		if (meta.sampleDepth != -1 && meta.sampleDepth != expectedSampleDepth)

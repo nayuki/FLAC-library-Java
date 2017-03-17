@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import io.nayuki.flac.common.FrameMetadata;
+import io.nayuki.flac.common.FrameInfo;
 import io.nayuki.flac.common.StreamInfo;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.decode.FlacLowLevelInput;
@@ -136,7 +136,7 @@ public final class ShowFlacFileStats {
 			FrameDecoder dec = new FrameDecoder(input, streamInfo.sampleDepth);
 			int[][] blockSamples = new int[8][65536];
 			while (true) {
-				FrameMetadata meta = dec.readFrame(blockSamples, 0);
+				FrameInfo meta = dec.readFrame(blockSamples, 0);
 				if (meta == null)
 					break;
 				blockSizes.add(meta.blockSize);

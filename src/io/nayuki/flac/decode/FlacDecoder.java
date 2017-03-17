@@ -24,7 +24,7 @@ package io.nayuki.flac.decode;
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
-import io.nayuki.flac.common.FrameMetadata;
+import io.nayuki.flac.common.FrameInfo;
 import io.nayuki.flac.common.SeekTable;
 import io.nayuki.flac.common.StreamInfo;
 
@@ -135,7 +135,7 @@ public final class FlacDecoder implements AutoCloseable {
 	public int readAudioBlock(int[][] samples, int off) throws IOException {
 		if (frameDec == null)
 			throw new IllegalStateException("Metadata blocks not fully consumed yet");
-		FrameMetadata frame = frameDec.readFrame(samples, off);
+		FrameInfo frame = frameDec.readFrame(samples, off);
 		if (frame == null)
 			return 0;
 		else
@@ -163,7 +163,7 @@ public final class FlacDecoder implements AutoCloseable {
 		long curPos = sampleAndFilePos[0];
 		int[][] smpl = new int[streamInfo.numChannels][65536];
 		while (true) {
-			FrameMetadata frame = frameDec.readFrame(smpl, 0);
+			FrameInfo frame = frameDec.readFrame(smpl, 0);
 			if (frame == null)
 				return 0;
 			long nextPos = curPos + frame.blockSize;
@@ -243,7 +243,7 @@ public final class FlacDecoder implements AutoCloseable {
 			filePos = input.getPosition() - 2;
 			input.seekTo(filePos);
 			try {
-				FrameMetadata frame = FrameMetadata.readFrame(input);
+				FrameInfo frame = FrameInfo.readFrame(input);
 				return new long[]{getSampleOffset(frame), filePos};
 			} catch (DataFormatException e) {
 				// Advance past the sync and search again
@@ -254,7 +254,7 @@ public final class FlacDecoder implements AutoCloseable {
 	
 	
 	// Calculates the sample offset of the given frame, automatically handling the constant-block-size case.
-	private long getSampleOffset(FrameMetadata frame) {
+	private long getSampleOffset(FrameInfo frame) {
 		Objects.requireNonNull(frame);
 		if (frame.sampleOffset != -1)
 			return frame.sampleOffset;

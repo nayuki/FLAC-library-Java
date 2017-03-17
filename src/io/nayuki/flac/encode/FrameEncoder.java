@@ -24,7 +24,7 @@ package io.nayuki.flac.encode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Objects;
-import io.nayuki.flac.common.FrameMetadata;
+import io.nayuki.flac.common.FrameInfo;
 
 
 /* 
@@ -112,7 +112,7 @@ final class FrameEncoder {
 	
 	/*---- Fields ----*/
 	
-	public FrameMetadata metadata;
+	public FrameInfo metadata;
 	private SubframeEncoder[] subEncoders;
 	
 	
@@ -120,7 +120,7 @@ final class FrameEncoder {
 	/*---- Constructors ----*/
 	
 	public FrameEncoder(int sampleOffset, long[][] samples, int sampleDepth, int sampleRate) {
-		metadata = new FrameMetadata();
+		metadata = new FrameInfo();
 		metadata.sampleOffset = sampleOffset;
 		metadata.sampleDepth = sampleDepth;
 		metadata.sampleRate = sampleRate;

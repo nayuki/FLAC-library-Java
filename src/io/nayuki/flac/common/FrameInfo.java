@@ -29,7 +29,7 @@ import io.nayuki.flac.encode.BitOutputStream;
 
 // A mutable structure holding key pieces of information from decoding a frame header.
 // A frame size field is also included, although it is computed long after the header ends.
-public final class FrameMetadata {
+public final class FrameInfo {
 	
 	/*---- Fields ----*/
 	
@@ -49,7 +49,7 @@ public final class FrameMetadata {
 	/*---- Constructors ----*/
 	
 	// Constructs a blank frame metadata structure.
-	public FrameMetadata() {
+	public FrameInfo() {
 		frameIndex   = -1;
 		sampleOffset = -1;
 		sampleRate   = -1;
@@ -58,7 +58,7 @@ public final class FrameMetadata {
 	
 	
 	
-	/*---- Functions to read FrameMetadata from stream ----*/
+	/*---- Functions to read FrameInfo from stream ----*/
 	
 	// Tries to read the next FLAC frame header from the given bit input stream.
 	// The stream must be aligned to a byte boundary, and should start at a sync code.
@@ -67,16 +67,16 @@ public final class FrameMetadata {
 	// to parse it as a FLAC frame header - starting from the sync code, and ending
 	// after the CRC-8 value is read (but before reading any subframes).
 	// If any field is found to be invalid then a DataFormatException is thrown.
-	// After the frame header is successfully decoded, a new FrameMetadata with
+	// After the frame header is successfully decoded, a new FrameInfo with
 	// all fields (except frameSize) set to appropriate values is returned.
 	// (This doesn't read to the end of the frame, so the frameSize field is set to -1.)
-	public static FrameMetadata readFrame(FlacLowLevelInput in) throws IOException {
+	public static FrameInfo readFrame(FlacLowLevelInput in) throws IOException {
 		// Preliminaries
 		in.resetCrcs();
 		int temp = in.readByte();
 		if (temp == -1)
 			return null;
-		FrameMetadata result = new FrameMetadata();
+		FrameInfo result = new FrameInfo();
 		result.frameSize = -1;
 		
 		// Read sync bits
@@ -206,9 +206,9 @@ public final class FrameMetadata {
 	
 	
 	
-	/*---- Functions to write FrameMetadata to stream ----*/
+	/*---- Functions to write FrameInfo to stream ----*/
 	
-	// Writes the current state of this FrameMetadata object to the given output stream,
+	// Writes the current state of this FrameInfo object to the given output stream,
 	// from the sync field through to the CRC-8 field (inclusive). This does not write
 	// subframe data, bit padding, nor the CRC-16 field. The stream must be aligned before this method
 	// is called, and will be aligned after the method returns (i.e. it writes a whole number of bytes).
