@@ -27,11 +27,17 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 import io.nayuki.flac.decode.ByteArrayFlacInput;
 import io.nayuki.flac.decode.DataFormatException;
+import io.nayuki.flac.decode.FlacDecoder;
 import io.nayuki.flac.decode.FlacLowLevelInput;
 import io.nayuki.flac.encode.BitOutputStream;
 
 
-// A mutable structure holding all fields of the stream info metadata block.
+/**
+ * Represents precisely all the fields of a stream info metadata block. Mutable structure,
+ * not thread-safe. Also has methods for parsing and serializing this structure to/from bytes.
+ * @see FrameInfo
+ * @see FlacDecoder
+ */
 public final class StreamInfo {
 	
 	/*---- Fields ----*/

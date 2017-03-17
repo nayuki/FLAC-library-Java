@@ -27,11 +27,13 @@ import java.util.Objects;
 import io.nayuki.flac.common.FrameInfo;
 
 
-/* 
+/**
  * Decodes a FLAC frame from an input stream into raw audio samples. Note that these objects are
  * stateful and not thread-safe, due to the bit input stream field, private temporary arrays, etc.
- * This class only uses memory and has no native resources; however, the
- * code that uses this class is responsible for cleaning up the input stream.
+ * <p>This class only uses memory and has no native resources; however, the
+ * code that uses this class is responsible for cleaning up the input stream.</p>
+ * @see FlacDecoder
+ * @see FlacLowLevelInput
  */
 public final class FrameDecoder {
 	

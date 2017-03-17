@@ -44,12 +44,11 @@ import io.nayuki.flac.common.StreamInfo;
 import io.nayuki.flac.decode.FlacDecoder;
 
 
-/* 
+/**
  * Plays a single FLAC file to the system audio output, showing a GUI window with a seek bar.
  * The file to play is specified as a command line argument. The seek bar is responsible for both
  * displaying the current playback position, and allowing the user to click to seek to new positions.
- * 
- * Usage: java SeekableFlacPlayerGui InFile.flac
+ * <p>Usage: java SeekableFlacPlayerGui InFile.flac</p>
  */
 public final class SeekableFlacPlayerGui {
 	

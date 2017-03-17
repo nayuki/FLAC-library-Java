@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.util.Objects;
 
 
-/* 
+/**
  * A FLAC input stream based on a fixed byte array.
  */
 public final class ByteArrayFlacInput extends AbstractFlacLowLevelInput {

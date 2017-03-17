@@ -29,31 +29,32 @@ import io.nayuki.flac.common.SeekTable;
 import io.nayuki.flac.common.StreamInfo;
 
 
-/*
+/**
  * Handles high-level decoding and seeking in FLAC files. Also returns metadata blocks.
  * Every object is stateful, not thread-safe, and needs to be closed. Sample usage:
- *   
- *   // Create a decoder
- *   FlacDecoder dec = new FlacDecoder(...);
- *   
- *   // Make the decoder process all metadata blocks internally.
- *   // We could capture the returned data for extra processing.
- *   // We must read all metadata before reading audio data.
- *   while (dec.readAndHandleMetadataBlock() != null);
- *   
- *   // Read audio samples starting from beginning
- *   int[][] samples = (...);
- *   dec.readAudioBlock(samples, ...);
- *   dec.readAudioBlock(samples, ...);
- *   dec.readAudioBlock(samples, ...);
- *   
- *   // Seek to some position and continue reading
- *   dec.seekAndReadAudioBlock(..., samples, ...);
- *   dec.readAudioBlock(samples, ...);
- *   dec.readAudioBlock(samples, ...);
- *   
- *   // Close underlying file stream
- *   dec.close();
+ * <pre>// Create a decoder
+ *FlacDecoder dec = new FlacDecoder(...);
+ *
+ *&#x2F;/ Make the decoder process all metadata blocks internally.
+ *&#x2F;/ We could capture the returned data for extra processing.
+ *&#x2F;/ We must read all metadata before reading audio data.
+ *while (dec.readAndHandleMetadataBlock() != null);
+ *
+ *&#x2F;/ Read audio samples starting from beginning
+ *int[][] samples = (...);
+ *dec.readAudioBlock(samples, ...);
+ *dec.readAudioBlock(samples, ...);
+ *dec.readAudioBlock(samples, ...);
+ *
+ *&#x2F;/ Seek to some position and continue reading
+ *dec.seekAndReadAudioBlock(..., samples, ...);
+ *dec.readAudioBlock(samples, ...);
+ *dec.readAudioBlock(samples, ...);
+ *
+ *&#x2F;/ Close underlying file stream
+ *dec.close();</pre>
+ *@see FrameDecoder
+ *@see FlacLowLevelInput
  */
 public final class FlacDecoder implements AutoCloseable {
 	

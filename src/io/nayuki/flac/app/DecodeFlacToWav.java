@@ -32,18 +32,18 @@ import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.decode.FlacDecoder;
 
 
-/* 
+/**
  * Decodes a FLAC file to an uncompressed PCM WAV file. Overwrites output file if already exists.
  * Runs silently if successful, otherwise prints error messages to standard error.
- * 
- * Usage: java DecodeFlacToWav InFile.flac OutFile.wav
- * 
- * Requirements on the FLAC file:
- * - Sample depth is 8, 16, 24, or 32 bits (not 4, 17, 23, etc.)
- * - Contains no ID3v1 or ID3v2 tags, or other data unrecognized by the FLAC format
- * - Correct total number of samples (not zero) is stored in stream info block
- * - Every frame has a correct header, subframes do not overflow the sample depth,
- *   and other strict checks enforced by this decoder library
+ * <p>Usage: java DecodeFlacToWav InFile.flac OutFile.wav</p>
+ * <p>Requirements on the FLAC file:</p>
+ * <ul>
+ *   <li>Sample depth is 8, 16, 24, or 32 bits (not 4, 17, 23, etc.)</li>
+ *   <li>Contains no ID3v1 or ID3v2 tags, or other data unrecognized by the FLAC format</li>
+ *   <li>Correct total number of samples (not zero) is stored in stream info block</li>
+ *   <li>Every frame has a correct header, subframes do not overflow the sample depth,
+ *   and other strict checks enforced by this decoder library</li>
+ * </ul>
  */
 public final class DecodeFlacToWav {
 	

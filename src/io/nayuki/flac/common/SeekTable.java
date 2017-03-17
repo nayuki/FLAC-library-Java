@@ -7,9 +7,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import io.nayuki.flac.decode.FlacDecoder;
 import io.nayuki.flac.encode.BitOutputStream;
 
 
+/**
+ * Represents precisely all the fields of a seek table metadata block. Mutable structure,
+ * not thread-safe. Also has methods for parsing and serializing this structure to/from bytes.
+ * @see FlacDecoder
+ */
 public final class SeekTable {
 	
 	/*---- Fields ----*/
@@ -86,6 +92,10 @@ public final class SeekTable {
 	
 	/*---- Helper structure ----*/
 	
+	/**
+	 * Represents a seek point entry in a seek table. Mutable structure, not thread-safe.
+	 * @see SeekTable
+	 */
 	public static final class SeekPoint {
 		
 		public long sampleOffset;  // uint64 value, and -1 means placeholder point

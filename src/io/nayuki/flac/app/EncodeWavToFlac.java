@@ -38,16 +38,16 @@ import io.nayuki.flac.encode.RandomAccessFileOutputStream;
 import io.nayuki.flac.encode.SubframeEncoder;
 
 
-/* 
+/**
  * Encodes an uncompressed PCM WAV file to a FLAC file.
  * Overwrites the output file if it already exists.
- * 
- * Usage: java EncodeWavToFlac InFile.wav OutFile.flac
- * 
- * Requirements on the WAV file:
- * - Sample depth is 8, 16, 24, or 32 bits (not 4, 17, 23, etc.)
- * - Number of channels is between 1 to 8 inclusive
- * - Sample rate is less than 2^20 hertz
+ * <p>Usage: java EncodeWavToFlac InFile.wav OutFile.flac</p>
+ * <p>Requirements on the WAV file:</p>
+ * <ul>
+ *   <li>Sample depth is 8, 16, 24, or 32 bits (not 4, 17, 23, etc.)</li>
+ *   <li>Number of channels is between 1 to 8 inclusive</li>
+ *   <li>Sample rate is less than 2<sup>20</sup> hertz</li>
+ * </ul>
  */
 public final class EncodeWavToFlac {
 	

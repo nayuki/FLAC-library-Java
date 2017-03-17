@@ -24,11 +24,16 @@ package io.nayuki.flac.common;
 import java.io.IOException;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.decode.FlacLowLevelInput;
+import io.nayuki.flac.decode.FrameDecoder;
 import io.nayuki.flac.encode.BitOutputStream;
 
 
-// A mutable structure holding key pieces of information from decoding a frame header.
-// A frame size field is also included, although it is computed long after the header ends.
+/**
+ * Represents most fields in a frame header, in decoded (not raw) form. Mutable structure,
+ * not thread safe. Also has methods for parsing and serializing this structure to/from bytes.
+ * @see FrameDecoder
+ * @see StreamInfo#checkFrame(FrameInfo)
+ */
 public final class FrameInfo {
 	
 	/*---- Fields ----*/

@@ -4,9 +4,11 @@ package io.nayuki.flac.decode;
 import java.io.IOException;
 
 
-/* 
+/**
  * A low-level input stream tailored to the needs of FLAC decoding. An overview of methods includes
  * bit reading, CRC calculation, Rice decoding, and positioning and seeking (partly optional).
+ * @see SeekableFileFlacInput
+ * @see FrameDecoder
  */
 public interface FlacLowLevelInput extends AutoCloseable {
 	

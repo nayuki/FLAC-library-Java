@@ -27,8 +27,8 @@ import java.io.RandomAccessFile;
 import java.util.Objects;
 
 
-/* 
- * A FLAC input stream based on a RandomAccessFile.
+/**
+ * A FLAC input stream based on a {@link RandomAccessFile}.
  */
 public final class SeekableFileFlacInput extends AbstractFlacLowLevelInput {
 	
