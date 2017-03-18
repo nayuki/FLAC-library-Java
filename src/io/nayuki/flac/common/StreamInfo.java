@@ -103,6 +103,7 @@ public final class StreamInfo {
 			numSamples = (long)in.readUint(18) << 18 | in.readUint(18);  // uint36
 			md5Hash = new byte[16];
 			in.readFully(md5Hash);
+			// Skip closing the in-memory stream
 		} catch (IOException e) {
 			throw new AssertionError(e);
 		}
@@ -164,16 +165,16 @@ public final class StreamInfo {
 	// metadata block header. This writes exactly 38 bytes. The output stream should
 	// initially be aligned to a byte boundary, and will finish at a byte boundary.
 	public void write(boolean last, BitOutputStream out) throws IOException {
-		// Abort if anything is wrong
+		// Check arguments and state
 		Objects.requireNonNull(out);
 		checkValues();
 		
-		// Metadata block header
+		// Write metadata block header
 		out.writeInt(1, last ? 1 : 0);
 		out.writeInt(7, 0);  // Type
 		out.writeInt(24, 34);  // Length
 		
-		// Stream info block fields
+		// Write stream info block fields
 		out.writeInt(16, minBlockSize);
 		out.writeInt(16, maxBlockSize);
 		out.writeInt(24, minFrameSize);
@@ -201,12 +202,15 @@ public final class StreamInfo {
 		if (depth < 0 || depth > 32 || depth % 8 != 0)
 			throw new IllegalArgumentException("Unsupported bit depth");
 		
+		// Create hasher
 		MessageDigest hasher;
-		try {
+		try {  // Guaranteed available by the Java Cryptography Architecture
 			hasher = MessageDigest.getInstance("MD5");
 		} catch (NoSuchAlgorithmException e) {
 			throw new AssertionError(e);
 		}
+		
+		// Convert samples to a stream of bytes, compute hash
 		int numChannels = samples.length;
 		int numSamples = samples[0].length;
 		int numBytes = depth / 8;

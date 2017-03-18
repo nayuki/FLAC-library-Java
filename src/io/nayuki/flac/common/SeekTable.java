@@ -45,6 +45,7 @@ public final class SeekTable {
 				p.frameSamples = in.readUnsignedShort();
 				points.add(p);
 			}
+			// Skip closing the in-memory streams
 		} catch (IOException e) {
 			throw new AssertionError(e);
 		}
@@ -55,12 +56,15 @@ public final class SeekTable {
 	/*---- Methods ----*/
 	
 	public void checkValues() {
+		// Check list and each point
 		Objects.requireNonNull(points);
 		for (SeekPoint p : points) {
 			Objects.requireNonNull(p);
 			if ((p.frameSamples & 0xFFFF) != p.frameSamples)
 				throw new IllegalStateException("Frame samples outside uint16 range");
 		}
+		
+		// Check ordering of points
 		for (int i = 1; i < points.size(); i++) {
 			SeekPoint p = points.get(i);
 			if (p.sampleOffset != -1) {
@@ -75,14 +79,19 @@ public final class SeekTable {
 	
 	
 	public void write(boolean last, BitOutputStream out) throws IOException {
+		// Check arguments and state
 		Objects.requireNonNull(out);
 		Objects.requireNonNull(points);
 		if (points.size() > ((1 << 24) - 1) / 18)
 			throw new IllegalStateException("Too many seek points");
 		checkValues();
+		
+		// Write metadata block header
 		out.writeInt(1, last ? 1 : 0);
 		out.writeInt(7, 3);
 		out.writeInt(24, points.size() * 18);
+		
+		// Write each seek point
 		for (SeekPoint p : points) {
 			out.writeInt(32, (int)(p.sampleOffset >>> 32));
 			out.writeInt(32, (int)(p.sampleOffset >>>  0));
