@@ -32,6 +32,7 @@ import io.nayuki.flac.encode.BitOutputStream;
 /**
  * Represents most fields in a frame header, in decoded (not raw) form. Mutable structure,
  * not thread safe. Also has methods for parsing and serializing this structure to/from bytes.
+ * All fields can be modified freely when no method call is active.
  * @see FrameDecoder
  * @see StreamInfo#checkFrame(FrameInfo)
  */
@@ -40,21 +41,66 @@ public final class FrameInfo {
 	/*---- Fields ----*/
 	
 	// Exactly one of these following two fields equals -1.
-	public int frameIndex;     // Either -1 or a uint31.
-	public long sampleOffset;  // Either -1 or a uint36.
 	
-	public int numChannels;  // In the range [1, 8]. Determined by channelAssignment.
-	public int channelAssignment;  // In the range [0, 15].
-	public int blockSize;    // Number of samples per channel, in the range [1, 65536].
-	public int sampleRate;   // Either -1 if not encoded in the frame, or in the range [1, 655350].
-	public int sampleDepth;  // Either -1 if not encoded in the frame, or in the range [8, 24].
-	public int frameSize;    // Number of bytes, at least 10.
+	/**
+	 * The index of this frame, where the foremost frame has index 0 and each subsequent frame
+	 * increments it. This is either a uint31 value or &minus;1 if unused. Exactly one of the fields
+	 * frameIndex and sampleOffse is equal to &minus;1 (not both nor neither). This value can only
+	 * be used if the stream info's minBlockSize = maxBlockSize (constant block size encoding style).
+	 */
+	public int frameIndex;
+	
+	/**
+	 * The offset of the first sample in this frame with respect to the beginning of the
+	 * audio stream. This is either a uint36 value or &minus;1 if unused. Exactly one of
+	 * the fields frameIndex and sampleOffse is equal to &minus;1 (not both nor neither).
+	 */
+	public long sampleOffset;
+	
+	
+	/**
+	 * The number of audio channels in this frame, in the range 1 to 8 inclusive.
+	 * This value is fully determined by the channelAssignment field.
+	 */
+	public int numChannels;
+	
+	/**
+	 * The raw channel assignment value of this frame, which is a uint4 value.
+	 * This indicates the number of channels, but also tells the stereo coding mode.
+	 */
+	public int channelAssignment;
+	
+	/**
+	 * The number of samples per channel in this frame, in the range 1 to 65536 inclusive.
+	 */
+	public int blockSize;
+	
+	/**
+	 * The sample rate of this frame in hertz (Hz), in the range 1 to 655360 inclusive,
+	 * or &minus;1 if unavailable (i.e. the stream info should be consulted).
+	 */
+	public int sampleRate;
+	
+	/**
+	 * The sample depth of this frame in bits, in the range 8 to 24 inclusive,
+	 * or &minus;1 if unavailable (i.e. the stream info should be consulted).
+	 */
+	public int sampleDepth;
+	
+	/**
+	 * The size of this frame in bytes, from the start of the sync sequence to the end
+	 * of the trailing CRC-16 checksum. A valid value is at least 10, or &minus;1
+	 * if unavailable (e.g. the frame header was parsed but not the entire frame).
+	 */
+	public int frameSize;
 	
 	
 	
 	/*---- Constructors ----*/
 	
-	// Constructs a blank frame metadata structure.
+	/**
+	 * Constructs a blank frame metadata structure, setting all fields to unknown or invalid values.
+	 */
 	public FrameInfo() {
 		frameIndex        = -1;
 		sampleOffset      = -1;
@@ -70,16 +116,23 @@ public final class FrameInfo {
 	
 	/*---- Functions to read FrameInfo from stream ----*/
 	
-	// Tries to read the next FLAC frame header from the given bit input stream.
-	// The stream must be aligned to a byte boundary, and should start at a sync code.
-	// If EOF is encountered before any bytes were read, then this returns null.
-	// Otherwise this reads 6 to 16 bytes from the given input stream and tries
-	// to parse it as a FLAC frame header - starting from the sync code, and ending
-	// after the CRC-8 value is read (but before reading any subframes).
-	// If any field is found to be invalid then a DataFormatException is thrown.
-	// After the frame header is successfully decoded, a new FrameInfo with
-	// all fields (except frameSize) set to appropriate values is returned.
-	// (This doesn't read to the end of the frame, so the frameSize field is set to -1.)
+	/**
+	 * Reads the next FLAC frame header from the specified input stream, either returning
+	 * a new frame info object or {@code null}. The stream must be aligned to a byte
+	 * boundary and start at a sync sequence. If EOF is immediately encountered before
+	 * any bytes were read, then this returns {@code null}.
+	 * <p>Otherwise this reads between 6 to 16 bytes from the stream &ndash; starting
+	 * from the sync code, and ending after the CRC-8 value is read (but before reading
+	 * any subframes). It tries to parse the frame header data. After the values are
+	 * successfully decoded, a new frame info object is created, almost all fields are
+	 * set to the parsed values, and it is returned. (This doesn't read to the end
+	 * of the frame, so the frameSize field is set to -1.)</p>
+	 * @param in the input stream to read from (not {@code null})
+	 * @return a new frame info object or {@code null}
+	 * @throws NullPointerException if the input stream is {@code null}
+	 * @throws DataFormatException if the input data contains invalid values
+	 * @throws IOException if an I/O exception occurred
+	 */
 	public static FrameInfo readFrame(FlacLowLevelInput in) throws IOException {
 		// Preliminaries
 		in.resetCrcs();
@@ -218,12 +271,18 @@ public final class FrameInfo {
 	
 	/*---- Functions to write FrameInfo to stream ----*/
 	
-	// Writes the current state of this FrameInfo object to the given output stream,
-	// from the sync field through to the CRC-8 field (inclusive). This does not write
-	// subframe data, bit padding, nor the CRC-16 field. The stream must be aligned before this method
-	// is called, and will be aligned after the method returns (i.e. it writes a whole number of bytes).
-	// This method resets the CRCs on the output stream before any data is written. This behavior
-	// is useful for the caller, which will need to write the CRC-16 at the end ofthe frame.
+	/**
+	 * Writes the current state of this object as a frame header to the specified
+	 * output stream, from the sync field through to the CRC-8 field (inclusive).
+	 * This does not write the data of subframes, the bit padding, nor the CRC-16 field.</p>
+	 * <p>The stream must be byte-aligned before this method is called, and will be aligned
+	 * upon returning (i.e. it writes a whole number of bytes). This method initially resets
+	 * the stream's CRC computations, which is useful behavior for the caller because
+	 * it will need to write the CRC-16 at the end of the frame.</p>
+	 * @param out the output stream to write to (not {@code null})
+	 * @throws NullPointerException if the output stream is {@code null}
+	 * @throws IOException if an I/O exception occurred
+	 */
 	public void writeHeader(BitOutputStream out) throws IOException {
 		Objects.requireNonNull(out);
 		out.resetCrcs();

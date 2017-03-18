@@ -35,32 +35,78 @@ import io.nayuki.flac.encode.BitOutputStream;
 /**
  * Represents precisely all the fields of a stream info metadata block. Mutable structure,
  * not thread-safe. Also has methods for parsing and serializing this structure to/from bytes.
+ * All fields can be modified freely when no method call is active.
  * @see FrameInfo
  * @see FlacDecoder
  */
 public final class StreamInfo {
 	
-	/*---- Fields ----*/
+	/*---- Fields about block and frame sizes ----*/
 	
-	public int minBlockSize;  // In samples per channel, a uint16 value.
-	public int maxBlockSize;  // In samples per channel, a uint16 value.
-	public int minFrameSize;  // In bytes, a uint24 value. 0 signifies unknown.
-	public int maxFrameSize;  // In bytes, a uint24 value. 0 signifies unknown.
+	/**
+	 * Minimum block size (in samples per channel) among the whole stream, a uint16 value.
+	 * However when minBlockSize = maxBlockSize (constant block size encoding style),
+	 * the final block is allowed to be smaller than minBlockSize.
+	 */
+	public int minBlockSize;
 	
-	public int sampleRate;   // In hertz (Hz), a uint20 value. 0 is invalid.
-	public int numChannels;  // An integer in the range [1, 8].
-	public int sampleDepth;  // In bits per sample, in the range [4, 32].
-	public long numSamples;  // Total number of samples (per channel) in the audio clip, a uint36 value. 0 signifies unknown (cannot have empty audio).
+	/**
+	 * Maximum block size (in samples per channel) among the whole stream, a uint16 value.
+	 */
+	public int maxBlockSize;
 	
-	// Always 16 bytes long. Can be all zeros to signify that the encoder did not
-	// compute the MD5 hash. It is okay to replace this array with a different object.
+	/**
+	 * Minimum frame size (in bytes) among the whole stream, a uint24 value.
+	 * However, a value of 0 signifies that the value is unknown.
+	 */
+	public int minFrameSize;
+	
+	/**
+	 * Maximum frame size (in bytes) among the whole stream, a uint24 value.
+	 * However, a value of 0 signifies that the value is unknown.
+	 */
+	public int maxFrameSize;
+	
+	
+	/*---- Fields about stream properties ----*/
+	
+	/**
+	 * The sample rate of the audio stream (in hertz (Hz)), a positive uint20 value.
+	 * Note that 0 is an invalid value.
+	 */
+	public int sampleRate;
+	
+	/**
+	 * The number of channels in the audio stream, between 1 and 8 inclusive.
+	 * 1 means mono, 2 means stereo, et cetera.
+	 */
+	public int numChannels;
+	
+	/**
+	 * The bits per sample in the audio stream, in the range 4 to 32 inclusive.
+	 */
+	public int sampleDepth;
+	
+	/**
+	 * The total number of samples per channel in the whole stream, a uint36 value.
+	 * The special value of 0 signifies that the value is unknown (not empty zero-length stream).
+	 */
+	public long numSamples;
+	
+	/**
+	 * The 16-byte MD5 hash of the raw uncompressed audio data serialized in little endian with
+	 * channel interleaving (not planar). It can be all zeros to signify that the hash was not computed.
+	 * It is okay to replace this array as needed (the initially constructed array object is not special).
+	 */
 	public byte[] md5Hash;
 	
 	
 	
 	/*---- Constructors ----*/
 	
-	// Constructs a blank stream info structure with certain default values.
+	/**
+	 * Constructs a blank stream info structure with certain default values.
+	 */
 	public StreamInfo() {
 		// Set these fields to legal unknown values
 		minFrameSize = 0;
@@ -75,8 +121,14 @@ public final class StreamInfo {
 	}
 	
 	
-	// Constructs a stream info structure by reading the given 34-byte array of raw data.
-	// This throws DataFormatException if values are invalid.
+	/**
+	 * Constructs a stream info structure by parsing the specified 34-byte metadata block.
+	 * (The array must contain only the metadata payload, without the type or length fields.)
+	 * @param b the metadata block's payload data to parse (not {@code null})
+	 * @throws NullPointerException if the array is {@code null}
+	 * @throws IllegalArgumentException if the array length is not 34
+	 * @throws DataFormatException if the data contains invalid values
+	 */
 	public StreamInfo(byte[] b) {
 		Objects.requireNonNull(b);
 		if (b.length != 34)
@@ -113,7 +165,11 @@ public final class StreamInfo {
 	
 	/*---- Methods ----*/
 	
-	// Either returns silently or throws IllegalStateException or NullPointerException.
+	/**
+	 * Checks the state of this object, and either returns silently or throws an exception.
+	 * @throws NullPointerException if the MD5 hash array is {@code null}
+	 * @throws IllegalStateException if any field has an invalid value
+	 */
 	public void checkValues() {
 		if ((minBlockSize >>> 16) != 0)
 			throw new IllegalStateException("Invalid minimum block size");
@@ -137,8 +193,13 @@ public final class StreamInfo {
 	}
 	
 	
-	// Checks whether the given frame metadata is consistent with this stream info object.
-	// This method either returns silently or throws an exception.
+	/**
+	 * Checks whether the specified frame information is consistent with values in
+	 * this stream info object, either returning silently or throwing an exception.
+	 * @param meta the frame info object to check (not {@code null})
+	 * @throws NullPointerException if the frame info is {@code null}
+	 * @throws DataFormatException if the frame info contains bad values
+	 */
 	public void checkFrame(FrameInfo meta) {
 		if (meta.numChannels != numChannels)
 			throw new DataFormatException("Channel count mismatch");
@@ -161,9 +222,16 @@ public final class StreamInfo {
 	}
 	
 	
-	// Writes this stream info metadata block to the given output stream, including the
-	// metadata block header. This writes exactly 38 bytes. The output stream should
-	// initially be aligned to a byte boundary, and will finish at a byte boundary.
+	/**
+	 * Writes this stream info metadata block to the specified output stream, including the
+	 * metadata block header, writing exactly 38 bytes. (This is unlike the constructor,
+	 * which takes an array without the type and length fields.) The output stream must
+	 * initially be aligned to a byte boundary, and will finish at a byte boundary.
+	 * @param last whether the metadata block is the final one in the FLAC file
+	 * @param out the output stream to write to (not {@code null})
+	 * @throws NullPointerException if the output stream is {@code null}
+	 * @throws IOException if an I/O exception occurred
+	 */
 	public void write(boolean last, BitOutputStream out) throws IOException {
 		// Check arguments and state
 		Objects.requireNonNull(out);
@@ -192,8 +260,18 @@ public final class StreamInfo {
 	
 	/*---- Static functions ----*/
 	
-	// Returns the MD5 hash of the given raw audio sample data at the given bit depth.
-	// The bit depth must be a multiple of 8 from 8 to 32. The returned array is a new object of length 16.
+	/**
+	 * Computes and returns the MD5 hash of the specified raw audio sample data at the specified
+	 * bit depth. Currently, the bit depth must be a multiple of 8, between 8 and 32 inclusive.
+	 * The returned array is a new object of length 16.
+	 * @param samples the audio samples to hash, where
+	 * each subarray is a channel (all not {@code null})
+	 * @param depth the bit depth of the audio samples
+	 * (i.e. each sample value is a signed 'depth'-bit integer)
+	 * @return a new 16-byte array representing the MD5 hash of the audio data
+	 * @throws NullPointerException if the array or any subarray is {@code null}
+	 * @throws IllegalArgumentException if the bit depth is unsupported
+	 */
 	public static byte[] getMd5Hash(int[][] samples, int depth) {
 		// Check arguments
 		Objects.requireNonNull(samples);
