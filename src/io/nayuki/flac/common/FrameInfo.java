@@ -22,6 +22,7 @@
 package io.nayuki.flac.common;
 
 import java.io.IOException;
+import java.util.Objects;
 import io.nayuki.flac.decode.DataFormatException;
 import io.nayuki.flac.decode.FlacLowLevelInput;
 import io.nayuki.flac.decode.FrameDecoder;
@@ -220,6 +221,7 @@ public final class FrameInfo {
 	// This method resets the CRCs on the output stream before any data is written. This behavior
 	// is useful for the caller, which will need to write the CRC-16 at the end ofthe frame.
 	public void writeHeader(BitOutputStream out) throws IOException {
+		Objects.requireNonNull(out);
 		out.resetCrcs();
 		out.writeInt(14, 0x3FFE);  // Sync
 		out.writeInt(1, 0);  // Reserved

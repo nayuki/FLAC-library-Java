@@ -78,6 +78,9 @@ public final class StreamInfo {
 	// Constructs a stream info structure by reading the given 34-byte array of raw data.
 	// This throws DataFormatException if values are invalid.
 	public StreamInfo(byte[] b) {
+		Objects.requireNonNull(b);
+		if (b.length != 34)
+			throw new IllegalArgumentException("Invalid data length");
 		try {
 			FlacLowLevelInput in = new ByteArrayFlacInput(b);
 			minBlockSize = in.readUint(16);
@@ -162,6 +165,7 @@ public final class StreamInfo {
 	// initially be aligned to a byte boundary, and will finish at a byte boundary.
 	public void write(boolean last, BitOutputStream out) throws IOException {
 		// Abort if anything is wrong
+		Objects.requireNonNull(out);
 		checkValues();
 		
 		// Metadata block header
@@ -192,8 +196,10 @@ public final class StreamInfo {
 	public static byte[] getMd5Hash(int[][] samples, int depth) {
 		// Check arguments
 		Objects.requireNonNull(samples);
+		for (int[] chanSamples : samples)
+			Objects.requireNonNull(chanSamples);
 		if (depth < 0 || depth > 32 || depth % 8 != 0)
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException("Unsupported bit depth");
 		
 		MessageDigest hasher;
 		try {

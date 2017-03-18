@@ -55,7 +55,9 @@ public final class SeekTable {
 	/*---- Methods ----*/
 	
 	public void checkValues() {
+		Objects.requireNonNull(points);
 		for (SeekPoint p : points) {
+			Objects.requireNonNull(p);
 			if ((p.frameSamples & 0xFFFF) != p.frameSamples)
 				throw new IllegalStateException("Frame samples outside uint16 range");
 		}
@@ -65,7 +67,7 @@ public final class SeekTable {
 				SeekPoint q = points.get(i - 1);
 				if (p.sampleOffset <= q.sampleOffset)
 					throw new IllegalStateException("Sample offsets out of order");
-				if (p.sampleOffset < q.sampleOffset)
+				if (p.fileOffset < q.fileOffset)
 					throw new IllegalStateException("File offsets out of order");
 			}
 		}
@@ -73,6 +75,8 @@ public final class SeekTable {
 	
 	
 	public void write(boolean last, BitOutputStream out) throws IOException {
+		Objects.requireNonNull(out);
+		Objects.requireNonNull(points);
 		if (points.size() > ((1 << 24) - 1) / 18)
 			throw new IllegalStateException("Too many seek points");
 		checkValues();
