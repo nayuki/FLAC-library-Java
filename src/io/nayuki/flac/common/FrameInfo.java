@@ -56,10 +56,14 @@ public final class FrameInfo {
 	
 	// Constructs a blank frame metadata structure.
 	public FrameInfo() {
-		frameIndex   = -1;
-		sampleOffset = -1;
-		sampleRate   = -1;
-		sampleDepth  = -1;
+		frameIndex        = -1;
+		sampleOffset      = -1;
+		numChannels       = -1;
+		channelAssignment = -1;
+		blockSize         = -1;
+		sampleRate        = -1;
+		sampleDepth       = -1;
+		frameSize         = -1;
 	}
 	
 	
