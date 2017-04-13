@@ -154,11 +154,17 @@ final class LinearPredictiveEncoder extends SubframeEncoder {
 		// Forward elimination
 		int numPivots = 0;
 		for (int j = 0; j < rows && numPivots < rows; j++) {
-			int pivotRow = numPivots;
-			while (pivotRow < rows && mat[pivotRow][j] == 0)
-				pivotRow++;
+			int pivotRow = rows;
+			double pivotMag = 0;
+			for (int i = numPivots; i < rows; i++) {
+				if (Math.abs(mat[i][j]) > pivotMag) {
+					pivotMag = Math.abs(mat[i][j]);
+					pivotRow = i;
+				}
+			}
 			if (pivotRow == rows)
 				continue;
+			
 			double[] temp = mat[numPivots];
 			mat[numPivots] = mat[pivotRow];
 			mat[pivotRow] = temp;
