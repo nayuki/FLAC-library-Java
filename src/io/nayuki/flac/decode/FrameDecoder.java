@@ -192,7 +192,7 @@ public final class FrameDecoder {
 	private static int checkBitDepth(long val, int depth) {
 		assert 1 <= depth && depth <= 32;
 		// Equivalent check: (val >> (depth - 1)) == 0 || (val >> (depth - 1)) == -1
-		if ((-(val >> (depth - 1)) | 1) == 1)
+		if (val >> (depth - 1) == val >> depth)
 			return (int)val;
 		else
 			throw new IllegalArgumentException(val + " is not a signed " + depth + "-bit value");
