@@ -44,8 +44,7 @@ public final class RandomAccessFileOutputStream extends OutputStream {
 	/*---- Constructors ----*/
 	
 	public RandomAccessFileOutputStream(RandomAccessFile raf) {
-		Objects.requireNonNull(raf);
-		this.out = raf;
+		this.out = Objects.requireNonNull(raf);
 	}
 	
 	

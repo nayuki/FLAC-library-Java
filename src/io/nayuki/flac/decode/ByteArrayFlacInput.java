@@ -42,8 +42,7 @@ public final class ByteArrayFlacInput extends AbstractFlacLowLevelInput {
 	
 	public ByteArrayFlacInput(byte[] b) {
 		super();
-		Objects.requireNonNull(b);
-		data = b;
+		data = Objects.requireNonNull(b);
 		offset = 0;
 	}
 	

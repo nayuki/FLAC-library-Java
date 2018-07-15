@@ -41,9 +41,8 @@ final class SizeEstimate<E> {
 	public SizeEstimate(long size, E enc) {
 		if (size < 0)
 			throw new IllegalArgumentException();
-		Objects.requireNonNull(enc);
 		sizeEstimate = size;
-		encoder = enc;
+		encoder = Objects.requireNonNull(enc);
 	}
 	
 	

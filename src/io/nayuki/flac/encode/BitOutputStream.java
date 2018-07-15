@@ -48,8 +48,7 @@ public final class BitOutputStream implements AutoCloseable {
 	
 	// Constructs a FLAC-oriented bit output stream from the given byte-based output stream.
 	public BitOutputStream(OutputStream out) throws IOException {
-		Objects.requireNonNull(out);
-		this.out = out;
+		this.out = Objects.requireNonNull(out);
 		bitBuffer = 0;
 		bitBufferLen = 0;
 		byteCount = 0;

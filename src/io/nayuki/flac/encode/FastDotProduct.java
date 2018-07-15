@@ -51,12 +51,11 @@ final class FastDotProduct {
 	// The values from data array are still needed when dotProduct() is called, thus no other code is allowed to modify the values.
 	public FastDotProduct(long[] data, int maxDelta) {
 		// Check arguments
-		Objects.requireNonNull(data);
+		this.data = Objects.requireNonNull(data);
 		if (maxDelta < 0 || maxDelta >= data.length)
 			throw new IllegalArgumentException();
 		
 		// Precompute some dot products
-		this.data = data;
 		precomputed = new double[maxDelta + 1];
 		for (int i = 0; i < precomputed.length; i++) {
 			double sum = 0;
