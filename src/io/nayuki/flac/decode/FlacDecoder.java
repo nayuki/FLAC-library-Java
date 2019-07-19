@@ -21,6 +21,7 @@
 
 package io.nayuki.flac.decode;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
@@ -76,18 +77,26 @@ public final class FlacDecoder implements AutoCloseable {
 	// Constructs a new FLAC decoder to read the given file.
 	// This immediately reads the basic header but not metadata blocks.
 	public FlacDecoder(File file) throws IOException {
-		// Initialize streams
+		this(new SeekableFileFlacInput(file));
 		Objects.requireNonNull(file);
-		input = new SeekableFileFlacInput(file);
-		
+	}
+
+	// Constructs a new FLAC decoder to read the given stream.
+	// This immediately reads the basic header but not metadata blocks.
+	public FlacDecoder(BufferedInputStream bufferedData) throws IOException {
+		this(new SeekableInputStreamFlacInput(bufferedData));
+	}
+
+	private FlacDecoder(FlacLowLevelInput input) throws IOException {
+		// Initialize stream
+		this.input = input;
+
 		// Read basic header
 		if (input.readUint(32) != 0x664C6143)  // Magic string "fLaC"
 			throw new DataFormatException("Invalid magic string");
 		metadataEndPos = -1;
 	}
-	
-	
-	
+
 	/*---- Methods ----*/
 	
 	// Reads, handles, and returns the next metadata block. Returns a pair (Integer type, byte[] data) if the
