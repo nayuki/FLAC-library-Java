@@ -1,0 +1,7 @@
+.idea/
+*.iml
+target/
+frontend/
+dist/
+pid.file
+
