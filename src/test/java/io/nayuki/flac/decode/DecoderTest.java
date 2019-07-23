@@ -7,14 +7,20 @@ import org.junit.jupiter.api.Test;
 import org.xlengua.audio.converters.Builder;
 
 import javax.imageio.stream.MemoryCacheImageOutputStream;
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.List;
+import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class DecoderTest {
@@ -104,6 +110,64 @@ public class DecoderTest {
         // end of 4 + 4 + 18 == 26 bytes
         // next 16 bytes is MD5 digest
         assertArrayEquals(new byte[] {(byte) 4, (byte) 123, (byte) -36, (byte) -35}, Arrays.copyOfRange(raw, 26, 30));
+    }
+
+    @Test
+    void transformSampleDepthTest() throws URISyntaxException, IOException {
+        Path path = Paths.get(getClass().getClassLoader().getResource(TRACK07_MP3).toURI());
+        byte[] mediaBytes = Files.readAllBytes(path);
+        BufferedInputStream in = new BufferedInputStream(new ByteArrayInputStream(mediaBytes));
+
+        Builder builder = new Builder().sourceMp3(in);
+        StreamInfo streamInfo = builder.streamInfo();
+        assertEquals(MP3_SAMPLE_DEPTH, streamInfo.sampleDepth);
+
+        // downscaling
+        builder.transformSampleDepth(8);
+        assertEquals(256, builder.changeSampleDepth.apply(65536));
+        assertEquals(1, builder.changeSampleDepth.apply(128));
+        assertEquals(0, builder.changeSampleDepth.apply(64));
+
+        // upscaling
+        builder.transformSampleDepth(24);
+        assertEquals(16777216, builder.changeSampleDepth.apply(65536));
+        assertEquals(32768, builder.changeSampleDepth.apply(128));
+        assertEquals(16384, builder.changeSampleDepth.apply(64));
+    }
+
+    @Test
+    void transformSampleRateTest() throws URISyntaxException, IOException {
+        Path path = Paths.get(getClass().getClassLoader().getResource(TRACK07_MP3).toURI());
+        byte[] mediaBytes = Files.readAllBytes(path);
+        BufferedInputStream in = new BufferedInputStream(new ByteArrayInputStream(mediaBytes));
+
+        Builder builder = new Builder().sourceMp3(in);
+        StreamInfo streamInfo = builder.streamInfo();
+        assertEquals(MP3_SAMPLE_RATE, streamInfo.sampleRate);
+        builder.downscaleSampleRate(MP3_SAMPLE_RATE / 2);
+
+        List<Integer> source = Stream.of(1, 2, 3, 4, 5, 6, 7).collect(toList());
+        List<Integer> downSampled = builder.changeSampleDepthAndRate.apply(source);
+        assertEquals(Stream.of(1, 3, 5, 7).collect(toList()), downSampled);
+    }
+
+    @Test
+    void transformSampleRateAndDepthTest() throws URISyntaxException, IOException {
+        Path path = Paths.get(getClass().getClassLoader().getResource(TRACK07_MP3).toURI());
+        byte[] mediaBytes = Files.readAllBytes(path);
+        BufferedInputStream in = new BufferedInputStream(new ByteArrayInputStream(mediaBytes));
+
+        Builder builder = new Builder().sourceMp3(in);
+        StreamInfo streamInfo = builder.streamInfo();
+        assertEquals(MP3_SAMPLE_DEPTH, streamInfo.sampleDepth);
+        assertEquals(MP3_SAMPLE_RATE, streamInfo.sampleRate);
+        builder
+                .transformSampleDepth(8)
+                .downscaleSampleRate(MP3_SAMPLE_RATE / 2);
+
+        List<Integer> source = Stream.of(512, 2, 256, 4, 64, 6, 1024).collect(toList());
+        List<Integer> downSampled = builder.changeSampleDepthAndRate.apply(source);
+        assertEquals(Stream.of(2, 1, 0, 4).collect(toList()), downSampled);
     }
 
     @Test
