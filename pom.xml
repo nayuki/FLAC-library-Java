@@ -23,6 +23,12 @@
 
 
     <dependencies>
+        <dependency>
+            <groupId>fr.delthas</groupId>
+            <artifactId>javamp3</artifactId>
+            <version>1.0.1</version>
+        </dependency>
+
         <!-- Provide JUnit 5 API -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

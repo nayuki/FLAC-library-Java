@@ -24,6 +24,7 @@ package io.nayuki.flac.common;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import java.util.Objects;
 import io.nayuki.flac.decode.ByteArrayFlacInput;
 import io.nayuki.flac.decode.DataFormatException;
@@ -240,9 +241,9 @@ public final class StreamInfo {
 		// Write metadata block header
 		out.writeInt(1, last ? 1 : 0);
 		out.writeInt(7, 0);  // Type
-		out.writeInt(24, 34);  // Length
+		out.writeInt(24, 34);  // Length (w/o this header 4 bytes length)
 		
-		// Write stream info block fields
+		// Write stream info block fields (18 bytes)
 		out.writeInt(16, minBlockSize);
 		out.writeInt(16, maxBlockSize);
 		out.writeInt(24, minFrameSize);
@@ -251,7 +252,8 @@ public final class StreamInfo {
 		out.writeInt(3, numChannels - 1);
 		out.writeInt(5, sampleDepth - 1);
 		out.writeInt(18, (int)(numSamples >>> 18));
-		out.writeInt(18, (int)(numSamples >>>  0));
+		out.writeInt(18, (int) numSamples);
+		// 16 bytes (totally  34 bytes)
 		for (byte b : md5Hash)
 			out.writeInt(8, b);
 	}
@@ -259,7 +261,12 @@ public final class StreamInfo {
 	
 	
 	/*---- Static functions ----*/
-	
+
+	@FunctionalInterface
+	private interface Accessor {
+		int apply(int ch, int i);
+	}
+
 	/**
 	 * Computes and returns the MD5 hash of the specified raw audio sample data at the specified
 	 * bit depth. Currently, the bit depth must be a multiple of 8, between 8 and 32 inclusive.
@@ -289,13 +296,38 @@ public final class StreamInfo {
 		}
 		
 		// Convert samples to a stream of bytes, compute hash
-		int numChannels = samples.length;
-		int numSamples = samples[0].length;
+		Accessor data = (int ch, int i) -> samples[ch][i];
+		return getHash(data, depth, samples.length, samples[0].length);
+	}
+
+	public static byte[] getMd5Hash(List<Integer>[] samples, int depth) {
+		// Check arguments
+		Objects.requireNonNull(samples);
+		for (List<Integer> chanSamples : samples)
+			assert (!chanSamples.isEmpty());
+
+		Accessor data = (int ch, int i) -> samples[ch].get(i);
+		return getHash(data, depth, samples.length, samples[0].size());
+	}
+
+	private static byte[] getHash(Accessor samples, int depth, int numChannels, int numSamples) {
+		if (depth < 0 || depth > 32 || depth % 8 != 0)
+			throw new IllegalArgumentException("Unsupported bit depth");
+
+		// Create hasher
+		MessageDigest hasher;
+		try {  // Guaranteed available by the Java Cryptography Architecture
+			hasher = MessageDigest.getInstance("MD5");
+		} catch (NoSuchAlgorithmException e) {
+			throw new AssertionError(e);
+		}
+
+		// Convert samples to a stream of bytes, compute hash
 		int numBytes = depth / 8;
 		byte[] buf = new byte[numChannels * numBytes * Math.min(numSamples, 2048)];
 		for (int i = 0, l = 0; i < numSamples; i++) {
 			for (int j = 0; j < numChannels; j++) {
-				int val = samples[j][i];
+				int val = samples.apply(j, i);
 				for (int k = 0; k < numBytes; k++, l++)
 					buf[l] = (byte)(val >>> (k << 3));
 			}
@@ -306,5 +338,5 @@ public final class StreamInfo {
 		}
 		return hasher.digest();
 	}
-	
+
 }

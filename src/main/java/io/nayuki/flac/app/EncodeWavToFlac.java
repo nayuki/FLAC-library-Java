@@ -96,7 +96,11 @@ public final class EncodeWavToFlac {
 				throw new RuntimeException("Invalid block align value");
 			if (bytesPerSample * numChannels * sampleRate != byteRate)
 				throw new RuntimeException("Invalid byte rate value");
-			
+
+			// skip 1st metadata block
+			if (!readString(in, 4).equals("data")) {
+				readString(in, 34);
+			}
 			// Handle the data chunk
 			if (!readString(in, 4).equals("data"))
 				throw new DataFormatException("Unrecognized WAV file chunk");
