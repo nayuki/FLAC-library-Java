@@ -3,14 +3,12 @@ package io.nayuki.flac.decode;
 
 import io.nayuki.flac.common.StreamInfo;
 import io.nayuki.flac.encode.BitOutputStream;
+import io.nayuki.flac.encode.RandomAccessFileOutputStream;
 import org.junit.jupiter.api.Test;
 import org.xlengua.audio.converters.Builder;
 
 import javax.imageio.stream.MemoryCacheImageOutputStream;
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -168,6 +166,24 @@ public class DecoderTest {
         List<Integer> source = Stream.of(512, 2, 256, 4, 64, 6, 1024).collect(toList());
         List<Integer> downSampled = builder.changeSampleDepthAndRate.apply(source);
         assertEquals(Stream.of(2, 1, 0, 4).collect(toList()), downSampled);
+    }
+
+    @Test
+    void test() throws URISyntaxException, IOException {
+        Path path = Paths.get(getClass().getClassLoader().getResource(TRACK07_MP3).toURI());
+        byte[] mediaBytes = Files.readAllBytes(path);
+        BufferedInputStream in = new BufferedInputStream(new ByteArrayInputStream(mediaBytes));
+        RandomAccessFile raf = new RandomAccessFile("./test.flac", "rw");
+
+        new Builder()
+                .sourceMp3(in)
+//                .transformSampleDepth(12)
+                .downscaleSampleRate(MP3_SAMPLE_RATE / 2)
+                .transform(1)
+                .targetFlac()
+                .convert(new RandomAccessFileOutputStream(raf));
+
+        raf.close();
     }
 
     @Test

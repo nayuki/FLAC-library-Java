@@ -134,9 +134,9 @@ public class Builder {
      * (changes channels, makes downsampling, etc.)
      *
      * @param numChannels to write in a target
-     * @return
+     * @return the same builder
      */
-    public StreamInfo transform(int numChannels) {
+    public Builder transform(int numChannels) {
         if (numChannels > streamInfo.numChannels) {
             throw new IllegalArgumentException();
         }
@@ -147,6 +147,12 @@ public class Builder {
             for (int ch = 0; ch < numChannels; ch++) {
                 this.samples[ch] = transform.apply(ch);
             }
+
+            if (this.transformSampleDepth != null) {
+                this.streamInfo.sampleDepth = this.transformSampleDepth;
+            }
+            this.streamInfo.sampleRate = this.transformSampleRate;
+            this.streamInfo.numSamples = this.samples[0].size();
         } else if (this.transformSampleDepth != null) {
             for (int ch = 0; ch < numChannels; ch++) {
                 Function<Integer, Integer> transform = this.samples[ch]::get;
@@ -167,7 +173,7 @@ public class Builder {
             streamInfo.numChannels = numChannels;
         }
 
-        return streamInfo;
+        return this;
     }
 
     /**
