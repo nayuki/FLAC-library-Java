@@ -127,6 +127,10 @@ public final class StreamInfo {
 	 * @param streamInfo to copy
 	 */
 	public StreamInfo(StreamInfo streamInfo) {
+		update(streamInfo);
+	}
+
+	public void update(StreamInfo streamInfo) {
 		minBlockSize = streamInfo.minBlockSize;
 		maxBlockSize = streamInfo.maxBlockSize;
 		minFrameSize = streamInfo.minFrameSize;
