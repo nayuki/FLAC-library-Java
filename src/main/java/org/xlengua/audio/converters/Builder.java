@@ -29,37 +29,35 @@ public class Builder {
     private int maxSize;
     private StreamInfo streamInfo;
     private Sound sourceMp3;
+    // in-memory data
     private List<Integer>[] samples;
     private Function<InputStream, List<Integer>[]> decoder;
     private ConverterFunc converter;
-    private Integer transformSampleDepth;
-    private Integer transformSampleRate;
+    // transformations parameters
+    private Integer targetSampleDepth;
+    private Integer transformDepthDiff;
+    public Function<Integer, Integer> transformSampleDepth;
+    private Integer targetSampleRate;
+    private Integer targetChannels;
 
-    /**
-     * Samples scaling task.
-     */
-// TODO add low-pass filter
-    public Function<Integer, Integer> changeSampleDepth = sample -> {
-        int scaleExp = transformSampleDepth - streamInfo.sampleDepth;
-        return (int) Math.round(sample * Math.pow(2, scaleExp));
-    };
-
-    /**
+     /**
      * Downsampling task composites with sample scaling (if defined).
      */
+// TODO add low-pass filter and approximation for downsample/upsample and rates ratio like 2/3
     public Function<List<Integer>, List<Integer>> changeSampleDepthAndRate = samples -> {
         Function<Integer, Integer> composite = samples::get;
-        if (this.transformSampleDepth != null) {
-            composite = composite.andThen(this.changeSampleDepth);
+        if (this.targetSampleDepth != null) {
+            composite = composite.andThen(this.transformSampleDepth);
         }
 
-        int downscale = streamInfo.sampleRate / this.transformSampleRate;
+        int downscale = streamInfo.sampleRate / this.targetSampleRate;
         List<Integer> result = new ArrayList<>(samples.size() / downscale);
         for (int i = 0, j = 0; i < samples.size(); i += downscale, j++) {
             result.add(j, composite.apply(i));
         }
         return result;
     };
+
 
     public Builder() {
     }
@@ -100,79 +98,48 @@ public class Builder {
     }
 
     /**
-     * Defines samples scaling.
+     * Defines samples depth scaling.
      *
      * @param sampleDepth new sample depth in [0..32]
      * @return the same builder
      */
-    public Builder transformSampleDepth(int sampleDepth) {
+    public Builder sampleDepth(int sampleDepth) {
         if (sampleDepth < 0 || sampleDepth > 32) {
             throw new IllegalArgumentException();
         }
-        this.transformSampleDepth = sampleDepth;
+
+        if (sampleDepth != streamInfo.sampleDepth) {
+            this.targetSampleDepth = sampleDepth;
+            this.transformDepthDiff = Math.abs(targetSampleDepth - streamInfo.sampleDepth);
+            this.transformSampleDepth = sampleDepth < streamInfo.sampleDepth ?
+                    sample -> sample >> this.transformDepthDiff : sample -> sample << this.transformDepthDiff;
+        }
 
         return this;
     }
 
     /**
-     * Defines samples rate downsampling.
+     * Defines rate downsampling.
      *
      * @param sampleRate new sample rate
      * @return the same builder
      */
-    public Builder downscaleSampleRate(int sampleRate) {
+    public Builder downSampleRate(int sampleRate) {
         if (this.streamInfo.sampleRate % sampleRate != 0) {
             throw new IllegalArgumentException();
         }
-        this.transformSampleRate = sampleRate;
+        this.targetSampleRate = sampleRate;
 
         return this;
     }
 
     /**
-     * Transforming raw samples read according new parameters
-     * (changes channels, makes downsampling, etc.)
+     * Cutting number of channels to 1.
      *
-     * @param numChannels to write in a target
      * @return the same builder
      */
-    public Builder transform(int numChannels) {
-        if (numChannels > streamInfo.numChannels) {
-            throw new IllegalArgumentException();
-        }
-
-        if (this.transformSampleRate != null) {
-            Function<Integer, List<Integer>> transform = ch -> this.samples[ch];
-            transform = transform.andThen(this.changeSampleDepthAndRate);
-            for (int ch = 0; ch < numChannels; ch++) {
-                this.samples[ch] = transform.apply(ch);
-            }
-
-            if (this.transformSampleDepth != null) {
-                this.streamInfo.sampleDepth = this.transformSampleDepth;
-            }
-            this.streamInfo.sampleRate = this.transformSampleRate;
-            this.streamInfo.numSamples = this.samples[0].size();
-        } else if (this.transformSampleDepth != null) {
-            for (int ch = 0; ch < numChannels; ch++) {
-                Function<Integer, Integer> transform = this.samples[ch]::get;
-                transform = transform.andThen(this.changeSampleDepth);
-                for (int i = 0; i < streamInfo.numSamples; i++) {
-                    samples[ch].set(i, transform.apply(i));
-                }
-            }
-            streamInfo.sampleDepth = this.transformSampleDepth;
-        }
-
-        if (numChannels < streamInfo.numChannels) {
-            List<Integer>[] reduced = new List[numChannels];
-            for (int ch = 0; ch < numChannels; ch++) {
-                reduced[ch] = this.samples[ch];
-            }
-            this.samples = reduced;
-            streamInfo.numChannels = numChannels;
-        }
-
+    public Builder mono() {
+        this.targetChannels = 1;
         return this;
     }
 
@@ -210,17 +177,58 @@ public class Builder {
     }
 
     /**
-     * Converts to target-encoded stream in-memory samples read.
+     * Converts to target-encoded stream in-memory samples read,
+     * applying all transformations defined before by {@link #mono() mono},
+     * {@link #sampleDepth(int) sampleDepth}, {@link #downSampleRate(int) downSampleRate}, etc.
      *
      * @param out target stream
      * @return stream info of encoded target
      * @throws IOException
      */
     public StreamInfo convert(OutputStream out) throws IOException {
+        transform();
         this.converter.apply(samples, BLOCK_SIZE, out);
         this.sourceMp3.close();
 
         return this.streamInfo;
+    }
+
+    private void transform() {
+        int numChannels =
+                this.targetChannels != null ?
+                        this.targetChannels : this.streamInfo.numChannels;
+
+        if (this.targetSampleRate != null) {
+            Function<Integer, List<Integer>> transform = ch -> this.samples[ch];
+            transform = transform.andThen(this.changeSampleDepthAndRate);
+            for (int ch = 0; ch < numChannels; ch++) {
+                this.samples[ch] = transform.apply(ch);
+            }
+
+            if (this.targetSampleDepth != null) {
+                this.streamInfo.sampleDepth = this.targetSampleDepth;
+            }
+            this.streamInfo.sampleRate = this.targetSampleRate;
+            this.streamInfo.numSamples = this.samples[0].size();
+        } else if (this.targetSampleDepth != null) {
+            for (int ch = 0; ch < numChannels; ch++) {
+                Function<Integer, Integer> transform = this.samples[ch]::get;
+                transform = transform.andThen(this.transformSampleDepth);
+                for (int i = 0; i < streamInfo.numSamples; i++) {
+                    samples[ch].set(i, transform.apply(i));
+                }
+            }
+            streamInfo.sampleDepth = this.targetSampleDepth;
+        }
+
+        if (numChannels < streamInfo.numChannels) {
+            List<Integer>[] reduced = new List[numChannels];
+            for (int ch = 0; ch < numChannels; ch++) {
+                reduced[ch] = this.samples[ch];
+            }
+            this.samples = reduced;
+            streamInfo.numChannels = numChannels;
+        }
     }
 
     private List<Integer>[] mp3ToRaw(InputStream in) {
@@ -286,6 +294,10 @@ public class Builder {
     }
 
 
+    /**
+     * Extending {@link java.io.ByteArrayOutputStream} to add ability
+     * of positioning and rewriting data (before flashing).
+     */
     static class SeekableByteArrayOutputStream extends ByteArrayOutputStream {
         private int seekPos = -1;
 

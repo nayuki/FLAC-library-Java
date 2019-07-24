@@ -4,6 +4,7 @@ package io.nayuki.flac.decode;
 import io.nayuki.flac.common.StreamInfo;
 import io.nayuki.flac.encode.BitOutputStream;
 import io.nayuki.flac.encode.RandomAccessFileOutputStream;
+import jdk.nashorn.internal.ir.annotations.Ignore;
 import org.junit.jupiter.api.Test;
 import org.xlengua.audio.converters.Builder;
 
@@ -121,16 +122,16 @@ public class DecoderTest {
         assertEquals(MP3_SAMPLE_DEPTH, streamInfo.sampleDepth);
 
         // downscaling
-        builder.transformSampleDepth(8);
-        assertEquals(256, builder.changeSampleDepth.apply(65536));
-        assertEquals(1, builder.changeSampleDepth.apply(128));
-        assertEquals(0, builder.changeSampleDepth.apply(64));
+        builder.sampleDepth(8);
+        assertEquals(256, builder.transformSampleDepth.apply(65536));
+        assertEquals(1, builder.transformSampleDepth.apply(256));
+        assertEquals(0, builder.transformSampleDepth.apply(64));
 
         // upscaling
-        builder.transformSampleDepth(24);
-        assertEquals(16777216, builder.changeSampleDepth.apply(65536));
-        assertEquals(32768, builder.changeSampleDepth.apply(128));
-        assertEquals(16384, builder.changeSampleDepth.apply(64));
+        builder.sampleDepth(24);
+        assertEquals(16777216, builder.transformSampleDepth.apply(65536));
+        assertEquals(32768, builder.transformSampleDepth.apply(128));
+        assertEquals(16384, builder.transformSampleDepth.apply(64));
     }
 
     @Test
@@ -142,7 +143,7 @@ public class DecoderTest {
         Builder builder = new Builder().sourceMp3(in);
         StreamInfo streamInfo = builder.streamInfo();
         assertEquals(MP3_SAMPLE_RATE, streamInfo.sampleRate);
-        builder.downscaleSampleRate(MP3_SAMPLE_RATE / 2);
+        builder.downSampleRate(MP3_SAMPLE_RATE / 2);
 
         List<Integer> source = Stream.of(1, 2, 3, 4, 5, 6, 7).collect(toList());
         List<Integer> downSampled = builder.changeSampleDepthAndRate.apply(source);
@@ -160,30 +161,30 @@ public class DecoderTest {
         assertEquals(MP3_SAMPLE_DEPTH, streamInfo.sampleDepth);
         assertEquals(MP3_SAMPLE_RATE, streamInfo.sampleRate);
         builder
-                .transformSampleDepth(8)
-                .downscaleSampleRate(MP3_SAMPLE_RATE / 2);
+                .sampleDepth(8)
+                .downSampleRate(MP3_SAMPLE_RATE / 2);
 
         List<Integer> source = Stream.of(512, 2, 256, 4, 64, 6, 1024).collect(toList());
         List<Integer> downSampled = builder.changeSampleDepthAndRate.apply(source);
         assertEquals(Stream.of(2, 1, 0, 4).collect(toList()), downSampled);
     }
 
-    @Test
-    void test() throws URISyntaxException, IOException {
+    @Ignore
+    void fileOutputTest() throws URISyntaxException, IOException {
         Path path = Paths.get(getClass().getClassLoader().getResource(TRACK07_MP3).toURI());
         byte[] mediaBytes = Files.readAllBytes(path);
         BufferedInputStream in = new BufferedInputStream(new ByteArrayInputStream(mediaBytes));
-        RandomAccessFile raf = new RandomAccessFile("./test.flac", "rw");
 
-        new Builder()
-                .sourceMp3(in)
-//                .transformSampleDepth(12)
-                .downscaleSampleRate(MP3_SAMPLE_RATE / 2)
-                .transform(1)
-                .targetFlac()
-                .convert(new RandomAccessFileOutputStream(raf));
+        try (RandomAccessFile raf = new RandomAccessFile("./test.flac", "rw")) {
+            new Builder()
+                    .sourceMp3(in)
+                    .mono()
+                    .sampleDepth(12)
+                    .downSampleRate(MP3_SAMPLE_RATE / 2)
+                    .targetFlac()
+                    .convert(new RandomAccessFileOutputStream(raf));
 
-        raf.close();
+        }
     }
 
     @Test
