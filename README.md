@@ -10,7 +10,7 @@ Example of use:
                     .sourceMp3(in)
                     .mono() // only one channel
                     .sampleDepth(12) // from 16 -> 12 bits
-                    .downSampleRate(MP3_SAMPLE_RATE / 2) // from 44100 -> 20050 Hz
+                    .downSampleRate(MP3_SAMPLE_RATE / 2) // from 44100 -> 22050 Hz
                     .targetFlac()
                     .convert(new RandomAccessFileOutputStream(raf));
 

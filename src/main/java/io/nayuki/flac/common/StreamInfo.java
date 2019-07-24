@@ -120,7 +120,23 @@ public final class StreamInfo {
 		maxBlockSize = 0;
 		sampleRate = 0;
 	}
-	
+
+	/**
+	 * Copy-constructor.
+	 *
+	 * @param streamInfo to copy
+	 */
+	public StreamInfo(StreamInfo streamInfo) {
+		minBlockSize = streamInfo.minBlockSize;
+		maxBlockSize = streamInfo.maxBlockSize;
+		minFrameSize = streamInfo.minFrameSize;
+		maxFrameSize = streamInfo.maxFrameSize;
+		sampleRate = streamInfo.sampleRate;
+		numChannels = streamInfo.numChannels;
+		sampleDepth = streamInfo.sampleDepth;
+		numSamples = streamInfo.numSamples;
+		md5Hash = streamInfo.md5Hash;
+	}
 	
 	/**
 	 * Constructs a stream info structure by parsing the specified 34-byte metadata block.
