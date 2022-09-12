@@ -218,16 +218,17 @@ public final class FrameInfo {
 	private static int decodeBlockSize(int code, FlacLowLevelInput in) throws IOException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
-		switch (code) {
-			case 0:  throw new DataFormatException("Reserved block size");
-			case 6:  return in.readUint(8) + 1;
-			case 7:  return in.readUint(16) + 1;
-			default:
+		return switch (code) {
+			case 0 -> throw new DataFormatException("Reserved block size");
+			case 6 -> in.readUint(8) + 1;
+			case 7 -> in.readUint(16) + 1;
+			default -> {
 				int result = searchSecond(BLOCK_SIZE_CODES, code);
 				if (result < 1 || result > 65536)
 					throw new AssertionError();
-				return result;
-		}
+				yield result;
+			}
+		};
 	}
 	
 	
@@ -236,18 +237,19 @@ public final class FrameInfo {
 	private static int decodeSampleRate(int code, FlacLowLevelInput in) throws IOException {
 		if ((code >>> 4) != 0)
 			throw new IllegalArgumentException();
-		switch (code) {
-			case  0:  return -1;  // Caller should obtain value from stream info metadata block
-			case 12:  return in.readUint(8);
-			case 13:  return in.readUint(16);
-			case 14:  return in.readUint(16) * 10;
-			case 15:  throw new DataFormatException("Invalid sample rate");
-			default:
+		return switch (code) {
+			case  0 -> -1;  // Caller should obtain value from stream info metadata block
+			case 12 -> in.readUint(8);
+			case 13 -> in.readUint(16);
+			case 14 -> in.readUint(16) * 10;
+			case 15 -> throw new DataFormatException("Invalid sample rate");
+			default -> {
 				int result = searchSecond(SAMPLE_RATE_CODES, code);
 				if (result < 1 || result > 655350)
 					throw new AssertionError();
-				return result;
-		}
+				yield result;
+			}
+		};
 	}
 	
 	

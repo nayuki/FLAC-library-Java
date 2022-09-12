@@ -225,14 +225,13 @@ public final class ShowFlacFileStats {
 		for (int i = 0; i < 4; i++)
 			stereoModeValues.add(0.0);
 		for (int mode : channelAssignments) {
-			int index;
-			switch (mode) {
-				case  1:  index = 0;  break;
-				case  8:  index = 1;  break;
-				case  9:  index = 2;  break;
-				case 10:  index = 3;  break;
-				default:  throw new DataFormatException("Invalid mode in stereo stream");
-			}
+			int index = switch (mode) {
+				case  1 -> 0;
+				case  8 -> 1;
+				case  9 -> 2;
+				case 10 -> 3;
+				default -> throw new DataFormatException("Invalid mode in stereo stream");
+			};
 			stereoModeValues.set(index, stereoModeValues.get(index) + 1);
 		}
 		printNormalizedBarGraph("Stereo coding modes", stereoModeLabels, stereoModeValues);
